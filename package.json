@@ -1,0 +1,29 @@
+{
+  "name": "eternalframe-auto-tiktok",
+  "version": "1.0.0",
+  "description": "Automated TikTok video generation engine for EternalFrame",
+  "private": true,
+  "scripts": {
+    "studio": "remotion studio",
+    "render:reveal": "remotion render BeforeAfterReveal --output output/reveal-preview.mp4",
+    "render:tips": "remotion render TipsEducational --output output/tips-preview.mp4",
+    "generate-script": "tsx scripts/generate-script.ts",
+    "pipeline": "tsx scripts/render-video.ts",
+    "pipeline:dry": "tsx scripts/render-video.ts --dry-run"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "@remotion/bundler": "^4.0.0",
+    "@remotion/cli": "^4.0.0",
+    "@remotion/renderer": "^4.0.0",
+    "@supabase/supabase-js": "^2.49.0",
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0",
+    "remotion": "^4.0.0",
+    "tsx": "^4.19.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.0",
+    "typescript": "^5.7.0"
+  }
+}
