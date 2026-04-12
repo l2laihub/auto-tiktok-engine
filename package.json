@@ -7,9 +7,10 @@
     "studio": "remotion studio",
     "render:reveal": "remotion render BeforeAfterReveal --output output/reveal-preview.mp4",
     "render:tips": "remotion render TipsEducational --output output/tips-preview.mp4",
-    "generate-script": "tsx scripts/generate-script.ts",
-    "pipeline": "tsx scripts/render-video.ts",
-    "pipeline:dry": "tsx scripts/render-video.ts --dry-run"
+    "generate-script": "node --env-file=.env --import tsx scripts/generate-script.ts",
+    "pipeline": "node --env-file=.env --import tsx scripts/render-video.ts",
+    "pipeline:dry": "node --env-file=.env --import tsx scripts/render-video.ts --dry-run",
+    "dashboard": "node --env-file=.env --import tsx dashboard/server.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
@@ -17,6 +18,10 @@
     "@remotion/cli": "^4.0.0",
     "@remotion/renderer": "^4.0.0",
     "@supabase/supabase-js": "^2.49.0",
+    "@types/express": "^5.0.6",
+    "@types/multer": "^2.1.0",
+    "express": "^5.2.1",
+    "multer": "^2.1.1",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
     "remotion": "^4.0.0",

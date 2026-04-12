@@ -136,6 +136,10 @@ async function renderVideo(item: ContentRow): Promise<string> {
     item.content_type === 'reveal' ? 'BeforeAfterReveal' : 'TipsEducational';
 
   // Build input props based on content type
+  // music_track currently stores a mood string (e.g. "emotional"), not a filename.
+  // Only pass it as musicFile when it looks like an actual file path.
+  const musicFile = item.music_track?.includes('.') ? item.music_track : undefined;
+
   const inputProps =
     item.content_type === 'reveal'
       ? {
@@ -143,7 +147,7 @@ async function renderVideo(item: ContentRow): Promise<string> {
           beforeImageSrc: item.before_image_url || '',
           afterImageSrc: item.after_image_url || '',
           photoEra: item.photo_era,
-          musicFile: item.music_track,
+          musicFile,
         }
       : {
           hookText: item.hook_text || 'Did you know?',
@@ -151,7 +155,7 @@ async function renderVideo(item: ContentRow): Promise<string> {
           tipBody: item.tip_body || '',
           takeaway: item.hook_text || '', // reuse hook as takeaway fallback
           tipImageSrc: item.tip_image_url,
-          musicFile: item.music_track,
+          musicFile,
         };
 
   console.log(`  Rendering composition: ${compositionId}`);

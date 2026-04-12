@@ -145,3 +145,15 @@ CREATE VIEW posted_video_performance AS
   FROM tiktok_content_pool
   WHERE status = 'posted'
   ORDER BY posted_at DESC;
+
+-- ============================================================
+-- Storage bucket for rendered videos
+-- ============================================================
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('videos', 'videos', true)
+ON CONFLICT (id) DO NOTHING;
+
+-- Storage bucket for uploaded photos (before/after)
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('photos', 'photos', true)
+ON CONFLICT (id) DO NOTHING;

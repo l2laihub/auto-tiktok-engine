@@ -197,4 +197,8 @@ async function main() {
   console.log('Row updated to status: scripted');
 }
 
-main().catch(console.error);
+// Only run CLI when executed directly (not when imported by render-video.ts)
+const isDirectRun = process.argv[1]?.includes('generate-script');
+if (isDirectRun) {
+  main().catch(console.error);
+}
