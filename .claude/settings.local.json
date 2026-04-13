@@ -3,7 +3,33 @@
     "allow": [
       "Bash(npx supabase:*)",
       "Bash(grep:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(npm list:*)",
+      "Bash(npm install:*)",
+      "Bash(node:*)",
+      "Bash(timeout 5 npm run dashboard)",
+      "Bash(timeout 3 bash:*)",
+      "Bash(xxd)",
+      "Bash(perl -pi -e 's/\\\\\\\\`/`/g' /home/l2laihub/Projects/auto-tiktok-engine/dashboard/index.html)",
+      "Bash(sed -n '994p' /home/l2laihub/Projects/auto-tiktok-engine/dashboard/index.html)",
+      "Bash(perl -pi -e 's/\\\\\\\\\\\\$/\\\\$/g' /home/l2laihub/Projects/auto-tiktok-engine/dashboard/index.html)",
+      "Bash(timeout 5 bash:*)",
+      "Bash(perl -pi -e 's/\\\\$\\\\{\\(\\\\S.*?\\) && \\(html`\\)/\\\\${$1 ? $2/g' /home/l2laihub/Projects/auto-tiktok-engine/dashboard/index.html)",
+      "Bash(awk '/function Pipeline/,/^    }/' /home/l2laihub/Projects/auto-tiktok-engine/dashboard/index.html)",
+      "Bash(awk 'NR==1{start=0} /<script type=\"module\">/{start=NR} start && /class=/{print NR\": \"$0}' /home/l2laihub/Projects/auto-tiktok-engine/dashboard/index.html)",
+      "Bash(perl -i -pe 'if \\($. >= 970\\) { s/\\\\bclass=/className=/g; s/\\\\bcolspan=/colSpan=/g; }' /home/l2laihub/Projects/auto-tiktok-engine/dashboard/index.html)",
+      "Bash(awk 'NR>=970' /home/l2laihub/Projects/auto-tiktok-engine/dashboard/index.html)",
+      "Bash(git add:*)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(timeout 15 npx remotion studio --port 3210)",
+      "Bash(timeout 12 npx remotion studio --port 3211)",
+      "Bash(npx playwright:*)",
+      "Bash(npm run:*)",
+      "Bash(curl -s http://localhost:3000/api/get_limit)",
+      "Bash(timeout 12 npx remotion studio --port 3212)",
+      "Bash(timeout 12 npx remotion studio --port 3213)",
+      "Bash(timeout 12 npx remotion studio --port 3214)"
     ]
   }
 }

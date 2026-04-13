@@ -21,51 +21,124 @@ export const VIDEO = {
   fps: 30,
 } as const;
 
-// Template A: Before/After Reveal — timing in frames (@ 30fps)
-export const REVEAL_TIMING = {
-  totalDuration: 15 * VIDEO.fps, // 450 frames = 15 seconds
+// === Dynamic Reveal Timing (multi-pair support) ===
 
-  // Phase 1: Hook text on blurred before image
-  hookStart: 0,
-  hookEnd: 2 * VIDEO.fps, // 0-2s
+export interface PairTiming {
+  beforeStart: number;
+  beforeEnd: number;
+  transitionStart: number;
+  transitionEnd: number;
+  afterStart: number;
+  afterEnd: number;
+}
 
-  // Phase 2: Before image with slow zoom
-  beforeStart: Math.floor(0.5 * VIDEO.fps), // 0.5s (overlaps hook fade)
-  beforeEnd: 6 * VIDEO.fps, // 6s
+export interface DynamicRevealTiming {
+  totalDuration: number;
+  hookStart: number;
+  hookEnd: number;
+  pairs: PairTiming[];
+  ctaStart: number;
+  ctaEnd: number;
+}
 
-  // Phase 3: Swipe transition
-  transitionStart: 5.5 * VIDEO.fps, // 5.5s
-  transitionEnd: 7 * VIDEO.fps, // 7s
+export function createRevealTiming(pairCount: number): DynamicRevealTiming {
+  const fps = VIDEO.fps;
+  const hookDuration = 3 * fps;          // 3s
+  const beforeDuration = 3 * fps;        // 3s per pair
+  const transitionDuration = 1.5 * fps;  // 1.5s
+  const afterDuration = 3 * fps;         // 3s per pair
+  const interPairBeat = 0.5 * fps;       // 0.5s gap between pairs
+  const ctaDuration = 3.5 * fps;         // 3.5s
 
-  // Phase 4: After image with slow pan
-  afterStart: 6.5 * VIDEO.fps, // 6.5s
-  afterEnd: 12 * VIDEO.fps, // 12s
+  const pairs: PairTiming[] = [];
+  let cursor = hookDuration; // start after hook
 
-  // Phase 5: CTA overlay
-  ctaStart: 11.5 * VIDEO.fps, // 11.5s
-  ctaEnd: 15 * VIDEO.fps, // 15s
-} as const;
+  for (let i = 0; i < pairCount; i++) {
+    const beforeStart = cursor;
+    const beforeEnd = beforeStart + beforeDuration;
+    const transitionStart = beforeEnd - Math.floor(0.5 * fps); // 0.5s overlap
+    const transitionEnd = transitionStart + transitionDuration;
+    const afterStart = transitionEnd - Math.floor(0.5 * fps);  // 0.5s overlap
+    const afterEnd = afterStart + afterDuration;
 
-// Template B: Tips/Educational — timing in frames
-export const TIPS_TIMING = {
-  totalDuration: 15 * VIDEO.fps,
+    pairs.push({ beforeStart, beforeEnd, transitionStart, transitionEnd, afterStart, afterEnd });
 
-  // Phase 1: Hook question
-  hookStart: 0,
-  hookEnd: 3 * VIDEO.fps, // 0-3s
+    cursor = afterEnd;
+    if (i < pairCount - 1) {
+      cursor += interPairBeat;
+    }
+  }
 
-  // Phase 2: Tip content with visual
-  tipStart: 2.5 * VIDEO.fps,
-  tipEnd: 10 * VIDEO.fps, // 2.5-10s
+  const ctaStart = cursor - Math.floor(0.5 * fps); // slight overlap with last after
+  const ctaEnd = ctaStart + ctaDuration;
 
-  // Phase 3: Key takeaway
-  takeawayStart: 9.5 * VIDEO.fps,
-  takeawayEnd: 12.5 * VIDEO.fps,
+  return {
+    totalDuration: ctaEnd,
+    hookStart: 0,
+    hookEnd: hookDuration,
+    pairs,
+    ctaStart,
+    ctaEnd,
+  };
+}
 
-  // Phase 4: CTA
-  ctaStart: 12 * VIDEO.fps,
-  ctaEnd: 15 * VIDEO.fps,
-} as const;
+// Backwards-compatible alias (single pair = original 15s-ish timing)
+export const REVEAL_TIMING = createRevealTiming(1);
+
+// === Dynamic Tips Timing (multi-tip support) ===
+
+export interface TipTiming {
+  tipStart: number;
+  tipEnd: number;
+}
+
+export interface DynamicTipsTiming {
+  totalDuration: number;
+  hookStart: number;
+  hookEnd: number;
+  tips: TipTiming[];
+  takeawayStart: number;
+  takeawayEnd: number;
+  ctaStart: number;
+  ctaEnd: number;
+}
+
+export function createTipsTiming(tipCount: number): DynamicTipsTiming {
+  const fps = VIDEO.fps;
+  const hookDuration = 3 * fps;          // 3s
+  const tipDuration = 8 * fps;           // 8s per tip
+  const takeawayDuration = 3 * fps;      // 3s
+  const ctaDuration = 3.5 * fps;         // 3.5s
+
+  const tips: TipTiming[] = [];
+  let cursor = hookDuration;
+
+  for (let i = 0; i < tipCount; i++) {
+    const tipStart = cursor - Math.floor(0.5 * fps); // 0.5s overlap with previous
+    const tipEnd = tipStart + tipDuration;
+    tips.push({ tipStart, tipEnd });
+    cursor = tipEnd;
+  }
+
+  const takeawayStart = cursor - Math.floor(0.5 * fps);
+  const takeawayEnd = takeawayStart + takeawayDuration;
+  const ctaStart = takeawayEnd - Math.floor(0.5 * fps);
+  const ctaEnd = ctaStart + ctaDuration;
+
+  return {
+    totalDuration: ctaEnd,
+    hookStart: 0,
+    hookEnd: hookDuration,
+    tips,
+    takeawayStart,
+    takeawayEnd,
+    ctaStart,
+    ctaEnd,
+  };
+}
+
+// Backwards-compatible alias (single tip = original ~15s timing)
+export const TIPS_TIMING = createTipsTiming(1);
 
 // Easing helpers
 export function easeOutCubic(t: number): number {

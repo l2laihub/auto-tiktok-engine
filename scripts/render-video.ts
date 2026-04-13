@@ -3,9 +3,10 @@
 // Render Pipeline — Full pipeline for one content item:
 // 1. Fetch from Supabase content pool
 // 2. Generate AI script (if not already scripted)
-// 3. Render video with Remotion
-// 4. Upload to Supabase Storage
-// 5. Post to TikTok (or save to review folder)
+// 3. Generate background music via Suno AI
+// 4. Render video with Remotion
+// 5. Upload to Supabase Storage
+// 6. Post to TikTok (or save to review folder)
 // ============================================================
 // Usage:
 //   npx tsx scripts/render-video.ts                   # process next queued item
@@ -17,6 +18,8 @@ import { createClient } from '@supabase/supabase-js';
 import { bundle } from '@remotion/bundler';
 import { renderMedia, selectComposition } from '@remotion/renderer';
 import { generateScript } from './generate-script';
+import { generateMusicTrack, downloadAndTrim } from '../src/utils/suno';
+import { createRevealTiming, createTipsTiming, VIDEO } from '../src/config';
 import path from 'path';
 import fs from 'fs';
 
@@ -28,23 +31,42 @@ const DRY_RUN = process.argv.includes('--dry-run');
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
+interface ImagePairRow {
+  before_url: string;
+  after_url: string;
+  era?: string;
+  label?: string;
+}
+
 interface ContentRow {
   id: string;
   content_type: 'reveal' | 'tip';
   status: string;
+  // Legacy single-pair fields
   before_image_url?: string;
   after_image_url?: string;
   photo_era?: string;
   photo_story?: string;
   preset_used?: string;
+  // Multi-pair field
+  image_pairs?: ImagePairRow[];
+  // Tip fields
   tip_title?: string;
   tip_body?: string;
   tip_source?: string;
   tip_image_url?: string;
+  // Script fields
   hook_text?: string;
   caption?: string;
   hashtags?: string[];
   music_track?: string;
+  // Audio fields
+  music_style?: string;
+  suno_audio_url?: string;
+  music_file_path?: string;
+  audio_volume?: number;
+  // CTA
+  slogan?: string;
 }
 
 // --- Step 1: Fetch next content item ---
@@ -84,6 +106,7 @@ async function ensureScript(item: ContentRow): Promise<ContentRow> {
   }
 
   console.log('  Generating AI script...');
+  const pairCount = item.image_pairs?.length || 1;
   const script = await generateScript({
     id: item.id,
     content_type: item.content_type,
@@ -93,6 +116,10 @@ async function ensureScript(item: ContentRow): Promise<ContentRow> {
     tip_title: item.tip_title,
     tip_body: item.tip_body,
     tip_source: item.tip_source,
+    pair_count: pairCount,
+    photo_stories: item.image_pairs?.map((p, i) =>
+      `Pair ${i + 1}: ${p.era || 'unknown era'}`
+    ),
   });
 
   // Update Supabase
@@ -102,8 +129,9 @@ async function ensureScript(item: ContentRow): Promise<ContentRow> {
       hook_text: script.hook_text,
       caption: script.caption,
       hashtags: script.hashtags,
-      // TODO(phase-2): resolve mood → filename via tiktok_music_library table
-      music_track: script.music_mood,
+      music_style: script.music_style,
+      music_track: script.music_mood, // keep legacy field populated
+      slogan: script.slogan,
       status: 'scripted',
     })
     .eq('id', item.id);
@@ -115,11 +143,84 @@ async function ensureScript(item: ContentRow): Promise<ContentRow> {
     hook_text: script.hook_text,
     caption: script.caption,
     hashtags: script.hashtags,
+    music_style: script.music_style,
+    slogan: script.slogan,
     status: 'scripted',
   };
 }
 
-// --- Step 3: Render video with Remotion ---
+// --- Step 3: Generate background music via Suno AI ---
+async function generateAudio(item: ContentRow): Promise<ContentRow> {
+  // Skip if already has a music file
+  if (item.music_file_path && fs.existsSync(item.music_file_path)) {
+    console.log(`  Music already exists: ${item.music_file_path}`);
+    return item;
+  }
+
+  // Skip if no Suno API configured
+  if (!process.env.SUNO_API_URL) {
+    console.log('  No SUNO_API_URL set. Skipping music generation.');
+    return item;
+  }
+
+  const musicPrompt = item.music_style || item.music_track || 'warm nostalgic instrumental, gentle piano';
+
+  // Calculate target duration based on content
+  const pairCount = item.image_pairs?.length || 1;
+  let durationMs: number;
+  if (item.content_type === 'reveal') {
+    const timing = createRevealTiming(pairCount);
+    durationMs = Math.ceil(timing.totalDuration / VIDEO.fps * 1000);
+  } else {
+    const timing = createTipsTiming(1); // TODO: support multi-tip count from DB
+    durationMs = Math.ceil(timing.totalDuration / VIDEO.fps * 1000);
+  }
+
+  console.log(`  Generating Suno AI music (~${(durationMs / 1000).toFixed(0)}s target)...`);
+  console.log(`  Prompt: "${musicPrompt}"`);
+
+  try {
+    const track = await generateMusicTrack({
+      prompt: musicPrompt,
+      instrumental: true,
+      title: `EternalFrame - ${item.content_type} - ${item.id.slice(0, 8)}`,
+    });
+
+    // Download and trim to video duration
+    // Save into public/music/ so Remotion's staticFile() can serve it
+    const musicDir = path.resolve(__dirname, '../public/music');
+    fs.mkdirSync(musicDir, { recursive: true });
+    const musicFilename = `${item.id.slice(0, 8)}.mp3`;
+    const outputPath = path.join(musicDir, musicFilename);
+
+    await downloadAndTrim({
+      audioUrl: track.audioUrl,
+      targetDurationMs: durationMs,
+      outputPath,
+    });
+
+    // Update DB with audio info
+    await supabase
+      .from('tiktok_content_pool')
+      .update({
+        suno_audio_url: track.audioUrl,
+        music_file_path: outputPath,
+      })
+      .eq('id', item.id);
+
+    return {
+      ...item,
+      suno_audio_url: track.audioUrl,
+      music_file_path: outputPath,
+    };
+  } catch (err) {
+    console.warn(`  Suno music generation failed: ${err instanceof Error ? err.message : err}`);
+    console.log('  Proceeding without background music.');
+    return item;
+  }
+}
+
+// --- Step 4: Render video with Remotion ---
 async function renderVideo(item: ContentRow): Promise<string> {
   console.log('  Bundling Remotion project...');
 
@@ -135,28 +236,55 @@ async function renderVideo(item: ContentRow): Promise<string> {
   const compositionId =
     item.content_type === 'reveal' ? 'BeforeAfterReveal' : 'TipsEducational';
 
-  // Build input props based on content type
-  // music_track currently stores a mood string (e.g. "emotional"), not a filename.
-  // Only pass it as musicFile when it looks like an actual file path.
-  const musicFile = item.music_track?.includes('.') ? item.music_track : undefined;
+  // Resolve music file: prefer local file in public/ for staticFile(), fall back to URL
+  let musicFile: string | undefined;
+  if (item.music_file_path && fs.existsSync(item.music_file_path)) {
+    // music_file_path is an absolute path in public/music/
+    // Pass just the relative path from public/ so staticFile() can find it
+    const publicDir = path.resolve(__dirname, '../public');
+    const relativePath = path.relative(publicDir, item.music_file_path);
+    musicFile = relativePath; // e.g. "music/a6346d1b.mp3"
+  } else if (item.suno_audio_url) {
+    musicFile = item.suno_audio_url; // direct URL — compositions handle http:// prefix
+  } else if (item.music_track?.includes('.')) {
+    musicFile = item.music_track; // legacy filename in public/
+  }
 
-  const inputProps =
-    item.content_type === 'reveal'
-      ? {
-          hookText: item.hook_text || 'A forgotten memory...',
-          beforeImageSrc: item.before_image_url || '',
-          afterImageSrc: item.after_image_url || '',
-          photoEra: item.photo_era,
-          musicFile,
-        }
-      : {
-          hookText: item.hook_text || 'Did you know?',
-          tipTitle: item.tip_title || '',
-          tipBody: item.tip_body || '',
-          takeaway: item.hook_text || '', // reuse hook as takeaway fallback
-          tipImageSrc: item.tip_image_url,
-          musicFile,
-        };
+  // Build input props based on content type
+  let inputProps: Record<string, unknown>;
+
+  if (item.content_type === 'reveal') {
+    // Build imagePairs from new field or fall back to legacy
+    const imagePairs = item.image_pairs?.map((p) => ({
+      beforeImageSrc: p.before_url,
+      afterImageSrc: p.after_url,
+      photoEra: p.era,
+      label: p.label,
+    })) || [{
+      beforeImageSrc: item.before_image_url || '',
+      afterImageSrc: item.after_image_url || '',
+      photoEra: item.photo_era,
+    }];
+
+    inputProps = {
+      hookText: item.hook_text || 'A forgotten memory...',
+      imagePairs,
+      musicFile,
+      audioVolume: item.audio_volume ?? 0.6,
+      slogan: item.slogan,
+    };
+  } else {
+    inputProps = {
+      hookText: item.hook_text || 'Did you know?',
+      tipTitle: item.tip_title || '',
+      tipBody: item.tip_body || '',
+      takeaway: item.hook_text || '', // reuse hook as takeaway fallback
+      tipImageSrc: item.tip_image_url,
+      musicFile,
+      audioVolume: item.audio_volume ?? 0.5,
+      slogan: item.slogan,
+    };
+  }
 
   console.log(`  Rendering composition: ${compositionId}`);
   const composition = await selectComposition({
@@ -184,11 +312,18 @@ async function renderVideo(item: ContentRow): Promise<string> {
     audioBitrate: '192k',
   });
 
-  console.log(`  Video rendered: ${outputPath}`);
+  // Update video duration in DB
+  const durationMs = Math.ceil(composition.durationInFrames / composition.fps * 1000);
+  await supabase
+    .from('tiktok_content_pool')
+    .update({ video_duration_ms: durationMs })
+    .eq('id', item.id);
+
+  console.log(`  Video rendered: ${outputPath} (${(durationMs / 1000).toFixed(1)}s)`);
   return outputPath;
 }
 
-// --- Step 4: Upload to Supabase Storage ---
+// --- Step 5: Upload to Supabase Storage ---
 async function uploadVideo(
   item: ContentRow,
   localPath: string
@@ -212,22 +347,22 @@ async function uploadVideo(
     data: { publicUrl },
   } = supabase.storage.from('videos').getPublicUrl(storagePath);
 
+  // Append cache-busting param so re-renders aren't served stale by browser/CDN
+  const videoUrl = `${publicUrl}?v=${Date.now()}`;
+
   // Update row
   await supabase
     .from('tiktok_content_pool')
     .update({
-      video_url: publicUrl,
+      video_url: videoUrl,
       status: 'rendered',
     })
     .eq('id', item.id);
 
-  return publicUrl;
+  return videoUrl;
 }
 
-// --- Step 5: Post to TikTok ---
-// TODO(phase-2): Current implementation only calls the init endpoint.
-// Full TikTok Content Posting API v2 requires: init → upload → publish.
-// For now, use --dry-run and upload manually via TikTok app.
+// --- Step 6: Post to TikTok ---
 async function postToTikTok(item: ContentRow, videoUrl: string): Promise<void> {
   if (DRY_RUN) {
     console.log('  [DRY RUN] Skipping TikTok post');
@@ -236,9 +371,6 @@ async function postToTikTok(item: ContentRow, videoUrl: string): Promise<void> {
     return;
   }
 
-  // TikTok Content Posting API v2
-  // Requires: TIKTOK_ACCESS_TOKEN env var
-  // App must be approved for content.publish scope
   const accessToken = process.env.TIKTOK_ACCESS_TOKEN;
 
   if (!accessToken) {
@@ -249,7 +381,6 @@ async function postToTikTok(item: ContentRow, videoUrl: string): Promise<void> {
   }
 
   try {
-    // Step 1: Initialize upload
     const initResponse = await fetch(
       'https://open.tiktokapis.com/v2/post/publish/video/init/',
       {
@@ -280,7 +411,6 @@ async function postToTikTok(item: ContentRow, videoUrl: string): Promise<void> {
       throw new Error(`TikTok API error: ${result.error.message}`);
     }
 
-    // Update row with post ID
     await supabase
       .from('tiktok_content_pool')
       .update({
@@ -309,7 +439,6 @@ async function postToTikTok(item: ContentRow, videoUrl: string): Promise<void> {
 async function main() {
   console.log('🎬 EternalFrame Auto-TikTok Engine\n');
 
-  // Parse positional content ID (first non-flag arg after the script name)
   const args = process.argv.slice(2).filter((arg) => !arg.startsWith('-'));
   const specificId = args[0];
 
@@ -330,17 +459,21 @@ async function main() {
   console.log('\nStep 2: Script generation...');
   const scripted = await ensureScript(item);
 
-  // Step 3: Render
-  console.log('\nStep 3: Video rendering...');
-  const videoPath = await renderVideo(scripted);
+  // Step 3: Music
+  console.log('\nStep 3: Music generation (Suno AI)...');
+  const withMusic = await generateAudio(scripted);
 
-  // Step 4: Upload
-  console.log('\nStep 4: Uploading video...');
-  const videoUrl = await uploadVideo(scripted, videoPath);
+  // Step 4: Render
+  console.log('\nStep 4: Video rendering...');
+  const videoPath = await renderVideo(withMusic);
 
-  // Step 5: Post
-  console.log('\nStep 5: Posting to TikTok...');
-  await postToTikTok(scripted, videoUrl);
+  // Step 5: Upload
+  console.log('\nStep 5: Uploading video...');
+  const videoUrl = await uploadVideo(withMusic, videoPath);
+
+  // Step 6: Post
+  console.log('\nStep 6: Posting to TikTok...');
+  await postToTikTok(withMusic, videoUrl);
 
   console.log('\n✅ Pipeline complete!');
 }

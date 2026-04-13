@@ -12,13 +12,16 @@ import { createClient } from '@supabase/supabase-js';
 const anthropic = new Anthropic();
 
 // Input from content pool
-interface ContentItem {
+export interface ContentItem {
   id: string;
   content_type: 'reveal' | 'tip';
   // Reveal fields
   photo_era?: string;
   photo_story?: string;
   preset_used?: string;
+  // Multi-pair fields
+  pair_count?: number;
+  photo_stories?: string[];
   // Tip fields
   tip_title?: string;
   tip_body?: string;
@@ -26,11 +29,13 @@ interface ContentItem {
 }
 
 // AI-generated output
-interface GeneratedScript {
+export interface GeneratedScript {
   hook_text: string;      // 1-2 lines, max 60 chars total
   caption: string;        // TikTok caption, 150-300 chars
   hashtags: string[];     // 5-8 relevant hashtags
   music_mood: string;     // mood for music matching: emotional | nostalgic | inspiring | upbeat
+  music_style: string;    // Suno AI prompt: instruments, mood, tempo description
+  slogan: string;         // 3-7 word emotional tagline for the CTA screen
   // Tip-specific extras
   takeaway?: string;      // one-liner key insight
 }
@@ -48,25 +53,37 @@ Rules:
 - Never use generic phrases like "you won't believe" or "amazing results".
 - Reference specific decades, family relationships, cultural moments when possible.
 
+For videos with multiple before/after pairs, the hook should set up anticipation for a series of transformations (e.g. "3 forgotten photos, 3 incredible transformations").
+
 Respond ONLY with valid JSON matching this schema:
 {
   "hook_text": "string (max 60 chars, use \\n for line break)",
   "caption": "string (150-300 chars)",
   "hashtags": ["string"],
   "music_mood": "emotional | nostalgic | inspiring | upbeat",
+  "music_style": "string (Suno AI prompt: describe instrumental background music — mood, instruments, tempo. Example: 'warm nostalgic piano with gentle strings, slow tempo, cinematic, emotional')",
+  "slogan": "string (3-7 word emotional tagline for the end CTA screen. Should feel personal and warm. Examples: 'Honor them in every pixel.', 'Every photo tells their story.', 'Bring their smiles back to life.')",
   "takeaway": "string (optional, for tip content only)"
 }`;
 
 function buildUserPrompt(item: ContentItem): string {
   if (item.content_type === 'reveal') {
+    const pairCount = item.pair_count || 1;
+    const pairDetails = item.photo_stories?.length
+      ? item.photo_stories.map((s, i) => `- Photo ${i + 1}: ${s}`).join('\n')
+      : `- Era: ${item.photo_era || 'Unknown decade'}\n- Story/context: ${item.photo_story || 'Old family photo found in storage'}`;
+
     return `Generate a TikTok script for a BEFORE/AFTER photo reveal video.
 
+This video showcases ${pairCount} before/after photo transformation${pairCount > 1 ? 's in sequence' : ''}.
+
 Photo details:
-- Era: ${item.photo_era || 'Unknown decade'}
-- Story/context: ${item.photo_story || 'Old family photo found in storage'}
+${pairDetails}
 - EternalFrame preset used: ${item.preset_used || 'photo-restoration'}
 
-The video shows the damaged/faded original photo, then dramatically reveals the AI-restored version. The transformation should feel emotional and personal.`;
+${pairCount > 1
+  ? 'The video shows multiple damaged/faded photos being revealed as AI-restored versions in sequence. Build anticipation across the series — each reveal should feel like an emotional payoff.'
+  : 'The video shows the damaged/faded original photo, then dramatically reveals the AI-restored version. The transformation should feel emotional and personal.'}`;
   }
 
   return `Generate a TikTok script for an EDUCATIONAL/TIPS video.
@@ -185,6 +202,8 @@ async function main() {
       caption: script.caption,
       hashtags: script.hashtags,
       music_track: script.music_mood,
+      music_style: script.music_style,
+      slogan: script.slogan,
       status: 'scripted',
     })
     .eq('id', contentId);

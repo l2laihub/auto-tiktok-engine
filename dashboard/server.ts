@@ -19,6 +19,9 @@ const supabase = createClient(
 const app = express();
 app.use(express.json());
 
+// Serve static assets (logo, etc.)
+app.use('/static', express.static(path.join(ROOT, 'public')));
+
 // Serve dashboard HTML
 app.get('/', (_req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
@@ -86,14 +89,21 @@ app.delete('/api/content/:id', async (req, res) => {
 app.post('/api/content/:id/regenerate', async (req, res) => {
   const { data: item, error: fetchErr } = await supabase
     .from('tiktok_content_pool')
-    .select('id, content_type, photo_era, photo_story, preset_used, tip_title, tip_body, tip_source')
+    .select('id, content_type, photo_era, photo_story, preset_used, tip_title, tip_body, tip_source, image_pairs')
     .eq('id', req.params.id)
     .single();
 
   if (fetchErr || !item) return res.status(404).json({ error: 'Item not found' });
 
   try {
-    const script = await generateScript(item);
+    const imagePairs = item.image_pairs as Array<{ before_url: string; after_url: string; era?: string }> | null;
+    const pairCount = imagePairs?.length || 1;
+
+    const script = await generateScript({
+      ...item,
+      pair_count: pairCount,
+      photo_stories: imagePairs?.map((p: { era?: string }, i: number) => `Pair ${i + 1}: ${p.era || 'unknown era'}`),
+    });
 
     const { error: updateErr } = await supabase
       .from('tiktok_content_pool')
@@ -102,6 +112,8 @@ app.post('/api/content/:id/regenerate', async (req, res) => {
         caption: script.caption,
         hashtags: script.hashtags,
         music_track: script.music_mood,
+        music_style: script.music_style,
+        slogan: script.slogan,
         status: 'scripted',
       })
       .eq('id', req.params.id);

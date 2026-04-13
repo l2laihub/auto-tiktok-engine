@@ -6,17 +6,33 @@ import {
   staticFile,
   Audio,
 } from 'remotion';
-import { BRAND, VIDEO, REVEAL_TIMING as T, interpolate } from '../config';
+import { BRAND, createRevealTiming, interpolate } from '../config';
 import { HookText } from '../components/HookText';
 import { EternalFrameCTA } from '../components/EternalFrameCTA';
+import { RevealPair } from '../components/RevealPair';
+
+// Per-pair image data
+export interface ImagePair {
+  beforeImageSrc: string;
+  afterImageSrc: string;
+  photoEra?: string;
+  label?: string;
+}
 
 // Props passed from the render script / content pool
 export interface RevealProps {
-  hookText: string;           // e.g. "This photo sat in a drawer for 47 years..."
-  beforeImageSrc: string;     // URL or static file path
-  afterImageSrc: string;
-  photoEra?: string;          // e.g. "1960s"
-  musicFile?: string;         // royalty-free track filename
+  hookText: string;
+  // Legacy single-pair support (backwards compat)
+  beforeImageSrc?: string;
+  afterImageSrc?: string;
+  photoEra?: string;
+  // Multi-pair support
+  imagePairs?: ImagePair[];
+  // Audio
+  musicFile?: string;
+  audioVolume?: number;
+  // CTA
+  slogan?: string;
 }
 
 export const BeforeAfterReveal: React.FC<RevealProps> = ({
@@ -24,267 +40,91 @@ export const BeforeAfterReveal: React.FC<RevealProps> = ({
   beforeImageSrc,
   afterImageSrc,
   photoEra,
+  imagePairs: imagePairsProp,
   musicFile,
+  audioVolume = 0.6,
+  slogan,
 }) => {
   const frame = useCurrentFrame();
 
-  // === Before image: slow zoom (1.0 → 1.15) ===
-  const beforeZoom = interpolate(
-    frame,
-    [T.beforeStart, T.beforeEnd],
-    [1.0, 1.15]
-  );
-  const beforeOpacity = interpolate(
-    frame,
-    [T.transitionStart, T.transitionEnd],
-    [1, 0]
-  );
+  // Normalize: use imagePairs if provided, else build from legacy props
+  const pairs: ImagePair[] = imagePairsProp && imagePairsProp.length > 0
+    ? imagePairsProp
+    : [{
+        beforeImageSrc: beforeImageSrc || '',
+        afterImageSrc: afterImageSrc || '',
+        photoEra,
+      }];
 
-  // === Swipe transition: a diagonal wipe ===
-  const swipeProgress = interpolate(
-    frame,
-    [T.transitionStart, T.transitionEnd],
-    [0, 100]
-  );
+  const timing = createRevealTiming(pairs.length);
 
-  // === After image: slow pan (slight drift right) ===
-  const afterPanX = interpolate(
-    frame,
-    [T.afterStart, T.afterEnd],
-    [-20, 20]
-  );
-  const afterOpacity = interpolate(
-    frame,
-    [T.afterStart - 10, T.afterStart + 5],
-    [0, 1]
-  );
-  const afterZoom = interpolate(
-    frame,
-    [T.afterStart, T.afterEnd],
-    [1.05, 1.0]
-  );
+  // Resolve audio source: URL or static file
+  const audioSrc = musicFile
+    ? musicFile.startsWith('http') ? musicFile : staticFile(musicFile)
+    : undefined;
 
-  // === "Before" / "After" labels ===
-  const beforeLabelOpacity = interpolate(
+  // Hook background: show blurred first before-image during hook phase
+  const hookBgOpacity = interpolate(
     frame,
-    [T.beforeStart + 30, T.beforeStart + 40, T.transitionStart, T.transitionStart + 10],
-    [0, 0.8, 0.8, 0]
-  );
-  const afterLabelOpacity = interpolate(
-    frame,
-    [T.afterStart + 10, T.afterStart + 20, T.ctaStart - 10, T.ctaStart],
-    [0, 0.8, 0.8, 0]
-  );
-
-  // === Era badge ===
-  const eraOpacity = interpolate(
-    frame,
-    [T.beforeStart + 45, T.beforeStart + 55, T.transitionStart - 10, T.transitionStart],
+    [timing.hookStart, timing.hookStart + 10, timing.pairs[0].beforeStart, timing.pairs[0].beforeStart + 15],
     [0, 1, 1, 0]
   );
 
   return (
     <AbsoluteFill style={{ backgroundColor: BRAND.dark }}>
       {/* Background music */}
-      {musicFile && (
-        <Audio src={staticFile(musicFile)} volume={0.6} />
-      )}
+      {audioSrc && <Audio src={audioSrc} volume={audioVolume} />}
 
-      {/* === BEFORE IMAGE LAYER === */}
-      <AbsoluteFill
-        style={{
-          opacity: beforeOpacity,
-          clipPath: `polygon(0 0, 100% 0, ${100 - swipeProgress}% 100%, 0 100%)`,
-        }}
-      >
-        <div
-          style={{
-            width: '100%',
-            height: '100%',
-            overflow: 'hidden',
-          }}
-        >
-          <Img
-            src={beforeImageSrc}
-            style={{
-              width: '100%',
-              height: '100%',
-              objectFit: 'cover',
-              transform: `scale(${beforeZoom})`,
-              filter: 'saturate(0.7)',
-            }}
-          />
-        </div>
-
-        {/* Dark vignette overlay */}
-        <div
-          style={{
-            position: 'absolute',
-            inset: 0,
-            background:
-              'radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.5) 100%)',
-          }}
-        />
-
-        {/* "Before" label */}
-        <div
-          style={{
-            position: 'absolute',
-            top: 80,
-            left: 60,
-            opacity: beforeLabelOpacity,
-          }}
-        >
-          <div
-            style={{
-              background: `${BRAND.dark}AA`,
-              borderRadius: 12,
-              paddingLeft: 20,
-              paddingRight: 20,
-              paddingTop: 8,
-              paddingBottom: 8,
-              border: `1px solid ${BRAND.textMuted}44`,
-            }}
-          >
-            <span
+      {/* === HOOK BACKGROUND: blurred first before-image === */}
+      {pairs[0]?.beforeImageSrc && (
+        <AbsoluteFill style={{ opacity: hookBgOpacity }}>
+          <div style={{ width: '100%', height: '100%', overflow: 'hidden' }}>
+            <Img
+              src={pairs[0].beforeImageSrc}
               style={{
-                fontFamily: 'Inter, system-ui, sans-serif',
-                fontSize: 22,
-                fontWeight: 500,
-                color: BRAND.textMuted,
-                letterSpacing: 2,
-                textTransform: 'uppercase',
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                filter: 'blur(20px) saturate(0.5) brightness(0.35)',
+                transform: 'scale(1.1)',
               }}
-            >
-              Before
-            </span>
+            />
           </div>
-        </div>
-
-        {/* Era badge */}
-        {photoEra && (
+          {/* Dark vignette on top */}
           <div
             style={{
               position: 'absolute',
-              top: 80,
-              right: 60,
-              opacity: eraOpacity,
-            }}
-          >
-            <div
-              style={{
-                background: `${BRAND.amber}DD`,
-                borderRadius: 12,
-                paddingLeft: 20,
-                paddingRight: 20,
-                paddingTop: 8,
-                paddingBottom: 8,
-              }}
-            >
-              <span
-                style={{
-                  fontFamily: 'Inter, system-ui, sans-serif',
-                  fontSize: 22,
-                  fontWeight: 600,
-                  color: BRAND.dark,
-                }}
-              >
-                {photoEra}
-              </span>
-            </div>
-          </div>
-        )}
-      </AbsoluteFill>
-
-      {/* === AFTER IMAGE LAYER === */}
-      <AbsoluteFill style={{ opacity: afterOpacity }}>
-        <div
-          style={{
-            width: '100%',
-            height: '100%',
-            overflow: 'hidden',
-          }}
-        >
-          <Img
-            src={afterImageSrc}
-            style={{
-              width: '100%',
-              height: '100%',
-              objectFit: 'cover',
-              transform: `scale(${afterZoom}) translateX(${afterPanX}px)`,
+              inset: 0,
+              background: 'radial-gradient(ellipse at center, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.7) 100%)',
             }}
           />
-        </div>
-
-        {/* Subtle warm overlay to enhance the "restored" feeling */}
-        <div
-          style={{
-            position: 'absolute',
-            inset: 0,
-            background: `${BRAND.amber}08`,
-          }}
-        />
-
-        {/* "After" label */}
-        <div
-          style={{
-            position: 'absolute',
-            top: 80,
-            left: 60,
-            opacity: afterLabelOpacity,
-          }}
-        >
-          <div
-            style={{
-              background: `${BRAND.teal}DD`,
-              borderRadius: 12,
-              paddingLeft: 20,
-              paddingRight: 20,
-              paddingTop: 8,
-              paddingBottom: 8,
-            }}
-          >
-            <span
-              style={{
-                fontFamily: 'Inter, system-ui, sans-serif',
-                fontSize: 22,
-                fontWeight: 600,
-                color: BRAND.white,
-                letterSpacing: 2,
-                textTransform: 'uppercase',
-              }}
-            >
-              Restored ✦
-            </span>
-          </div>
-        </div>
-      </AbsoluteFill>
-
-      {/* === TRANSITION FLASH (brief white flash at midpoint) === */}
-      {frame >= T.transitionStart + 10 && frame <= T.transitionStart + 18 && (
-        <AbsoluteFill
-          style={{
-            backgroundColor: BRAND.white,
-            opacity: interpolate(
-              frame,
-              [T.transitionStart + 10, T.transitionStart + 14, T.transitionStart + 18],
-              [0, 0.4, 0]
-            ),
-          }}
-        />
+        </AbsoluteFill>
       )}
+
+      {/* === REVEAL PAIRS === */}
+      {pairs.map((pair, i) => (
+        <RevealPair
+          key={i}
+          beforeImageSrc={pair.beforeImageSrc}
+          afterImageSrc={pair.afterImageSrc}
+          photoEra={pair.photoEra}
+          pairTiming={timing.pairs[i]}
+          pairIndex={i}
+          totalPairs={pairs.length}
+        />
+      ))}
 
       {/* === HOOK TEXT === */}
       <HookText
         text={hookText}
-        startFrame={T.hookStart}
-        endFrame={T.hookEnd + 30}
-        fontSize={48}
+        startFrame={timing.hookStart}
+        endFrame={timing.hookEnd + 30}
+        fontSize={54}
         position="center"
       />
 
       {/* === CTA === */}
-      <EternalFrameCTA startFrame={T.ctaStart} endFrame={T.ctaEnd} />
+      <EternalFrameCTA startFrame={timing.ctaStart} endFrame={timing.ctaEnd} slogan={slogan} />
 
       {/* === Bottom gradient (for TikTok UI safe area) === */}
       <div

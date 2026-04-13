@@ -105,12 +105,14 @@
       width: 36px;
       height: 36px;
       border-radius: 10px;
-      background: linear-gradient(135deg, var(--coral), var(--teal));
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 18px;
+      overflow: hidden;
       box-shadow: 0 0 20px rgba(232, 90, 113, 0.3);
+    }
+
+    .logo-icon img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
     }
 
     .logo-text {
@@ -977,7 +979,7 @@
       cursor: pointer;
       transition: all 0.25s ease;
       position: relative;
-      min-height: 180px;
+      aspect-ratio: 4 / 5;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -1025,7 +1027,7 @@
 
     .photo-preview {
       width: 100%;
-      height: 160px;
+      aspect-ratio: 4 / 5;
       object-fit: cover;
       border-radius: 8px;
     }
@@ -1066,6 +1068,82 @@
       letter-spacing: 0.08em;
       color: var(--text-muted);
       margin-bottom: 0.4rem;
+    }
+
+    /* ===== MULTI-PAIR UPLOADER ===== */
+    .pair-list { display: flex; flex-direction: column; gap: 1.25rem; margin-bottom: 1.25rem; }
+
+    .pair-item {
+      background: rgba(22, 33, 62, 0.4);
+      border: 1px solid var(--dark-border);
+      border-radius: 12px;
+      padding: 1rem;
+      position: relative;
+    }
+
+    .pair-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.75rem;
+    }
+
+    .pair-number {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--amber);
+    }
+
+    .pair-remove {
+      font-size: 0.7rem;
+      color: var(--red);
+      background: none;
+      border: 1px solid rgba(239, 68, 68, 0.25);
+      border-radius: 6px;
+      padding: 0.2rem 0.5rem;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .pair-remove:hover { background: rgba(239, 68, 68, 0.1); }
+
+    .pair-photos { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+
+    .pair-era-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+      margin-top: 0.75rem;
+    }
+
+    .add-pair-btn {
+      width: 100%;
+      padding: 0.8rem;
+      border: 2px dashed var(--dark-border);
+      border-radius: 12px;
+      background: none;
+      color: var(--text-muted);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      margin-bottom: 1.25rem;
+    }
+    .add-pair-btn:hover { border-color: var(--amber); color: var(--amber); background: rgba(255, 183, 77, 0.04); }
+    .add-pair-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .music-style-preview {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.7rem;
+      color: var(--teal);
+      background: var(--dark);
+      border: 1px solid var(--dark-border);
+      border-radius: 6px;
+      padding: 0.4rem 0.6rem;
+      margin-top: 0.3rem;
     }
 
     .ai-autofill-row {
@@ -1294,13 +1372,15 @@
                 <th>Type</th>
                 <th>Status</th>
                 <th>Hook Text</th>
+                <th>Pairs</th>
+                <th>Music</th>
                 <th>Scheduled</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
               ${items.length === 0 && !loading ? html`
-                <tr><td colSpan="6">
+                <tr><td colSpan="8">
                   <div className="empty-state">
                     <div className="empty-state-icon">\ud83c\udfac</div>
                     <div className="empty-state-text">No content in the pool yet</div>
@@ -1315,6 +1395,12 @@
                     <td><${TypeBadge} type=${item.content_type} /></td>
                     <td><${StatusBadge} status=${item.status} /></td>
                     <td className="hook-cell">${item.hook_text || '\u2014'}</td>
+                    <td style=${{fontSize: '0.8rem', textAlign: 'center'}}>${item.content_type === 'reveal' ? (item.image_pairs ? item.image_pairs.length : '1') : '\u2014'}</td>
+                    <td style=${{fontSize: '0.75rem'}}>
+                      ${item.music_file_path ? html`<span style=${{color: 'var(--green)'}} title=${item.music_style || ''}>\u266b ready</span>`
+                        : item.music_style ? html`<span style=${{color: 'var(--amber)'}} title=${item.music_style}>\u266b pending</span>`
+                        : html`<span style=${{color: 'var(--text-muted)'}}>\u2014</span>`}
+                    </td>
                     <td className="date-cell" onClick=${e => { e.stopPropagation(); setEditingDateId(editingDateId === item.id ? null : item.id); }}>
                       ${editingDateId === item.id ? html`
                         <input
@@ -1337,7 +1423,7 @@
                     </td>
                   </tr>
                   ${expandedId === item.id ? html`
-                    <tr><td colSpan="6" style=${{padding: 0}}>
+                    <tr><td colSpan="8" style=${{padding: 0}}>
                       <${ScriptEditor}
                         item=${item}
                         onSave=${(fields) => handleSave(item.id, fields)}
@@ -1526,7 +1612,7 @@
     }
 
     // ============================================================
-    // AddContent Tab
+    // AddContent Tab (multi-pair support)
     // ============================================================
     function AddContent({ onToast, onSwitch }) {
       const [subTab, setSubTab] = useState('reveal');
@@ -1544,8 +1630,10 @@
         return '';
       }
 
+      const emptyPair = () => ({ before_url: '', after_url: '', era: '', label: '' });
+
+      const [pairs, setPairs] = useState([emptyPair()]);
       const [form, setForm] = useState({
-        before_image_url: '', after_image_url: '', photo_era: '',
         photo_story: '', preset_used: '', tip_title: '', tip_body: '',
         tip_source: '', scheduled_for: getNextSlot()
       });
@@ -1554,27 +1642,36 @@
         return e => setForm(f => ({ ...f, [field]: e.target.value }));
       }
 
-      function setField(field, value) {
-        setForm(f => ({ ...f, [field]: value }));
+      function updatePair(index, field, value) {
+        setPairs(prev => prev.map((p, i) => i === index ? { ...p, [field]: value } : p));
       }
 
-      const bothPhotosReady = form.before_image_url && form.after_image_url;
+      function addPair() {
+        if (pairs.length < 6) setPairs(prev => [...prev, emptyPair()]);
+      }
 
-      async function handleAnalyze() {
-        if (!bothPhotosReady) return;
+      function removePair(index) {
+        if (pairs.length > 1) setPairs(prev => prev.filter((_, i) => i !== index));
+      }
+
+      const firstPairReady = pairs[0].before_url && pairs[0].after_url;
+
+      async function handleAnalyze(index) {
+        const pair = pairs[index];
+        if (!pair.before_url || !pair.after_url) return;
         setAnalyzing(true);
         try {
           const data = await api('/api/analyze-photos', {
             method: 'POST',
-            body: { beforeUrl: form.before_image_url, afterUrl: form.after_image_url },
+            body: { beforeUrl: pair.before_url, afterUrl: pair.after_url },
           });
+          updatePair(index, 'era', data.photo_era || pair.era);
           setForm(f => ({
             ...f,
-            photo_era: data.photo_era || f.photo_era,
-            photo_story: data.photo_story || f.photo_story,
-            preset_used: data.preset_used || f.preset_used,
+            photo_story: f.photo_story || data.photo_story || '',
+            preset_used: f.preset_used || data.preset_used || '',
           }));
-          onToast('AI auto-fill complete', 'success');
+          onToast('AI auto-fill complete for pair ' + (index + 1), 'success');
         } catch (e) {
           onToast('Auto-fill failed: ' + e.message, 'error');
         } finally {
@@ -1588,10 +1685,19 @@
         try {
           const body = { content_type: subTab, scheduled_for: form.scheduled_for || null };
           if (subTab === 'reveal') {
+            // Build image_pairs JSONB and legacy single-pair fields
+            const imagePairs = pairs.filter(p => p.before_url && p.after_url);
+            if (imagePairs.length === 0) {
+              onToast('Add at least one before/after photo pair', 'error');
+              setSubmitting(false);
+              return;
+            }
             Object.assign(body, {
-              before_image_url: form.before_image_url,
-              after_image_url: form.after_image_url,
-              photo_era: form.photo_era,
+              image_pairs: imagePairs,
+              // Legacy fields from first pair for backwards compat
+              before_image_url: imagePairs[0].before_url,
+              after_image_url: imagePairs[0].after_url,
+              photo_era: imagePairs[0].era || null,
               photo_story: form.photo_story,
               preset_used: form.preset_used || null,
             });
@@ -1620,50 +1726,62 @@
         <div className="panel" style=${{padding: '1.5rem'}}>
           <form onSubmit=${handleSubmit}>
             ${subTab === 'reveal' ? html`
-              <div className="photo-uploaders">
-                <${PhotoUploader}
-                  label="Before Photo"
-                  url=${form.before_image_url}
-                  onUploaded=${url => setField('before_image_url', url)}
-                  onRemove=${() => setField('before_image_url', '')}
-                />
-                <${PhotoUploader}
-                  label="After Photo"
-                  url=${form.after_image_url}
-                  onUploaded=${url => setField('after_image_url', url)}
-                  onRemove=${() => setField('after_image_url', '')}
-                />
+              <div className="pair-list">
+                ${pairs.map((pair, i) => html`
+                  <div className="pair-item" key=${i}>
+                    <div className="pair-header">
+                      <span className="pair-number">Photo Pair ${i + 1}${pairs.length > 1 ? ' of ' + pairs.length : ''}</span>
+                      ${pairs.length > 1 ? html`<button type="button" className="pair-remove" onClick=${() => removePair(i)}>\u2715 Remove</button>` : null}
+                    </div>
+                    <div className="pair-photos">
+                      <${PhotoUploader}
+                        label="Before Photo"
+                        url=${pair.before_url}
+                        onUploaded=${url => updatePair(i, 'before_url', url)}
+                        onRemove=${() => updatePair(i, 'before_url', '')}
+                      />
+                      <${PhotoUploader}
+                        label="After Photo"
+                        url=${pair.after_url}
+                        onUploaded=${url => updatePair(i, 'after_url', url)}
+                        onRemove=${() => updatePair(i, 'after_url', '')}
+                      />
+                    </div>
+                    <div className="pair-era-row">
+                      <div className="form-group">
+                        <label className="form-label">Era</label>
+                        <select className="form-select" value=${pair.era} onChange=${e => updatePair(i, 'era', e.target.value)}>
+                          <option value="">Select era...</option>
+                          ${eras.map(e => html`<option key=${e} value=${e}>${e}</option>`)}
+                        </select>
+                      </div>
+                      <div className="form-group" style=${{display: 'flex', alignItems: 'flex-end'}}>
+                        ${pair.before_url && pair.after_url ? html`
+                          <button type="button" className="btn btn-teal btn-sm" onClick=${() => handleAnalyze(i)} disabled=${analyzing}>
+                            ${analyzing ? 'Analyzing...' : '\u2728 AI Auto-fill'}
+                          </button>
+                        ` : null}
+                      </div>
+                    </div>
+                  </div>
+                `)}
               </div>
-
-              ${bothPhotosReady ? html`
-                <div className="ai-autofill-row">
-                  <span className="ai-autofill-tag">AI</span>
-                  <span className="ai-autofill-text">Auto-generate era, story, and preset from your photos</span>
-                  <button type="button" className="btn btn-teal btn-sm" onClick=${handleAnalyze} disabled=${analyzing}>
-                    ${analyzing ? html`<div className="spinner" style=${{width:'12px',height:'12px',borderTopColor:'white'}}></div> Analyzing...` : '\u2728 Auto-fill with AI'}
-                  </button>
-                </div>
-              ` : null}
+              <button type="button" className="add-pair-btn" onClick=${addPair} disabled=${pairs.length >= 6}>
+                + Add Another Photo Pair${pairs.length >= 6 ? ' (max 6)' : ` (${pairs.length}/6)`}
+              </button>
 
               <div className="form-grid">
-                <div className="form-group">
-                  <label className="form-label">Photo Era</label>
-                  <select className="form-select" value=${form.photo_era} onChange=${update('photo_era')}>
-                    <option value="">Select era...</option>
-                    ${eras.map(e => html`<option key=${e} value=${e}>${e}</option>`)}
-                  </select>
-                </div>
                 <div className="form-group">
                   <label className="form-label">Preset Used</label>
                   <input className="form-input" placeholder="e.g. vintage-colorize" value=${form.preset_used} onInput=${update('preset_used')} />
                 </div>
-                <div className="form-group full-width">
-                  <label className="form-label">Photo Story</label>
-                  <textarea className="form-textarea" placeholder="Brief context about the photo for AI script generation..." value=${form.photo_story} onInput=${update('photo_story')} required />
-                </div>
                 <div className="form-group">
                   <label className="form-label">Scheduled For</label>
                   <input className="form-input" type="date" value=${form.scheduled_for} onInput=${update('scheduled_for')} />
+                </div>
+                <div className="form-group full-width">
+                  <label className="form-label">Photo Story</label>
+                  <textarea className="form-textarea" placeholder="Brief context about the photos for AI script generation..." value=${form.photo_story} onInput=${update('photo_story')} required />
                 </div>
               </div>
             ` : html`
@@ -1686,7 +1804,12 @@
                 </div>
               </div>
             `}
-            <div style=${{marginTop: '1.5rem', display: 'flex', justifyContent: 'flex-end'}}>
+            <div style=${{marginTop: '1.5rem', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', alignItems: 'center'}}>
+              ${subTab === 'reveal' && pairs.filter(p => p.before_url && p.after_url).length > 0 ? html`
+                <span style=${{fontSize: '0.75rem', color: 'var(--text-muted)'}}>
+                  ${pairs.filter(p => p.before_url && p.after_url).length} pair${pairs.filter(p => p.before_url && p.after_url).length !== 1 ? 's' : ''} \u2022 ~${Math.round(6.5 + pairs.filter(p => p.before_url && p.after_url).length * 8)}s video
+                </span>
+              ` : null}
               <button className="btn btn-primary" type="submit" disabled=${submitting}>
                 ${submitting ? 'Adding...' : (subTab === 'reveal' ? '\u2728 Add Reveal' : '\ud83d\udca1 Add Tip')}
               </button>
@@ -1871,7 +1994,7 @@
 
         <div className="top-bar">
           <div className="logo">
-            <div className="logo-icon">\u2728</div>
+            <div className="logo-icon"><img src="/static/eternalframe-logo.jpg" alt="EternalFrame" /></div>
             <div>
               <div className="logo-text">EternalFrame</div>
               <div className="logo-subtitle">TikTok Engine</div>

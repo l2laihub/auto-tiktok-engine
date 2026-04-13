@@ -2,55 +2,79 @@ import React from 'react';
 import {
   AbsoluteFill,
   useCurrentFrame,
-  Img,
   staticFile,
   Audio,
 } from 'remotion';
-import { BRAND, VIDEO, TIPS_TIMING as T, interpolate } from '../config';
+import { BRAND, createTipsTiming, interpolate } from '../config';
 import { HookText } from '../components/HookText';
 import { EternalFrameCTA } from '../components/EternalFrameCTA';
+import { TipCard } from '../components/TipCard';
+
+// Per-tip data
+export interface TipItem {
+  tipTitle: string;
+  tipBody: string;
+  tipImageSrc?: string;
+  tipSource?: string;
+}
 
 export interface TipsProps {
-  hookText: string;           // e.g. "Why do AI-restored faces look wrong?"
-  tipTitle: string;           // main tip headline
-  tipBody: string;            // 2-3 sentence explanation
-  takeaway: string;           // key one-liner
-  tipImageSrc?: string;       // optional supporting image
+  hookText: string;
+  takeaway: string;
+  // Legacy single-tip support (backwards compat)
+  tipTitle?: string;
+  tipBody?: string;
+  tipImageSrc?: string;
+  // Multi-tip support
+  tips?: TipItem[];
+  // Audio
   musicFile?: string;
+  audioVolume?: number;
+  // CTA
+  slogan?: string;
 }
 
 export const TipsEducational: React.FC<TipsProps> = ({
   hookText,
+  takeaway,
   tipTitle,
   tipBody,
-  takeaway,
   tipImageSrc,
+  tips: tipsProp,
   musicFile,
+  audioVolume = 0.5,
+  slogan,
 }) => {
   const frame = useCurrentFrame();
 
-  // === Animated background gradient shift ===
-  const gradientAngle = interpolate(frame, [0, T.totalDuration], [135, 160]);
+  // Normalize: use tips array if provided, else build from legacy props
+  const tips: TipItem[] = tipsProp && tipsProp.length > 0
+    ? tipsProp
+    : [{
+        tipTitle: tipTitle || '',
+        tipBody: tipBody || '',
+        tipImageSrc,
+      }];
 
-  // === Tip card animation ===
-  const tipOpacity = interpolate(frame, [T.tipStart, T.tipStart + 15], [0, 1]);
-  const tipSlide = interpolate(frame, [T.tipStart, T.tipStart + 20], [80, 0]);
-  const tipFadeOut = interpolate(frame, [T.takeawayStart - 5, T.takeawayStart + 10], [1, 0]);
+  const timing = createTipsTiming(tips.length);
+
+  // === Animated background gradient shift ===
+  const gradientAngle = interpolate(frame, [0, timing.totalDuration], [135, 160]);
 
   // === Takeaway animation ===
   const takeawayOpacity = interpolate(
     frame,
-    [T.takeawayStart, T.takeawayStart + 12],
+    [timing.takeawayStart, timing.takeawayStart + 12],
     [0, 1]
   );
   const takeawayScale = interpolate(
     frame,
-    [T.takeawayStart, T.takeawayStart + 15],
+    [timing.takeawayStart, timing.takeawayStart + 15],
     [0.85, 1]
   );
   const takeawayFadeOut = interpolate(
     frame,
-    [T.ctaStart - 5, T.ctaStart + 5],
+    [timing.ctaStart - 5, timing.ctaStart + 5],
     [1, 0]
   );
 
@@ -62,13 +86,18 @@ export const TipsEducational: React.FC<TipsProps> = ({
     opacity: 0.15 + Math.sin(frame * 0.05 + i) * 0.1,
   }));
 
+  // Resolve audio source: URL or static file
+  const audioSrc = musicFile
+    ? musicFile.startsWith('http') ? musicFile : staticFile(musicFile)
+    : undefined;
+
   return (
     <AbsoluteFill
       style={{
         background: `linear-gradient(${gradientAngle}deg, ${BRAND.dark} 0%, ${BRAND.darkSurface} 50%, #0F3460 100%)`,
       }}
     >
-      {musicFile && <Audio src={staticFile(musicFile)} volume={0.5} />}
+      {audioSrc && <Audio src={audioSrc} volume={audioVolume} />}
 
       {/* Decorative particles */}
       {particles.map((p, i) => (
@@ -90,127 +119,25 @@ export const TipsEducational: React.FC<TipsProps> = ({
       {/* === HOOK TEXT === */}
       <HookText
         text={hookText}
-        startFrame={T.hookStart}
-        endFrame={T.hookEnd}
+        startFrame={timing.hookStart}
+        endFrame={timing.hookEnd}
         fontSize={52}
         position="center"
       />
 
-      {/* === TIP CARD === */}
-      <div
-        style={{
-          position: 'absolute',
-          top: '18%',
-          left: 48,
-          right: 48,
-          opacity: tipOpacity * tipFadeOut,
-          transform: `translateY(${tipSlide}px)`,
-        }}
-      >
-        {/* Optional image */}
-        {tipImageSrc && (
-          <div
-            style={{
-              width: '100%',
-              height: 500,
-              borderRadius: 24,
-              overflow: 'hidden',
-              marginBottom: 32,
-              border: `1px solid ${BRAND.textMuted}22`,
-            }}
-          >
-            <Img
-              src={tipImageSrc}
-              style={{
-                width: '100%',
-                height: '100%',
-                objectFit: 'cover',
-              }}
-            />
-          </div>
-        )}
-
-        {/* Tip content card */}
-        <div
-          style={{
-            background: `${BRAND.darkSurface}EE`,
-            borderRadius: 28,
-            padding: 48,
-            border: `1px solid ${BRAND.textMuted}22`,
-            boxShadow: `0 16px 64px ${BRAND.dark}88`,
-          }}
-        >
-          {/* Accent bar */}
-          <div
-            style={{
-              width: 60,
-              height: 4,
-              borderRadius: 2,
-              background: `linear-gradient(to right, ${BRAND.coral}, ${BRAND.teal})`,
-              marginBottom: 24,
-            }}
-          />
-
-          {/* Tip title */}
-          <div
-            style={{
-              fontFamily: 'Inter, system-ui, sans-serif',
-              fontSize: 40,
-              fontWeight: 700,
-              color: BRAND.white,
-              lineHeight: 1.3,
-              marginBottom: 20,
-              letterSpacing: -0.5,
-            }}
-          >
-            {tipTitle}
-          </div>
-
-          {/* Tip body */}
-          <div
-            style={{
-              fontFamily: 'Inter, system-ui, sans-serif',
-              fontSize: 28,
-              fontWeight: 400,
-              color: BRAND.textLight,
-              lineHeight: 1.6,
-            }}
-          >
-            {tipBody}
-          </div>
-        </div>
-
-        {/* Source badge */}
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'center',
-            marginTop: 20,
-          }}
-        >
-          <div
-            style={{
-              background: `${BRAND.teal}33`,
-              borderRadius: 20,
-              paddingLeft: 20,
-              paddingRight: 20,
-              paddingTop: 8,
-              paddingBottom: 8,
-            }}
-          >
-            <span
-              style={{
-                fontFamily: 'Inter, system-ui, sans-serif',
-                fontSize: 18,
-                color: BRAND.teal,
-                fontWeight: 500,
-              }}
-            >
-              From 100+ prompt experiments
-            </span>
-          </div>
-        </div>
-      </div>
+      {/* === TIP CARDS === */}
+      {tips.map((tip, i) => (
+        <TipCard
+          key={i}
+          tipTitle={tip.tipTitle}
+          tipBody={tip.tipBody}
+          tipImageSrc={tip.tipImageSrc}
+          tipSource={tip.tipSource}
+          timing={timing.tips[i]}
+          tipIndex={i}
+          totalTips={tips.length}
+        />
+      ))}
 
       {/* === TAKEAWAY === */}
       <div
@@ -234,7 +161,6 @@ export const TipsEducational: React.FC<TipsProps> = ({
             maxWidth: 900,
           }}
         >
-          {/* Lightning icon placeholder */}
           <div
             style={{
               fontSize: 48,
@@ -260,7 +186,7 @@ export const TipsEducational: React.FC<TipsProps> = ({
       </div>
 
       {/* === CTA === */}
-      <EternalFrameCTA startFrame={T.ctaStart} endFrame={T.ctaEnd} />
+      <EternalFrameCTA startFrame={timing.ctaStart} endFrame={timing.ctaEnd} slogan={slogan} />
 
       {/* Bottom gradient for TikTok safe area */}
       <div
