@@ -1,0 +1,445 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="900" math="0" shadow="0">
+  <root>
+    <mxCell id="0" />
+    <mxCell id="1" parent="0" />
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- SECTION LABELS                                              -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+
+    <!-- Section 1 Label -->
+    <mxCell id="s1-label" value="Component Hierarchy" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=13;fontStyle=1;fontColor=#FAFAFA;" vertex="1" parent="1">
+      <mxGeometry x="20" y="10" width="820" height="24" as="geometry" />
+    </mxCell>
+
+    <!-- Section 2 Label -->
+    <mxCell id="s2-label" value="Config System" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=13;fontStyle=1;fontColor=#FAFAFA;" vertex="1" parent="1">
+      <mxGeometry x="860" y="10" width="520" height="24" as="geometry" />
+    </mxCell>
+
+    <!-- Section 3 Label -->
+    <mxCell id="s3-label" value="Timeline Strip — 3-Pair Reveal Example" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=13;fontStyle=1;fontColor=#FAFAFA;" vertex="1" parent="1">
+      <mxGeometry x="20" y="676" width="1360" height="24" as="geometry" />
+    </mxCell>
+
+    <!-- Background panel Section 1 -->
+    <mxCell id="bg1" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1A1A2E;strokeColor=#3D9CA8;strokeWidth=2;opacity=80;" vertex="1" parent="1">
+      <mxGeometry x="10" y="34" width="840" height="636" as="geometry" />
+    </mxCell>
+
+    <!-- Background panel Section 2 -->
+    <mxCell id="bg2" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1A1A2E;strokeColor=#3D9CA8;strokeWidth=2;opacity=80;" vertex="1" parent="1">
+      <mxGeometry x="860" y="34" width="530" height="636" as="geometry" />
+    </mxCell>
+
+    <!-- Background panel Section 3 -->
+    <mxCell id="bg3" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1A1A2E;strokeColor=#3D9CA8;strokeWidth=2;opacity=80;" vertex="1" parent="1">
+      <mxGeometry x="10" y="700" width="1380" height="190" as="geometry" />
+    </mxCell>
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- SECTION 1: COMPONENT HIERARCHY                              -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+
+    <!-- Root.tsx -->
+    <mxCell id="root-box" value="&lt;b&gt;Root.tsx&lt;/b&gt;&lt;br/&gt;&lt;font style=&apos;font-size:10px&apos;&gt;Composition Registry&lt;/font&gt;&lt;br/&gt;&lt;font style=&apos;font-size:9px;color:#9090AA&apos;&gt;calculateMetadata for dynamic duration&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1A1A2E;strokeColor=#FAFAFA;strokeWidth=2;fontColor=#FAFAFA;fontSize=12;verticalAlign=middle;arcSize=12;" vertex="1" parent="1">
+      <mxGeometry x="330" y="56" width="220" height="58" as="geometry" />
+    </mxCell>
+
+    <!-- ─── Branch lines from Root ─────────────────────────── -->
+    <!-- Root → BeforeAfterReveal vertical drop -->
+    <mxCell id="e-root-reveal" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeColor=#E85A71;strokeWidth=2;" edge="1" parent="1" source="root-box" target="reveal-comp">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- Root → TipsEducational vertical drop -->
+    <mxCell id="e-root-tips" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeColor=#3D9CA8;strokeWidth=2;" edge="1" parent="1" source="root-box" target="tips-comp">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- ─── BRANCH 1: BeforeAfterReveal ───────────────────── -->
+    <mxCell id="reveal-comp" value="&lt;b&gt;BeforeAfterReveal&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E85A71;strokeColor=#FAFAFA;strokeWidth=2;fontColor=#FAFAFA;fontSize=12;arcSize=14;" vertex="1" parent="1">
+      <mxGeometry x="60" y="164" width="200" height="44" as="geometry" />
+    </mxCell>
+
+    <!-- Reveal children -->
+    <!-- Audio -->
+    <mxCell id="rev-audio" value="&lt;b&gt;Audio&lt;/b&gt;&lt;br/&gt;&lt;font style=&apos;font-size:9px&apos;&gt;optional · musicFile prop&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#2A2A3E;strokeColor=#E85A71;strokeWidth=1;fontColor=#FAFAFA;fontSize=11;arcSize=16;" vertex="1" parent="1">
+      <mxGeometry x="30" y="250" width="160" height="40" as="geometry" />
+    </mxCell>
+    <mxCell id="e-rev-audio" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;strokeColor=#E85A71;strokeWidth=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="reveal-comp" target="rev-audio">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- HookText -->
+    <mxCell id="rev-hook" value="&lt;b&gt;HookText&lt;/b&gt;&lt;br/&gt;&lt;font style=&apos;font-size:9px&apos;&gt;word-by-word reveal · glass backdrop&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#2A2A3E;strokeColor=#E85A71;strokeWidth=1;fontColor=#FAFAFA;fontSize=11;arcSize=16;" vertex="1" parent="1">
+      <mxGeometry x="30" y="306" width="160" height="40" as="geometry" />
+    </mxCell>
+    <mxCell id="e-rev-hook" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;strokeColor=#E85A71;strokeWidth=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="rev-audio" target="rev-hook">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- RevealPair loop -->
+    <mxCell id="rev-pair-group" value="&lt;b&gt;RevealPair[ ]&lt;/b&gt;&lt;br/&gt;&lt;font style=&apos;font-size:9px;color:#FFB74D&apos;&gt;One per image pair&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#252535;strokeColor=#E85A71;strokeWidth=2;fontColor=#FAFAFA;fontSize=11;arcSize=10;dashed=1;" vertex="1" parent="1">
+      <mxGeometry x="30" y="362" width="160" height="44" as="geometry" />
+    </mxCell>
+    <mxCell id="e-rev-pair" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;strokeColor=#E85A71;strokeWidth=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="rev-hook" target="rev-pair-group">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- RevealPair children -->
+    <!-- Before layer -->
+    <mxCell id="rev-before" value="&lt;b&gt;Before Image Layer&lt;/b&gt;&lt;br/&gt;&lt;font style=&apos;font-size:9px&apos;&gt;Ken Burns zoom · desaturated · vignette · era badge&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#2A1A1E;strokeColor=#E85A71;strokeWidth=1;fontColor=#FAFAFA;fontSize=10;arcSize=12;" vertex="1" parent="1">
+      <mxGeometry x="220" y="338" width="200" height="44" as="geometry" />
+    </mxCell>
+    <mxCell id="e-rev-before" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;strokeColor=#E85A71;strokeWidth=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="rev-pair-group" target="rev-before">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- Transition layer -->
+    <mxCell id="rev-trans" value="&lt;b&gt;Transition Layer&lt;/b&gt;&lt;br/&gt;&lt;font style=&apos;font-size:9px&apos;&gt;diagonal clip-path wipe · white flash&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#2A2A2A;strokeColor=#FAFAFA;strokeWidth=1;fontColor=#FAFAFA;fontSize=10;arcSize=12;" vertex="1" parent="1">
+      <mxGeometry x="220" y="392" width="200" height="44" as="geometry" />
+    </mxCell>
+    <mxCell id="e-rev-trans" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;strokeColor=#BBBBBB;strokeWidth=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="rev-pair-group" target="rev-trans">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- After layer -->
+    <mxCell id="rev-after" value="&lt;b&gt;After Image Layer&lt;/b&gt;&lt;br/&gt;&lt;font style=&apos;font-size:9px&apos;&gt;pan effect · warm overlay · &quot;Restored&quot; badge&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1A2A2E;strokeColor=#3D9CA8;strokeWidth=1;fontColor=#FAFAFA;fontSize=10;arcSize=12;" vertex="1" parent="1">
+      <mxGeometry x="220" y="446" width="200" height="44" as="geometry" />
+    </mxCell>
+    <mxCell id="e-rev-after" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;strokeColor=#3D9CA8;strokeWidth=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="rev-pair-group" target="rev-after">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- EternalFrameCTA (reveal) -->
+    <mxCell id="rev-cta" value="&lt;b&gt;EternalFrameCTA&lt;/b&gt;&lt;br/&gt;&lt;font style=&apos;font-size:9px&apos;&gt;logo → name → slogan → badge (staggered)&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#2A2A3E;strokeColor=#E85A71;strokeWidth=1;fontColor=#FAFAFA;fontSize=11;arcSize=16;" vertex="1" parent="1">
+      <mxGeometry x="30" y="520" width="160" height="40" as="geometry" />
+    </mxCell>
+    <mxCell id="e-rev-cta" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;strokeColor=#E85A71;strokeWidth=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="rev-pair-group" target="rev-cta">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- Bottom gradient (reveal) -->
+    <mxCell id="rev-gradient" value="&lt;b&gt;Bottom Gradient&lt;/b&gt;&lt;br/&gt;&lt;font style=&apos;font-size:9px&apos;&gt;TikTok safe area · 180px&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#2A2A3E;strokeColor=#E85A71;strokeWidth=1;fontColor=#FAFAFA;fontSize=11;arcSize=16;" vertex="1" parent="1">
+      <mxGeometry x="30" y="574" width="160" height="40" as="geometry" />
+    </mxCell>
+    <mxCell id="e-rev-grad" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;strokeColor=#E85A71;strokeWidth=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="rev-cta" target="rev-gradient">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- ─── BRANCH 2: TipsEducational ─────────────────────── -->
+    <mxCell id="tips-comp" value="&lt;b&gt;TipsEducational&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#3D9CA8;strokeColor=#FAFAFA;strokeWidth=2;fontColor=#FAFAFA;fontSize=12;arcSize=14;" vertex="1" parent="1">
+      <mxGeometry x="560" y="164" width="200" height="44" as="geometry" />
+    </mxCell>
+
+    <!-- Tips children -->
+    <!-- Audio tips -->
+    <mxCell id="tips-audio" value="&lt;b&gt;Audio&lt;/b&gt;&lt;br/&gt;&lt;font style=&apos;font-size:9px&apos;&gt;optional · musicFile prop&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#2A2A3E;strokeColor=#3D9CA8;strokeWidth=1;fontColor=#FAFAFA;fontSize=11;arcSize=16;" vertex="1" parent="1">
+      <mxGeometry x="530" y="250" width="160" height="40" as="geometry" />
+    </mxCell>
+    <mxCell id="e-tips-audio" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;strokeColor=#3D9CA8;strokeWidth=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="tips-comp" target="tips-audio">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- Animated background -->
+    <mxCell id="tips-bg" value="&lt;b&gt;Animated Gradient BG&lt;/b&gt;&lt;br/&gt;&lt;font style=&apos;font-size:9px&apos;&gt;angle shifts over time&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#2A2A3E;strokeColor=#3D9CA8;strokeWidth=1;fontColor=#FAFAFA;fontSize=11;arcSize=16;" vertex="1" parent="1">
+      <mxGeometry x="530" y="306" width="160" height="40" as="geometry" />
+    </mxCell>
+    <mxCell id="e-tips-bg" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;strokeColor=#3D9CA8;strokeWidth=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="tips-audio" target="tips-bg">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- Floating particles -->
+    <mxCell id="tips-particles" value="&lt;b&gt;Floating Particles&lt;/b&gt;&lt;br/&gt;&lt;font style=&apos;font-size:9px&apos;&gt;6 dots · coral/teal alternating&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#2A2A3E;strokeColor=#3D9CA8;strokeWidth=1;fontColor=#FAFAFA;fontSize=11;arcSize=16;" vertex="1" parent="1">
+      <mxGeometry x="530" y="362" width="160" height="40" as="geometry" />
+    </mxCell>
+    <mxCell id="e-tips-particles" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;strokeColor=#3D9CA8;strokeWidth=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="tips-bg" target="tips-particles">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- HookText tips -->
+    <mxCell id="tips-hook" value="&lt;b&gt;HookText&lt;/b&gt;&lt;br/&gt;&lt;font style=&apos;font-size:9px&apos;&gt;word-by-word reveal&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#2A2A3E;strokeColor=#3D9CA8;strokeWidth=1;fontColor=#FAFAFA;fontSize=11;arcSize=16;" vertex="1" parent="1">
+      <mxGeometry x="530" y="418" width="160" height="40" as="geometry" />
+    </mxCell>
+    <mxCell id="e-tips-hook" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;strokeColor=#3D9CA8;strokeWidth=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="tips-particles" target="tips-hook">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- TipCard loop -->
+    <mxCell id="tips-card-group" value="&lt;b&gt;TipCard[ ]&lt;/b&gt;&lt;br/&gt;&lt;font style=&apos;font-size:9px;color:#FFB74D&apos;&gt;One per tip&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#252535;strokeColor=#3D9CA8;strokeWidth=2;fontColor=#FAFAFA;fontSize=11;arcSize=10;dashed=1;" vertex="1" parent="1">
+      <mxGeometry x="530" y="474" width="160" height="44" as="geometry" />
+    </mxCell>
+    <mxCell id="e-tips-card" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;strokeColor=#3D9CA8;strokeWidth=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="tips-hook" target="tips-card-group">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- TipCard children: optional image -->
+    <mxCell id="tips-img" value="&lt;b&gt;Optional Image&lt;/b&gt;&lt;br/&gt;&lt;font style=&apos;font-size:9px&apos;&gt;500px · rounded&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1A2A2E;strokeColor=#3D9CA8;strokeWidth=1;fontColor=#FAFAFA;fontSize=10;arcSize=12;" vertex="1" parent="1">
+      <mxGeometry x="720" y="450" width="110" height="40" as="geometry" />
+    </mxCell>
+    <mxCell id="e-tips-img" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;strokeColor=#3D9CA8;strokeWidth=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="tips-card-group" target="tips-img">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- Content card -->
+    <mxCell id="tips-content" value="&lt;b&gt;Content Card&lt;/b&gt;&lt;br/&gt;&lt;font style=&apos;font-size:9px&apos;&gt;accent bar · title · body · source badge&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1A2A2E;strokeColor=#3D9CA8;strokeWidth=1;fontColor=#FAFAFA;fontSize=10;arcSize=12;" vertex="1" parent="1">
+      <mxGeometry x="720" y="500" width="110" height="44" as="geometry" />
+    </mxCell>
+    <mxCell id="e-tips-content" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;strokeColor=#3D9CA8;strokeWidth=1;exitX=1;exitY=0.7;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="tips-card-group" target="tips-content">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- Takeaway -->
+    <mxCell id="tips-takeaway" value="&lt;b&gt;Takeaway Box&lt;/b&gt;&lt;br/&gt;&lt;font style=&apos;font-size:9px&apos;&gt;⚡ lightning · gradient border · scale entrance&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#2A2A3E;strokeColor=#FFB74D;strokeWidth=1;fontColor=#FAFAFA;fontSize=11;arcSize=16;" vertex="1" parent="1">
+      <mxGeometry x="530" y="532" width="160" height="40" as="geometry" />
+    </mxCell>
+    <mxCell id="e-tips-takeaway" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;strokeColor=#FFB74D;strokeWidth=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="tips-card-group" target="tips-takeaway">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- EternalFrameCTA (tips) -->
+    <mxCell id="tips-cta" value="&lt;b&gt;EternalFrameCTA&lt;/b&gt;&lt;br/&gt;&lt;font style=&apos;font-size:9px&apos;&gt;logo → name → slogan → badge (staggered)&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#2A2A3E;strokeColor=#3D9CA8;strokeWidth=1;fontColor=#FAFAFA;fontSize=11;arcSize=16;" vertex="1" parent="1">
+      <mxGeometry x="530" y="586" width="160" height="40" as="geometry" />
+    </mxCell>
+    <mxCell id="e-tips-cta" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;strokeColor=#3D9CA8;strokeWidth=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="tips-takeaway" target="tips-cta">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- Bottom gradient tips -->
+    <mxCell id="tips-gradient" value="&lt;b&gt;Bottom Gradient&lt;/b&gt;&lt;br/&gt;&lt;font style=&apos;font-size:9px&apos;&gt;TikTok safe area · 180px&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#2A2A3E;strokeColor=#3D9CA8;strokeWidth=1;fontColor=#FAFAFA;fontSize=11;arcSize=16;" vertex="1" parent="1">
+      <mxGeometry x="530" y="632" width="160" height="40" as="geometry" />
+    </mxCell>
+    <mxCell id="e-tips-grad" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;strokeColor=#3D9CA8;strokeWidth=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="tips-cta" target="tips-gradient">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- SECTION 2: CONFIG SYSTEM                                    -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+
+    <!-- config.ts box -->
+    <mxCell id="config-box" value="&lt;b&gt;config.ts&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1A1A2E;strokeColor=#FFB74D;strokeWidth=3;fontColor=#FFB74D;fontSize=14;arcSize=10;" vertex="1" parent="1">
+      <mxGeometry x="1000" y="56" width="260" height="44" as="geometry" />
+    </mxCell>
+
+    <!-- BRAND colors -->
+    <mxCell id="cfg-brand" value="&lt;b&gt;BRAND&lt;/b&gt;&lt;br/&gt;&lt;font style=&apos;font-size:10px;color:#E85A71&apos;&gt;coral #E85A71&lt;/font&gt;  &lt;font style=&apos;font-size:10px;color:#3D9CA8&apos;&gt;teal #3D9CA8&lt;/font&gt;&lt;br/&gt;&lt;font style=&apos;font-size:10px;color:#FFB74D&apos;&gt;amber #FFB74D&lt;/font&gt;  &lt;font style=&apos;font-size:10px;color:#FAFAFA&apos;&gt;dark · white · text&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#2A2A3E;strokeColor=#FFB74D;strokeWidth=1;fontColor=#FAFAFA;fontSize=11;arcSize=12;" vertex="1" parent="1">
+      <mxGeometry x="876" y="126" width="220" height="56" as="geometry" />
+    </mxCell>
+    <mxCell id="e-cfg-brand" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;strokeColor=#FFB74D;strokeWidth=1;exitX=0;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="config-box" target="cfg-brand">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- VIDEO specs -->
+    <mxCell id="cfg-video" value="&lt;b&gt;VIDEO&lt;/b&gt;&lt;br/&gt;&lt;font style=&apos;font-size:10px&apos;&gt;1080 × 1920 @ 30fps&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#2A2A3E;strokeColor=#FFB74D;strokeWidth=1;fontColor=#FAFAFA;fontSize=11;arcSize=12;" vertex="1" parent="1">
+      <mxGeometry x="1120" y="126" width="220" height="56" as="geometry" />
+    </mxCell>
+    <mxCell id="e-cfg-video" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;strokeColor=#FFB74D;strokeWidth=1;exitX=1;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="config-box" target="cfg-video">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- createRevealTiming -->
+    <mxCell id="cfg-reveal-timing" value="&lt;b&gt;createRevealTiming(pairCount)&lt;/b&gt;&lt;br/&gt;&lt;font style=&apos;font-size:10px;color:#A0A0C0&apos;&gt;→ DynamicRevealTiming&lt;/font&gt;&lt;br/&gt;&lt;font style=&apos;font-size:9px&apos;&gt;hookStart/End · pairs[].beforeStart&lt;/font&gt;&lt;br/&gt;&lt;font style=&apos;font-size:9px&apos;&gt;beforeEnd · transitionStart/End&lt;/font&gt;&lt;br/&gt;&lt;font style=&apos;font-size:9px&apos;&gt;afterStart/End · ctaStart/End&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#2A1A1E;strokeColor=#E85A71;strokeWidth=2;fontColor=#FAFAFA;fontSize=11;arcSize=12;" vertex="1" parent="1">
+      <mxGeometry x="876" y="218" width="220" height="100" as="geometry" />
+    </mxCell>
+    <mxCell id="e-cfg-reveal" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;strokeColor=#E85A71;strokeWidth=1;exitX=0;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="cfg-brand" target="cfg-reveal-timing">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- createTipsTiming -->
+    <mxCell id="cfg-tips-timing" value="&lt;b&gt;createTipsTiming(tipCount)&lt;/b&gt;&lt;br/&gt;&lt;font style=&apos;font-size:10px;color:#A0A0C0&apos;&gt;→ DynamicTipsTiming&lt;/font&gt;&lt;br/&gt;&lt;font style=&apos;font-size:9px&apos;&gt;hookStart/End&lt;/font&gt;&lt;br/&gt;&lt;font style=&apos;font-size:9px&apos;&gt;tips[].tipStart/.tipEnd&lt;/font&gt;&lt;br/&gt;&lt;font style=&apos;font-size:9px&apos;&gt;takeawayStart/End · ctaStart/End&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1A2A2E;strokeColor=#3D9CA8;strokeWidth=2;fontColor=#FAFAFA;fontSize=11;arcSize=12;" vertex="1" parent="1">
+      <mxGeometry x="1120" y="218" width="220" height="100" as="geometry" />
+    </mxCell>
+    <mxCell id="e-cfg-tips" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;strokeColor=#3D9CA8;strokeWidth=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="cfg-video" target="cfg-tips-timing">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- interpolate -->
+    <mxCell id="cfg-interpolate" value="&lt;b&gt;interpolate(frame, inputRange, outputRange)&lt;/b&gt;&lt;br/&gt;&lt;font style=&apos;font-size:9px&apos;&gt;multi-stop keyframe · clamp option&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#2A2A3E;strokeColor=#FFB74D;strokeWidth=1;fontColor=#FAFAFA;fontSize=11;arcSize=12;" vertex="1" parent="1">
+      <mxGeometry x="876" y="354" width="220" height="50" as="geometry" />
+    </mxCell>
+    <mxCell id="e-cfg-interp" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;strokeColor=#FFB74D;strokeWidth=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="cfg-reveal-timing" target="cfg-interpolate">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- easing functions -->
+    <mxCell id="cfg-easing" value="&lt;b&gt;easeInOutCubic(t)&lt;/b&gt;&lt;br/&gt;&lt;b&gt;easeOutCubic(t)&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#2A2A3E;strokeColor=#FFB74D;strokeWidth=1;fontColor=#FAFAFA;fontSize=11;arcSize=12;" vertex="1" parent="1">
+      <mxGeometry x="1120" y="354" width="220" height="50" as="geometry" />
+    </mxCell>
+    <mxCell id="e-cfg-ease" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;strokeColor=#FFB74D;strokeWidth=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="cfg-tips-timing" target="cfg-easing">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- config → BeforeAfterReveal arrow -->
+    <mxCell id="e-config-reveal" value="timing + brand" style="edgeStyle=orthogonalEdgeStyle;rounded=0;strokeColor=#E85A71;strokeWidth=1;dashed=1;fontColor=#E85A71;fontSize=9;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="cfg-reveal-timing" target="reveal-comp">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- config → TipsEducational arrow -->
+    <mxCell id="e-config-tips" value="timing + brand" style="edgeStyle=orthogonalEdgeStyle;rounded=0;strokeColor=#3D9CA8;strokeWidth=1;dashed=1;fontColor=#3D9CA8;fontSize=9;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="cfg-tips-timing" target="tips-comp">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- SECTION 3: TIMELINE STRIP                                   -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+
+    <!-- Timeline background -->
+    <mxCell id="tl-track" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#252535;strokeColor=#444466;strokeWidth=1;" vertex="1" parent="1">
+      <mxGeometry x="26" y="726" width="1354" height="60" as="geometry" />
+    </mxCell>
+
+    <!-- Frame ruler label -->
+    <mxCell id="tl-label-0s" value="0s" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=9;fontColor=#9090AA;" vertex="1" parent="1">
+      <mxGeometry x="26" y="790" width="30" height="16" as="geometry" />
+    </mxCell>
+
+    <!-- Scale: total ~26s for 3 pairs: 3+0.5+(3+1.5+3)*3+0.5*2+3.5 = 3+0.5+22.5+1+3.5=30.5s
+         Simplify to fit 1354px. Use 1 second = ~44px approx.
+         Hook 3s, Pair1(before 3s, trans 1.5s, after 3s), gap 0.5s, Pair2(same), gap 0.5s, Pair3(same), CTA 3.5s
+         Total = 3 + (3+1.5+3)*3 + 0.5*2 + 3.5 = 3 + 22.5 + 1 + 3.5 = 30s
+         1354px / 30s ≈ 45px/s
+    -->
+
+    <!-- Hook: 0-3s = 0..135px offset 26 -->
+    <mxCell id="tl-hook" value="&lt;b&gt;Hook&lt;/b&gt;&lt;br/&gt;&lt;font style=&apos;font-size:9px&apos;&gt;3s&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFB74D;strokeColor=#CC8800;strokeWidth=1;fontColor=#1A1A2E;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="26" y="726" width="135" height="60" as="geometry" />
+    </mxCell>
+    <mxCell id="tl-label-3s" value="3s" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=9;fontColor=#9090AA;" vertex="1" parent="1">
+      <mxGeometry x="154" y="790" width="30" height="16" as="geometry" />
+    </mxCell>
+
+    <!-- PAIR 1 -->
+    <!-- Before: 3s-6s = 135..270px offset 26 = 161..296 -->
+    <mxCell id="tl-p1-before" value="&lt;b&gt;Before&lt;/b&gt;&lt;br/&gt;&lt;font style=&apos;font-size:9px&apos;&gt;zoom · 3s&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E85A71;strokeColor=#A03050;strokeWidth=1;fontColor=#FAFAFA;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="161" y="726" width="120" height="60" as="geometry" />
+    </mxCell>
+
+    <!-- Transition: 5.5s-7s overlap with before end and after start
+         5.5s=247.5+26=273, 7s=315+26=341 => x=273, width=68 -->
+    <mxCell id="tl-p1-trans" value="&lt;b&gt;Wipe&lt;/b&gt;&lt;br/&gt;&lt;font style=&apos;font-size:9px&apos;&gt;1.5s&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EEEEEE;strokeColor=#AAAAAA;strokeWidth=1;fontColor=#1A1A2E;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="263" y="726" width="67" height="60" as="geometry" />
+    </mxCell>
+
+    <!-- After: 6.5s-9.5s => 6.5*45+26=319, width=3*45=135 -->
+    <mxCell id="tl-p1-after" value="&lt;b&gt;After&lt;/b&gt;&lt;br/&gt;&lt;font style=&apos;font-size:9px&apos;&gt;pan · 3s&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#3D9CA8;strokeColor=#2A7080;strokeWidth=1;fontColor=#FAFAFA;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="316" y="726" width="120" height="60" as="geometry" />
+    </mxCell>
+
+    <!-- Overlap annotation P1 before/trans -->
+    <mxCell id="tl-ov1a" value="0.5s overlap" style="text;html=1;strokeColor=#888888;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=8;fontColor=#BBBBBB;rotation=-90;" vertex="1" parent="1">
+      <mxGeometry x="259" y="732" width="60" height="14" as="geometry" />
+    </mxCell>
+
+    <!-- Overlap annotation P1 trans/after -->
+    <mxCell id="tl-ov1b" value="0.5s overlap" style="text;html=1;strokeColor=#888888;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=8;fontColor=#BBBBBB;rotation=-90;" vertex="1" parent="1">
+      <mxGeometry x="312" y="732" width="60" height="14" as="geometry" />
+    </mxCell>
+
+    <!-- Gap after P1: 9.5s-10s = 0.5s => 427.5+26=453, width=22 -->
+    <mxCell id="tl-gap1" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1A1A2E;strokeColor=#444466;strokeWidth=1;" vertex="1" parent="1">
+      <mxGeometry x="436" y="726" width="22" height="60" as="geometry" />
+    </mxCell>
+
+    <!-- PAIR 2: 10s-17.5s -->
+    <!-- Before: 10s-13s => 450+26=476, width=135 -->
+    <mxCell id="tl-p2-before" value="&lt;b&gt;Before&lt;/b&gt;&lt;br/&gt;&lt;font style=&apos;font-size:9px&apos;&gt;zoom · 3s&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E85A71;strokeColor=#A03050;strokeWidth=1;fontColor=#FAFAFA;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="458" y="726" width="120" height="60" as="geometry" />
+    </mxCell>
+
+    <!-- Transition P2 -->
+    <mxCell id="tl-p2-trans" value="&lt;b&gt;Wipe&lt;/b&gt;&lt;br/&gt;&lt;font style=&apos;font-size:9px&apos;&gt;1.5s&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EEEEEE;strokeColor=#AAAAAA;strokeWidth=1;fontColor=#1A1A2E;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="560" y="726" width="67" height="60" as="geometry" />
+    </mxCell>
+
+    <!-- After P2 -->
+    <mxCell id="tl-p2-after" value="&lt;b&gt;After&lt;/b&gt;&lt;br/&gt;&lt;font style=&apos;font-size:9px&apos;&gt;pan · 3s&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#3D9CA8;strokeColor=#2A7080;strokeWidth=1;fontColor=#FAFAFA;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="613" y="726" width="120" height="60" as="geometry" />
+    </mxCell>
+
+    <!-- Gap after P2 -->
+    <mxCell id="tl-gap2" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1A1A2E;strokeColor=#444466;strokeWidth=1;" vertex="1" parent="1">
+      <mxGeometry x="733" y="726" width="22" height="60" as="geometry" />
+    </mxCell>
+
+    <!-- PAIR 3: 17.5s-25s -->
+    <!-- Before P3 -->
+    <mxCell id="tl-p3-before" value="&lt;b&gt;Before&lt;/b&gt;&lt;br/&gt;&lt;font style=&apos;font-size:9px&apos;&gt;zoom · 3s&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E85A71;strokeColor=#A03050;strokeWidth=1;fontColor=#FAFAFA;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="755" y="726" width="120" height="60" as="geometry" />
+    </mxCell>
+
+    <!-- Transition P3 -->
+    <mxCell id="tl-p3-trans" value="&lt;b&gt;Wipe&lt;/b&gt;&lt;br/&gt;&lt;font style=&apos;font-size:9px&apos;&gt;1.5s&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EEEEEE;strokeColor=#AAAAAA;strokeWidth=1;fontColor=#1A1A2E;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="857" y="726" width="67" height="60" as="geometry" />
+    </mxCell>
+
+    <!-- After P3 -->
+    <mxCell id="tl-p3-after" value="&lt;b&gt;After&lt;/b&gt;&lt;br/&gt;&lt;font style=&apos;font-size:9px&apos;&gt;pan · 3s&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#3D9CA8;strokeColor=#2A7080;strokeWidth=1;fontColor=#FAFAFA;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="910" y="726" width="120" height="60" as="geometry" />
+    </mxCell>
+
+    <!-- CTA: 26.5s-30s = 3.5s => 26.5*45+26=1218, width=157 -->
+    <mxCell id="tl-cta" value="&lt;b&gt;CTA&lt;/b&gt;&lt;br/&gt;&lt;font style=&apos;font-size:9px&apos;&gt;3.5s&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E85A71;strokeColor=#A03050;strokeWidth=1;fontColor=#FAFAFA;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="1030" y="726" width="157" height="60" as="geometry" />
+    </mxCell>
+
+    <!-- Total duration label -->
+    <mxCell id="tl-total" value="30s total" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontStyle=1;fontColor=#FFB74D;" vertex="1" parent="1">
+      <mxGeometry x="1197" y="726" width="183" height="60" as="geometry" />
+    </mxCell>
+
+    <!-- Timeline time labels -->
+    <mxCell id="tl-label-10s" value="10s" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=9;fontColor=#9090AA;" vertex="1" parent="1">
+      <mxGeometry x="447" y="790" width="30" height="16" as="geometry" />
+    </mxCell>
+    <mxCell id="tl-label-17s" value="17.5s" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=9;fontColor=#9090AA;" vertex="1" parent="1">
+      <mxGeometry x="738" y="790" width="36" height="16" as="geometry" />
+    </mxCell>
+    <mxCell id="tl-label-26s" value="26.5s" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=9;fontColor=#9090AA;" vertex="1" parent="1">
+      <mxGeometry x="1018" y="790" width="36" height="16" as="geometry" />
+    </mxCell>
+    <mxCell id="tl-label-30s" value="30s" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=9;fontColor=#9090AA;" vertex="1" parent="1">
+      <mxGeometry x="1187" y="790" width="30" height="16" as="geometry" />
+    </mxCell>
+
+    <!-- Pair 1 bracket label -->
+    <mxCell id="tl-p1-lbl" value="Pair 1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=9;fontStyle=1;fontColor=#FAFAFA;" vertex="1" parent="1">
+      <mxGeometry x="270" y="808" width="60" height="14" as="geometry" />
+    </mxCell>
+    <mxCell id="tl-p2-lbl" value="Pair 2" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=9;fontStyle=1;fontColor=#FAFAFA;" vertex="1" parent="1">
+      <mxGeometry x="565" y="808" width="60" height="14" as="geometry" />
+    </mxCell>
+    <mxCell id="tl-p3-lbl" value="Pair 3" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=9;fontStyle=1;fontColor=#FAFAFA;" vertex="1" parent="1">
+      <mxGeometry x="862" y="808" width="60" height="14" as="geometry" />
+    </mxCell>
+
+    <!-- Legend row -->
+    <mxCell id="leg-label" value="Legend:" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontStyle=1;fontColor=#9090AA;" vertex="1" parent="1">
+      <mxGeometry x="26" y="826" width="60" height="20" as="geometry" />
+    </mxCell>
+    <mxCell id="leg-hook" value="Hook" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFB74D;strokeColor=#CC8800;fontColor=#1A1A2E;fontSize=9;" vertex="1" parent="1">
+      <mxGeometry x="92" y="826" width="60" height="20" as="geometry" />
+    </mxCell>
+    <mxCell id="leg-before" value="Before" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E85A71;strokeColor=#A03050;fontColor=#FAFAFA;fontSize=9;" vertex="1" parent="1">
+      <mxGeometry x="160" y="826" width="60" height="20" as="geometry" />
+    </mxCell>
+    <mxCell id="leg-wipe" value="Wipe" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EEEEEE;strokeColor=#AAAAAA;fontColor=#1A1A2E;fontSize=9;" vertex="1" parent="1">
+      <mxGeometry x="228" y="826" width="60" height="20" as="geometry" />
+    </mxCell>
+    <mxCell id="leg-after" value="After" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#3D9CA8;strokeColor=#2A7080;fontColor=#FAFAFA;fontSize=9;" vertex="1" parent="1">
+      <mxGeometry x="296" y="826" width="60" height="20" as="geometry" />
+    </mxCell>
+    <mxCell id="leg-cta" value="CTA" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E85A71;strokeColor=#A03050;fontColor=#FAFAFA;fontSize=9;" vertex="1" parent="1">
+      <mxGeometry x="364" y="826" width="60" height="20" as="geometry" />
+    </mxCell>
+    <mxCell id="leg-gap" value="Gap" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1A1A2E;strokeColor=#444466;fontColor=#9090AA;fontSize=9;" vertex="1" parent="1">
+      <mxGeometry x="432" y="826" width="60" height="20" as="geometry" />
+    </mxCell>
+    <mxCell id="leg-overlap-note" value="Shaded edges indicate 0.5s overlap between before/wipe and wipe/after phases" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=9;fontColor=#9090AA;" vertex="1" parent="1">
+      <mxGeometry x="510" y="826" width="420" height="20" as="geometry" />
+    </mxCell>
+
+  </root>
+</mxGraphModel>

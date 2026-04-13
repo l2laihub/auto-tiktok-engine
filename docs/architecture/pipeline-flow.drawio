@@ -1,0 +1,471 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxGraphModel dx="1422" dy="762" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="900" pageHeight="1400" math="0" shadow="0">
+  <root>
+    <mxCell id="0" />
+    <mxCell id="1" parent="0" />
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- STATUS STRIP (right side)                              -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+
+    <mxCell id="status_strip_bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1A1A2E;strokeColor=#3D9CA8;strokeWidth=2;verticalAlign=top;" vertex="1" parent="1">
+      <mxGeometry x="720" y="160" width="160" height="430" as="geometry" />
+    </mxCell>
+    <mxCell id="status_strip_title" value="STATUS FLOW" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontColor=#3D9CA8;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="720" y="165" width="160" height="24" as="geometry" />
+    </mxCell>
+
+    <mxCell id="s_queued" value="queued" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1A1A2E;strokeColor=#FAFAFA;fontColor=#FAFAFA;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="740" y="200" width="120" height="30" as="geometry" />
+    </mxCell>
+    <mxCell id="s_arrow1" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#FAFAFA;strokeWidth=1;" edge="1" parent="1" source="s_queued" target="s_scripted">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="s_scripted" value="scripted" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1A1A2E;strokeColor=#FFB74D;fontColor=#FFB74D;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="740" y="250" width="120" height="30" as="geometry" />
+    </mxCell>
+    <mxCell id="s_arrow2" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#FFB74D;strokeWidth=1;" edge="1" parent="1" source="s_scripted" target="s_rendering">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="s_rendering" value="rendering" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1A1A2E;strokeColor=#E85A71;fontColor=#E85A71;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="740" y="300" width="120" height="30" as="geometry" />
+    </mxCell>
+    <mxCell id="s_arrow3" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#E85A71;strokeWidth=1;" edge="1" parent="1" source="s_rendering" target="s_rendered">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="s_rendered" value="rendered" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1A1A2E;strokeColor=#3D9CA8;fontColor=#3D9CA8;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="740" y="350" width="120" height="30" as="geometry" />
+    </mxCell>
+    <mxCell id="s_arrow4a" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#3D9CA8;strokeWidth=1;" edge="1" parent="1" source="s_rendered" target="s_posted">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="s_arrow4b" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#FF4444;strokeWidth=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="s_rendered" target="s_failed">
+      <mxGeometry relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="880" y="365" />
+          <mxPoint x="880" y="440" />
+        </Array>
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="s_posted" value="posted" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#3D9CA8;strokeColor=#3D9CA8;fontColor=#FAFAFA;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="740" y="400" width="120" height="30" as="geometry" />
+    </mxCell>
+    <mxCell id="s_failed" value="failed" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FF4444;strokeColor=#FF4444;fontColor=#FAFAFA;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="740" y="430" width="120" height="30" as="geometry" />
+    </mxCell>
+    <mxCell id="s_pipe_label" value="post_error saved to DB" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontColor=#FF4444;fontSize=9;fontStyle=2;" vertex="1" parent="1">
+      <mxGeometry x="720" y="462" width="160" height="20" as="geometry" />
+    </mxCell>
+    <mxCell id="s_note" value="queued also accepted&#xa;in Step 1 fetch" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontColor=#FAFAFA;fontSize=9;fontStyle=2;" vertex="1" parent="1">
+      <mxGeometry x="720" y="485" width="160" height="30" as="geometry" />
+    </mxCell>
+    <mxCell id="s_note2" value="scripted also accepted&#xa;in Step 1 fetch" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontColor=#FAFAFA;fontSize=9;fontStyle=2;" vertex="1" parent="1">
+      <mxGeometry x="720" y="515" width="160" height="30" as="geometry" />
+    </mxCell>
+    <mxCell id="s_note3" value="--post-only skips&#xa;Steps 1–5" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontColor=#FFB74D;fontSize=9;fontStyle=2;" vertex="1" parent="1">
+      <mxGeometry x="720" y="548" width="160" height="30" as="geometry" />
+    </mxCell>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- MAIN FLOW                                               -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+
+    <!-- START -->
+    <mxCell id="start" value="Pipeline Start" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1A1A2E;strokeColor=#FAFAFA;fontColor=#FAFAFA;fontSize=14;fontStyle=1;arcSize=50;" vertex="1" parent="1">
+      <mxGeometry x="250" y="40" width="200" height="44" as="geometry" />
+    </mxCell>
+
+    <!-- Decision: --post-only flag? -->
+    <mxCell id="dec_postonly" value="--post-only flag?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFB74D;strokeColor=#E85A71;fontColor=#1A1A2E;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="245" y="118" width="210" height="70" as="geometry" />
+    </mxCell>
+    <mxCell id="e_start_to_dec" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#FAFAFA;strokeWidth=2;" edge="1" parent="1" source="start" target="dec_postonly">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- --post-only Yes branch: jumps to Step 6 -->
+    <mxCell id="label_postonly_yes" value="Yes (video_url exists)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontColor=#FFB74D;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="468" y="125" width="140" height="24" as="geometry" />
+    </mxCell>
+
+    <!-- --post-only No branch label -->
+    <mxCell id="label_postonly_no" value="No" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontColor=#FAFAFA;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="330" y="192" width="40" height="20" as="geometry" />
+    </mxCell>
+
+    <!-- ─────── STEP 1 ─────── -->
+    <mxCell id="step1" value="Step 1: Fetch Content&#xa;fetchNextItem()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E85A71;strokeColor=#E85A71;fontColor=#FAFAFA;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="240" y="218" width="220" height="54" as="geometry" />
+    </mxCell>
+    <mxCell id="step1_input" value="Input: content ID or next queued/scripted item&#xa;with scheduled_for &lt;= now" style="text;html=1;strokeColor=#E85A71;fillColor=#1A1A2E;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontColor=#FAFAFA;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="240" y="276" width="220" height="36" as="geometry" />
+    </mxCell>
+    <mxCell id="e_dec_no_to_step1" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#FAFAFA;strokeWidth=2;" edge="1" parent="1" source="dec_postonly" target="step1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- Decision: Item found? -->
+    <mxCell id="dec_item_found" value="Item found?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFB74D;strokeColor=#E85A71;fontColor=#1A1A2E;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="245" y="326" width="210" height="70" as="geometry" />
+    </mxCell>
+    <mxCell id="e_step1_to_dec" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#FAFAFA;strokeWidth=2;" edge="1" parent="1" source="step1_input" target="dec_item_found">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- No items end -->
+    <mxCell id="no_items" value="No items in queue&#xa;(exit)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1A1A2E;strokeColor=#FF4444;fontColor=#FF4444;fontSize=11;fontStyle=1;arcSize=50;" vertex="1" parent="1">
+      <mxGeometry x="490" y="336" width="150" height="44" as="geometry" />
+    </mxCell>
+    <mxCell id="e_not_found" value="No" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#FF4444;strokeWidth=2;fontColor=#FF4444;fontSize=10;" edge="1" parent="1" source="dec_item_found" target="no_items">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="label_item_yes" value="Yes" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontColor=#FAFAFA;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="330" y="398" width="40" height="20" as="geometry" />
+    </mxCell>
+
+    <!-- ─────── STEP 2 ─────── -->
+    <mxCell id="step2" value="Step 2: Ensure Script&#xa;ensureScript()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E85A71;strokeColor=#E85A71;fontColor=#FAFAFA;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="240" y="424" width="220" height="54" as="geometry" />
+    </mxCell>
+    <mxCell id="e_dec_yes_to_step2" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#FAFAFA;strokeWidth=2;" edge="1" parent="1" source="dec_item_found" target="step2">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- Decision: Script exists? -->
+    <mxCell id="dec_script" value="Script exists?&#xa;(hook_text set)" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFB74D;strokeColor=#E85A71;fontColor=#1A1A2E;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="245" y="492" width="210" height="70" as="geometry" />
+    </mxCell>
+    <mxCell id="e_step2_to_dec" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#FAFAFA;strokeWidth=2;" edge="1" parent="1" source="step2" target="dec_script">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- Claude API call -->
+    <mxCell id="claude_api" value="Call Claude API&#xa;(claude-sonnet, max 500 tokens)&#xa;→ hook_text, caption,&#xa;hashtags, music_style, slogan" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1A1A2E;strokeColor=#E85A71;fontColor=#FAFAFA;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="50" y="492" width="175" height="70" as="geometry" />
+    </mxCell>
+    <mxCell id="e_no_script" value="No" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#E85A71;strokeWidth=2;fontColor=#E85A71;fontSize=10;exitX=0;exitY=0.5;exitDx=0;exitDy=0;" edge="1" parent="1" source="dec_script" target="claude_api">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- Status: queued → scripted -->
+    <mxCell id="status_scripted" value="queued → scripted" style="text;html=1;strokeColor=#3D9CA8;fillColor=#1A1A2E;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontColor=#FFB74D;fontSize=10;fontStyle=2;" vertex="1" parent="1">
+      <mxGeometry x="50" y="568" width="175" height="26" as="geometry" />
+    </mxCell>
+    <mxCell id="e_claude_to_status" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#E85A71;strokeWidth=1;" edge="1" parent="1" source="claude_api" target="status_scripted">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- merge back from claude branch -->
+    <mxCell id="merge_script" value="" style="rhombus;whiteSpace=wrap;html=1;fillColor=#1A1A2E;strokeColor=#FAFAFA;fontColor=#FAFAFA;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="300" y="596" width="100" height="40" as="geometry" />
+    </mxCell>
+    <mxCell id="label_script_yes" value="Yes (skip)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontColor=#FAFAFA;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="350" y="510" width="80" height="20" as="geometry" />
+    </mxCell>
+    <mxCell id="e_yes_script_merge" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#FAFAFA;strokeWidth=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" edge="1" parent="1" source="dec_script" target="merge_script">
+      <mxGeometry relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="470" y="527" />
+          <mxPoint x="470" y="616" />
+        </Array>
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="e_status_to_merge" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#E85A71;strokeWidth=1;" edge="1" parent="1" source="status_scripted" target="merge_script">
+      <mxGeometry relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="137" y="616" />
+        </Array>
+      </mxGeometry>
+    </mxCell>
+
+    <!-- ─────── STEP 3 ─────── -->
+    <mxCell id="step3" value="Step 3: Generate Audio&#xa;generateAudio()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E85A71;strokeColor=#E85A71;fontColor=#FAFAFA;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="240" y="654" width="220" height="54" as="geometry" />
+    </mxCell>
+    <mxCell id="e_merge_to_step3" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#FAFAFA;strokeWidth=2;" edge="1" parent="1" source="merge_script" target="step3">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- Decision: SUNO_API_URL set? -->
+    <mxCell id="dec_suno" value="SUNO_API_URL set?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFB74D;strokeColor=#E85A71;fontColor=#1A1A2E;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="245" y="722" width="210" height="70" as="geometry" />
+    </mxCell>
+    <mxCell id="e_step3_to_dec" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#FAFAFA;strokeWidth=2;" edge="1" parent="1" source="step3" target="dec_suno">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- No: skip music -->
+    <mxCell id="skip_music" value="Skip&#xa;(no music)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1A1A2E;strokeColor=#FFB74D;fontColor=#FFB74D;fontSize=10;fontStyle=2;arcSize=50;" vertex="1" parent="1">
+      <mxGeometry x="490" y="732" width="110" height="44" as="geometry" />
+    </mxCell>
+    <mxCell id="e_no_suno" value="No" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#FFB74D;strokeWidth=2;fontColor=#FFB74D;fontSize=10;" edge="1" parent="1" source="dec_suno" target="skip_music">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- Decision: Music file exists locally? -->
+    <mxCell id="dec_music_exists" value="Music file exists&#xa;locally?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFB74D;strokeColor=#E85A71;fontColor=#1A1A2E;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="50" y="722" width="175" height="70" as="geometry" />
+    </mxCell>
+    <mxCell id="e_yes_suno" value="Yes" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#FAFAFA;strokeWidth=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;fontColor=#FAFAFA;fontSize=10;" edge="1" parent="1" source="dec_suno" target="dec_music_exists">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- Yes: skip download -->
+    <mxCell id="skip_download" value="Skip download" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1A1A2E;strokeColor=#FFB74D;fontColor=#FFB74D;fontSize=10;fontStyle=2;arcSize=50;" vertex="1" parent="1">
+      <mxGeometry x="50" y="832" width="120" height="34" as="geometry" />
+    </mxCell>
+    <mxCell id="e_music_yes" value="Yes" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#FFB74D;strokeWidth=1;fontColor=#FFB74D;fontSize=10;" edge="1" parent="1" source="dec_music_exists" target="skip_download">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- No: call Suno API -->
+    <mxCell id="suno_call" value="Call Suno API&#xa;→ download → ffmpeg trim&#xa;→ save to public/music/" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1A1A2E;strokeColor=#E85A71;fontColor=#FAFAFA;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="50" y="876" width="175" height="54" as="geometry" />
+    </mxCell>
+    <mxCell id="e_music_no" value="No" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#E85A71;strokeWidth=1;fontColor=#E85A71;fontSize=10;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" edge="1" parent="1" source="dec_music_exists" target="suno_call">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- merge audio branches -->
+    <mxCell id="merge_audio" value="" style="rhombus;whiteSpace=wrap;html=1;fillColor=#1A1A2E;strokeColor=#FAFAFA;fontColor=#FAFAFA;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="300" y="850" width="100" height="40" as="geometry" />
+    </mxCell>
+    <mxCell id="e_skip_music_merge" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#FFB74D;strokeWidth=1;" edge="1" parent="1" source="skip_music" target="merge_audio">
+      <mxGeometry relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="545" y="870" />
+          <mxPoint x="350" y="870" />
+        </Array>
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="e_skip_dl_merge" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#FFB74D;strokeWidth=1;" edge="1" parent="1" source="skip_download" target="merge_audio">
+      <mxGeometry relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="110" y="870" />
+          <mxPoint x="350" y="870" />
+        </Array>
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="e_suno_merge" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#E85A71;strokeWidth=1;" edge="1" parent="1" source="suno_call" target="merge_audio">
+      <mxGeometry relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="137" y="870" />
+          <mxPoint x="350" y="870" />
+        </Array>
+      </mxGeometry>
+    </mxCell>
+
+    <!-- ─────── STEP 4 ─────── -->
+    <mxCell id="step4" value="Step 4: Render Video&#xa;renderVideo()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E85A71;strokeColor=#E85A71;fontColor=#FAFAFA;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="240" y="908" width="220" height="54" as="geometry" />
+    </mxCell>
+    <mxCell id="e_merge_audio_to_step4" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#FAFAFA;strokeWidth=2;" edge="1" parent="1" source="merge_audio" target="step4">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <mxCell id="step4_detail" value="Bundle Remotion → select composition&#xa;(BeforeAfterReveal or TipsEducational)&#xa;→ renderMedia() h264, 8M bitrate, 192k audio&#xa;→ output MP4 to OUTPUT_DIR" style="text;html=1;strokeColor=#E85A71;fillColor=#1A1A2E;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontColor=#FAFAFA;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="240" y="966" width="220" height="60" as="geometry" />
+    </mxCell>
+    <mxCell id="e_step4_to_detail" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#E85A71;strokeWidth=1;" edge="1" parent="1" source="step4" target="step4_detail">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- Status: scripted → rendering -->
+    <mxCell id="status_rendering" value="scripted → rendering" style="text;html=1;strokeColor=#3D9CA8;fillColor=#1A1A2E;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontColor=#FFB74D;fontSize=10;fontStyle=2;" vertex="1" parent="1">
+      <mxGeometry x="490" y="918" width="160" height="26" as="geometry" />
+    </mxCell>
+    <mxCell id="e_step4_status" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#FFB74D;strokeWidth=1;dashed=1;" edge="1" parent="1" source="step4" target="status_rendering">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- Error dashed line from step4 -->
+    <mxCell id="failed_box" value="failed&#xa;post_error saved to DB" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1A1A2E;strokeColor=#FF4444;fontColor=#FF4444;fontSize=11;fontStyle=1;arcSize=20;" vertex="1" parent="1">
+      <mxGeometry x="490" y="990" width="160" height="44" as="geometry" />
+    </mxCell>
+    <mxCell id="e_step4_fail" value="error" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#FF4444;strokeWidth=2;dashed=1;fontColor=#FF4444;fontSize=10;" edge="1" parent="1" source="step4_detail" target="failed_box">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- ─────── STEP 5 ─────── -->
+    <mxCell id="step5" value="Step 5: Upload Video&#xa;uploadVideo()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E85A71;strokeColor=#E85A71;fontColor=#FAFAFA;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="240" y="1046" width="220" height="54" as="geometry" />
+    </mxCell>
+    <mxCell id="e_step4_to_step5" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#FAFAFA;strokeWidth=2;" edge="1" parent="1" source="step4_detail" target="step5">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <mxCell id="step5_detail" value="Upload to Supabase Storage bucket 'videos'&#xa;path: tiktok-videos/{filename}&#xa;→ get public URL → update video_url" style="text;html=1;strokeColor=#E85A71;fillColor=#1A1A2E;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontColor=#FAFAFA;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="240" y="1104" width="220" height="52" as="geometry" />
+    </mxCell>
+    <mxCell id="e_step5_to_detail" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#E85A71;strokeWidth=1;" edge="1" parent="1" source="step5" target="step5_detail">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- Status: rendering → rendered -->
+    <mxCell id="status_rendered" value="rendering → rendered" style="text;html=1;strokeColor=#3D9CA8;fillColor=#1A1A2E;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontColor=#FFB74D;fontSize=10;fontStyle=2;" vertex="1" parent="1">
+      <mxGeometry x="490" y="1116" width="160" height="26" as="geometry" />
+    </mxCell>
+    <mxCell id="e_step5_status" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#FFB74D;strokeWidth=1;dashed=1;" edge="1" parent="1" source="step5_detail" target="status_rendered">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- ─────── STEP 6 ─────── -->
+    <mxCell id="step6" value="Step 6: Post to TikTok&#xa;postToTikTok()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E85A71;strokeColor=#E85A71;fontColor=#FAFAFA;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="240" y="1174" width="220" height="54" as="geometry" />
+    </mxCell>
+    <mxCell id="e_step5_to_step6" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#FAFAFA;strokeWidth=2;" edge="1" parent="1" source="step5_detail" target="step6">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- --post-only jumps here -->
+    <mxCell id="e_postonly_to_step6" value="Yes&#xa;(jump to Step 6)" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#FFB74D;strokeWidth=2;dashed=1;fontColor=#FFB74D;fontSize=10;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="dec_postonly" target="step6">
+      <mxGeometry relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="680" y="153" />
+          <mxPoint x="680" y="1201" />
+        </Array>
+      </mxGeometry>
+    </mxCell>
+
+    <!-- Decision: --dry-run? -->
+    <mxCell id="dec_dryrun" value="--dry-run?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFB74D;strokeColor=#E85A71;fontColor=#1A1A2E;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="245" y="1242" width="210" height="70" as="geometry" />
+    </mxCell>
+    <mxCell id="e_step6_to_dec" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#FAFAFA;strokeWidth=2;" edge="1" parent="1" source="step6" target="dec_dryrun">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- Dry run end -->
+    <mxCell id="dryrun_end" value="Log caption + hashtags&#xa;Skip post (exit)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1A1A2E;strokeColor=#FFB74D;fontColor=#FFB74D;fontSize=10;fontStyle=2;arcSize=50;" vertex="1" parent="1">
+      <mxGeometry x="490" y="1252" width="150" height="44" as="geometry" />
+    </mxCell>
+    <mxCell id="e_dryrun_yes" value="Yes" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#FFB74D;strokeWidth=2;fontColor=#FFB74D;fontSize=10;" edge="1" parent="1" source="dec_dryrun" target="dryrun_end">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- Decision: TikTok token available? -->
+    <mxCell id="dec_token" value="TikTok token&#xa;available?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFB74D;strokeColor=#E85A71;fontColor=#1A1A2E;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="245" y="1326" width="210" height="70" as="geometry" />
+    </mxCell>
+    <mxCell id="e_dryrun_no" value="No" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#FAFAFA;strokeWidth=2;fontColor=#FAFAFA;fontSize=10;" edge="1" parent="1" source="dec_dryrun" target="dec_token">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- No token -->
+    <mxCell id="no_token_end" value="Save for manual upload&#xa;(log video path, exit)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1A1A2E;strokeColor=#FFB74D;fontColor=#FFB74D;fontSize=10;fontStyle=2;arcSize=50;" vertex="1" parent="1">
+      <mxGeometry x="490" y="1336" width="160" height="44" as="geometry" />
+    </mxCell>
+    <mxCell id="e_no_token" value="No" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#FFB74D;strokeWidth=2;fontColor=#FFB74D;fontSize=10;" edge="1" parent="1" source="dec_token" target="no_token_end">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- Yes: TikTok sub-flow -->
+    <mxCell id="tiktok_flow" value="initDirectPost()&#xa;→ uploadVideoFile()&#xa;→ pollPublishStatus()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1A1A2E;strokeColor=#E85A71;fontColor=#FAFAFA;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="50" y="1326" width="175" height="70" as="geometry" />
+    </mxCell>
+    <mxCell id="e_yes_token" value="Yes" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#FAFAFA;strokeWidth=2;fontColor=#FAFAFA;fontSize=10;exitX=0;exitY=0.5;exitDx=0;exitDy=0;" edge="1" parent="1" source="dec_token" target="tiktok_flow">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- Decision: ScopeError? -->
+    <mxCell id="dec_scope" value="ScopeError?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFB74D;strokeColor=#E85A71;fontColor=#1A1A2E;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="55" y="1412" width="165" height="60" as="geometry" />
+    </mxCell>
+    <mxCell id="e_tiktok_to_scope" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#E85A71;strokeWidth=1;" edge="1" parent="1" source="tiktok_flow" target="dec_scope">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- Yes: fallback inbox -->
+    <mxCell id="inbox_fallback" value="Fallback:&#xa;initInboxUpload()&#xa;(sends to TikTok inbox)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1A1A2E;strokeColor=#FFB74D;fontColor=#FFB74D;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="50" y="1494" width="165" height="60" as="geometry" />
+    </mxCell>
+    <mxCell id="e_scope_yes" value="Yes (fallback)" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#FFB74D;strokeWidth=2;fontColor=#FFB74D;fontSize=10;" edge="1" parent="1" source="dec_scope" target="inbox_fallback">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- merge for final status -->
+    <mxCell id="merge_post" value="" style="rhombus;whiteSpace=wrap;html=1;fillColor=#1A1A2E;strokeColor=#FAFAFA;fontColor=#FAFAFA;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="295" y="1498" width="110" height="50" as="geometry" />
+    </mxCell>
+    <mxCell id="e_scope_no" value="No" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#FAFAFA;strokeWidth=1;fontColor=#FAFAFA;fontSize=10;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" edge="1" parent="1" source="dec_scope" target="merge_post">
+      <mxGeometry relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="250" y="1442" />
+          <mxPoint x="350" y="1442" />
+          <mxPoint x="350" y="1498" />
+        </Array>
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="e_inbox_merge" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#FFB74D;strokeWidth=1;" edge="1" parent="1" source="inbox_fallback" target="merge_post">
+      <mxGeometry relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="215" y="1524" />
+          <mxPoint x="295" y="1524" />
+        </Array>
+      </mxGeometry>
+    </mxCell>
+
+    <!-- Status: posted / failed -->
+    <mxCell id="status_posted" value="rendered → posted&#xa;(tiktok_post_id, posted_at)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#3D9CA8;strokeColor=#3D9CA8;fontColor=#FAFAFA;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="240" y="1566" width="220" height="44" as="geometry" />
+    </mxCell>
+    <mxCell id="e_merge_to_posted" value="success" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#3D9CA8;strokeWidth=2;fontColor=#3D9CA8;fontSize=10;" edge="1" parent="1" source="merge_post" target="status_posted">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <mxCell id="status_failed" value="rendered → failed&#xa;(post_error saved to DB)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FF4444;strokeColor=#FF4444;fontColor=#FAFAFA;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="490" y="1566" width="200" height="44" as="geometry" />
+    </mxCell>
+    <mxCell id="e_merge_to_failed" value="error" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#FF4444;strokeWidth=2;dashed=1;fontColor=#FF4444;fontSize=10;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" edge="1" parent="1" source="merge_post" target="status_failed">
+      <mxGeometry relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="470" y="1523" />
+          <mxPoint x="590" y="1523" />
+        </Array>
+      </mxGeometry>
+    </mxCell>
+
+    <!-- END -->
+    <mxCell id="end" value="Pipeline Complete" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#3D9CA8;strokeColor=#3D9CA8;fontColor=#FAFAFA;fontSize=14;fontStyle=1;arcSize=50;" vertex="1" parent="1">
+      <mxGeometry x="250" y="1632" width="200" height="44" as="geometry" />
+    </mxCell>
+    <mxCell id="e_posted_to_end" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#3D9CA8;strokeWidth=2;" edge="1" parent="1" source="status_posted" target="end">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="e_failed_to_end" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#FF4444;strokeWidth=2;dashed=1;" edge="1" parent="1" source="status_failed" target="end">
+      <mxGeometry relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="590" y="1660" />
+        </Array>
+      </mxGeometry>
+    </mxCell>
+
+    <!-- dryrun_end and no_token_end also route to end -->
+    <mxCell id="e_dryrun_to_end" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#FFB74D;strokeWidth=1;dashed=1;" edge="1" parent="1" source="dryrun_end" target="end">
+      <mxGeometry relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="645" y="1274" />
+          <mxPoint x="645" y="1654" />
+          <mxPoint x="450" y="1654" />
+        </Array>
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="e_notoken_to_end" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#FFB74D;strokeWidth=1;dashed=1;" edge="1" parent="1" source="no_token_end" target="end">
+      <mxGeometry relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="670" y="1358" />
+          <mxPoint x="670" y="1654" />
+          <mxPoint x="450" y="1654" />
+        </Array>
+      </mxGeometry>
+    </mxCell>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- TITLE BANNER                                            -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <mxCell id="title" value="EternalFrame Auto-TikTok Engine — Pipeline Flow" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontColor=#E85A71;fontSize=16;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="50" y="4" width="820" height="28" as="geometry" />
+    </mxCell>
+
+  </root>
+</mxGraphModel>

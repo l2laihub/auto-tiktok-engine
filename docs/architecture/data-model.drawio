@@ -1,0 +1,254 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxGraphModel dx="1422" dy="762" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
+  <root>
+    <mxCell id="0" />
+    <mxCell id="1" parent="0" />
+
+    <!-- ============================================================ -->
+    <!-- TITLE -->
+    <!-- ============================================================ -->
+    <mxCell id="title" value="EternalFrame Auto-TikTok Engine — Data Model" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;fontStyle=1;fontColor=#1A1A2E;" vertex="1" parent="1">
+      <mxGeometry x="200" y="20" width="1200" height="40" as="geometry" />
+    </mxCell>
+
+    <!-- ============================================================ -->
+    <!-- ENUM: content_type -->
+    <!-- ============================================================ -->
+    <mxCell id="enum_type_header" value="&lt;b&gt;content_type&lt;/b&gt; (ENUM)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFB74D;strokeColor=#cc8800;fontColor=#1A1A2E;fontSize=11;fontStyle=1;align=center;" vertex="1" parent="1">
+      <mxGeometry x="60" y="80" width="190" height="34" as="geometry" />
+    </mxCell>
+    <mxCell id="enum_type_body" value="'reveal'&#xa;'tip'" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF8E1;strokeColor=#cc8800;fontColor=#1A1A2E;fontSize=11;align=center;verticalAlign=top;" vertex="1" parent="1">
+      <mxGeometry x="60" y="114" width="190" height="44" as="geometry" />
+    </mxCell>
+
+    <!-- ============================================================ -->
+    <!-- ENUM: content_status -->
+    <!-- ============================================================ -->
+    <mxCell id="enum_status_header" value="&lt;b&gt;content_status&lt;/b&gt; (ENUM)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFB74D;strokeColor=#cc8800;fontColor=#1A1A2E;fontSize=11;fontStyle=1;align=center;" vertex="1" parent="1">
+      <mxGeometry x="60" y="180" width="190" height="34" as="geometry" />
+    </mxCell>
+    <mxCell id="enum_status_body" value="'queued'&#xa;'scripted'&#xa;'rendering'&#xa;'rendered'&#xa;'posted'&#xa;'failed'" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF8E1;strokeColor=#cc8800;fontColor=#1A1A2E;fontSize=11;align=center;verticalAlign=top;" vertex="1" parent="1">
+      <mxGeometry x="60" y="214" width="190" height="110" as="geometry" />
+    </mxCell>
+
+    <!-- ============================================================ -->
+    <!-- MAIN TABLE: tiktok_content_pool -->
+    <!-- ============================================================ -->
+
+    <!-- Header -->
+    <mxCell id="tcp_header" value="&lt;b&gt;tiktok_content_pool&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#E85A71;strokeColor=#b0003a;fontColor=#FFFFFF;fontSize=14;fontStyle=1;align=center;" vertex="1" parent="1">
+      <mxGeometry x="320" y="80" width="340" height="36" as="geometry" />
+    </mxCell>
+
+    <!-- Section: Identity -->
+    <mxCell id="tcp_sect_identity" value="— Identity —" style="text;html=1;strokeColor=#cccccc;fillColor=#E0E0E0;align=center;verticalAlign=middle;fontSize=10;fontStyle=2;fontColor=#555555;" vertex="1" parent="1">
+      <mxGeometry x="320" y="116" width="340" height="18" as="geometry" />
+    </mxCell>
+    <mxCell id="tcp_identity" value="id: UUID [PK]&#xa;created_at: TIMESTAMPTZ&#xa;updated_at: TIMESTAMPTZ (auto-trigger)&#xa;scheduled_for: DATE (nullable)&#xa;content_type: content_type ENUM&#xa;status: content_status ENUM" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F0F0F0;strokeColor=#cccccc;fontColor=#1A1A2E;fontSize=11;align=left;verticalAlign=top;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="320" y="134" width="340" height="90" as="geometry" />
+    </mxCell>
+
+    <!-- Section: Reveal Fields -->
+    <mxCell id="tcp_sect_reveal" value="— Reveal Fields —" style="text;html=1;strokeColor=#cccccc;fillColor=#E0E0E0;align=center;verticalAlign=middle;fontSize=10;fontStyle=2;fontColor=#555555;" vertex="1" parent="1">
+      <mxGeometry x="320" y="224" width="340" height="18" as="geometry" />
+    </mxCell>
+    <mxCell id="tcp_reveal" value="before_image_url: TEXT&#xa;after_image_url: TEXT&#xa;image_pairs: JSONB[] (1–6 pairs)&#xa;preset_used: TEXT&#xa;photo_era: TEXT&#xa;photo_story: TEXT" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F0F0F0;strokeColor=#cccccc;fontColor=#1A1A2E;fontSize=11;align=left;verticalAlign=top;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="320" y="242" width="340" height="90" as="geometry" />
+    </mxCell>
+
+    <!-- Section: Tip Fields -->
+    <mxCell id="tcp_sect_tip" value="— Tip Fields —" style="text;html=1;strokeColor=#cccccc;fillColor=#E0E0E0;align=center;verticalAlign=middle;fontSize=10;fontStyle=2;fontColor=#555555;" vertex="1" parent="1">
+      <mxGeometry x="320" y="332" width="340" height="18" as="geometry" />
+    </mxCell>
+    <mxCell id="tcp_tip" value="tip_title: TEXT&#xa;tip_body: TEXT&#xa;tip_image_url: TEXT&#xa;tip_source: TEXT" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F0F0F0;strokeColor=#cccccc;fontColor=#1A1A2E;fontSize=11;align=left;verticalAlign=top;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="320" y="350" width="340" height="62" as="geometry" />
+    </mxCell>
+
+    <!-- Section: Script Fields -->
+    <mxCell id="tcp_sect_script" value="— Script Fields (AI-generated) —" style="text;html=1;strokeColor=#cccccc;fillColor=#E0E0E0;align=center;verticalAlign=middle;fontSize=10;fontStyle=2;fontColor=#555555;" vertex="1" parent="1">
+      <mxGeometry x="320" y="412" width="340" height="18" as="geometry" />
+    </mxCell>
+    <mxCell id="tcp_script" value="hook_text: TEXT&#xa;caption: TEXT&#xa;hashtags: TEXT[]&#xa;music_track: TEXT (legacy)&#xa;music_style: TEXT (Suno prompt)&#xa;slogan: TEXT" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F0F0F0;strokeColor=#cccccc;fontColor=#1A1A2E;fontSize=11;align=left;verticalAlign=top;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="320" y="430" width="340" height="90" as="geometry" />
+    </mxCell>
+
+    <!-- Section: Audio Fields -->
+    <mxCell id="tcp_sect_audio" value="— Audio Fields —" style="text;html=1;strokeColor=#cccccc;fillColor=#E0E0E0;align=center;verticalAlign=middle;fontSize=10;fontStyle=2;fontColor=#555555;" vertex="1" parent="1">
+      <mxGeometry x="320" y="520" width="340" height="18" as="geometry" />
+    </mxCell>
+    <mxCell id="tcp_audio" value="suno_audio_url: TEXT&#xa;music_file_path: TEXT&#xa;audio_volume: REAL (default 0.6)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F0F0F0;strokeColor=#cccccc;fontColor=#1A1A2E;fontSize=11;align=left;verticalAlign=top;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="320" y="538" width="340" height="48" as="geometry" />
+    </mxCell>
+
+    <!-- Section: Render Fields -->
+    <mxCell id="tcp_sect_render" value="— Render Fields —" style="text;html=1;strokeColor=#cccccc;fillColor=#E0E0E0;align=center;verticalAlign=middle;fontSize=10;fontStyle=2;fontColor=#555555;" vertex="1" parent="1">
+      <mxGeometry x="320" y="586" width="340" height="18" as="geometry" />
+    </mxCell>
+    <mxCell id="tcp_render" value="video_url: TEXT&#xa;video_duration_ms: INTEGER&#xa;thumbnail_url: TEXT" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F0F0F0;strokeColor=#cccccc;fontColor=#1A1A2E;fontSize=11;align=left;verticalAlign=top;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="320" y="604" width="340" height="48" as="geometry" />
+    </mxCell>
+
+    <!-- Section: TikTok Fields -->
+    <mxCell id="tcp_sect_tiktok" value="— TikTok Fields —" style="text;html=1;strokeColor=#cccccc;fillColor=#E0E0E0;align=center;verticalAlign=middle;fontSize=10;fontStyle=2;fontColor=#555555;" vertex="1" parent="1">
+      <mxGeometry x="320" y="652" width="340" height="18" as="geometry" />
+    </mxCell>
+    <mxCell id="tcp_tiktok" value="tiktok_post_id: TEXT&#xa;posted_at: TIMESTAMPTZ&#xa;post_error: TEXT&#xa;publish_status: TEXT" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F0F0F0;strokeColor=#cccccc;fontColor=#1A1A2E;fontSize=11;align=left;verticalAlign=top;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="320" y="670" width="340" height="62" as="geometry" />
+    </mxCell>
+
+    <!-- Section: Analytics -->
+    <mxCell id="tcp_sect_analytics" value="— Analytics —" style="text;html=1;strokeColor=#cccccc;fillColor=#E0E0E0;align=center;verticalAlign=middle;fontSize=10;fontStyle=2;fontColor=#555555;" vertex="1" parent="1">
+      <mxGeometry x="320" y="732" width="340" height="18" as="geometry" />
+    </mxCell>
+    <mxCell id="tcp_analytics" value="views: INTEGER (default 0)&#xa;likes: INTEGER (default 0)&#xa;shares: INTEGER (default 0)&#xa;comments: INTEGER (default 0)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F0F0F0;strokeColor=#cccccc;fontColor=#1A1A2E;fontSize=11;align=left;verticalAlign=top;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="320" y="750" width="340" height="62" as="geometry" />
+    </mxCell>
+
+    <!-- Bottom border -->
+    <mxCell id="tcp_bottom" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#E85A71;strokeColor=#b0003a;" vertex="1" parent="1">
+      <mxGeometry x="320" y="812" width="340" height="6" as="geometry" />
+    </mxCell>
+
+    <!-- ============================================================ -->
+    <!-- TABLE: tiktok_music_library -->
+    <!-- ============================================================ -->
+    <mxCell id="tml_header" value="&lt;b&gt;tiktok_music_library&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#3D9CA8;strokeColor=#2a6d78;fontColor=#FFFFFF;fontSize=13;fontStyle=1;align=center;" vertex="1" parent="1">
+      <mxGeometry x="730" y="80" width="270" height="36" as="geometry" />
+    </mxCell>
+    <mxCell id="tml_body" value="id: UUID [PK]&#xa;filename: TEXT UNIQUE&#xa;title: TEXT&#xa;mood: TEXT&#xa;duration_ms: INTEGER&#xa;bpm: INTEGER&#xa;source: TEXT&#xa;license: TEXT&#xa;suno_id: TEXT&#xa;audio_url: TEXT&#xa;prompt: TEXT" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F0F0F0;strokeColor=#cccccc;fontColor=#1A1A2E;fontSize=11;align=left;verticalAlign=top;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="730" y="116" width="270" height="168" as="geometry" />
+    </mxCell>
+    <mxCell id="tml_bottom" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#3D9CA8;strokeColor=#2a6d78;" vertex="1" parent="1">
+      <mxGeometry x="730" y="284" width="270" height="6" as="geometry" />
+    </mxCell>
+
+    <!-- ============================================================ -->
+    <!-- TABLE: pipeline_run_log -->
+    <!-- ============================================================ -->
+    <mxCell id="prl_header" value="&lt;b&gt;pipeline_run_log&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#3D9CA8;strokeColor=#2a6d78;fontColor=#FFFFFF;fontSize=13;fontStyle=1;align=center;" vertex="1" parent="1">
+      <mxGeometry x="730" y="340" width="270" height="36" as="geometry" />
+    </mxCell>
+    <mxCell id="prl_body" value="id: UUID [PK]&#xa;started_at: TIMESTAMPTZ&#xa;finished_at: TIMESTAMPTZ&#xa;content_id: UUID [FK → tiktok_content_pool]&#xa;dry_run: BOOLEAN&#xa;success: BOOLEAN&#xa;output: TEXT&#xa;error: TEXT" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F0F0F0;strokeColor=#cccccc;fontColor=#1A1A2E;fontSize=11;align=left;verticalAlign=top;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="730" y="376" width="270" height="122" as="geometry" />
+    </mxCell>
+    <mxCell id="prl_bottom" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#3D9CA8;strokeColor=#2a6d78;" vertex="1" parent="1">
+      <mxGeometry x="730" y="498" width="270" height="6" as="geometry" />
+    </mxCell>
+
+    <!-- ============================================================ -->
+    <!-- TABLE: tiktok_tokens -->
+    <!-- ============================================================ -->
+    <mxCell id="tt_header" value="&lt;b&gt;tiktok_tokens&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#E85A71;strokeColor=#b0003a;fontColor=#FFFFFF;fontSize=13;fontStyle=1;align=center;" vertex="1" parent="1">
+      <mxGeometry x="730" y="560" width="270" height="36" as="geometry" />
+    </mxCell>
+    <mxCell id="tt_body" value="id: TEXT [PK] (default 'default')&#xa;access_token: TEXT&#xa;refresh_token: TEXT&#xa;expires_at: TIMESTAMPTZ&#xa;scope: TEXT&#xa;open_id: TEXT&#xa;updated_at: TIMESTAMPTZ" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F0F0F0;strokeColor=#cccccc;fontColor=#1A1A2E;fontSize=11;align=left;verticalAlign=top;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="730" y="596" width="270" height="108" as="geometry" />
+    </mxCell>
+    <mxCell id="tt_bottom" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#E85A71;strokeColor=#b0003a;" vertex="1" parent="1">
+      <mxGeometry x="730" y="704" width="270" height="6" as="geometry" />
+    </mxCell>
+
+    <!-- ============================================================ -->
+    <!-- VIEWS (dashed boxes, amber accent) -->
+    <!-- ============================================================ -->
+
+    <!-- View: next_content_to_process -->
+    <mxCell id="view1_header" value="&lt;b&gt;next_content_to_process&lt;/b&gt; (VIEW)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFB74D;strokeColor=#cc8800;fontColor=#1A1A2E;fontSize=11;fontStyle=1;align=center;dashed=1;dashPattern=6 3;" vertex="1" parent="1">
+      <mxGeometry x="1080" y="80" width="280" height="34" as="geometry" />
+    </mxCell>
+    <mxCell id="view1_body" value="Oldest queued item where&#xa;scheduled_for &lt;= today" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF8E1;strokeColor=#cc8800;fontColor=#1A1A2E;fontSize=11;align=center;verticalAlign=middle;dashed=1;dashPattern=6 3;" vertex="1" parent="1">
+      <mxGeometry x="1080" y="114" width="280" height="44" as="geometry" />
+    </mxCell>
+
+    <!-- View: content_pipeline_stats -->
+    <mxCell id="view2_header" value="&lt;b&gt;content_pipeline_stats&lt;/b&gt; (VIEW)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFB74D;strokeColor=#cc8800;fontColor=#1A1A2E;fontSize=11;fontStyle=1;align=center;dashed=1;dashPattern=6 3;" vertex="1" parent="1">
+      <mxGeometry x="1080" y="200" width="280" height="34" as="geometry" />
+    </mxCell>
+    <mxCell id="view2_body" value="Count by&#xa;(status, content_type)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF8E1;strokeColor=#cc8800;fontColor=#1A1A2E;fontSize=11;align=center;verticalAlign=middle;dashed=1;dashPattern=6 3;" vertex="1" parent="1">
+      <mxGeometry x="1080" y="234" width="280" height="44" as="geometry" />
+    </mxCell>
+
+    <!-- View: posted_video_performance -->
+    <mxCell id="view3_header" value="&lt;b&gt;posted_video_performance&lt;/b&gt; (VIEW)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFB74D;strokeColor=#cc8800;fontColor=#1A1A2E;fontSize=11;fontStyle=1;align=center;dashed=1;dashPattern=6 3;" vertex="1" parent="1">
+      <mxGeometry x="1080" y="320" width="280" height="34" as="geometry" />
+    </mxCell>
+    <mxCell id="view3_body" value="Posted videos with&#xa;engagement_rate = (likes/views)*100" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF8E1;strokeColor=#cc8800;fontColor=#1A1A2E;fontSize=11;align=center;verticalAlign=middle;dashed=1;dashPattern=6 3;" vertex="1" parent="1">
+      <mxGeometry x="1080" y="354" width="280" height="44" as="geometry" />
+    </mxCell>
+
+    <!-- ============================================================ -->
+    <!-- INDEXES ANNOTATION BOX -->
+    <!-- ============================================================ -->
+    <mxCell id="indexes_header" value="&lt;b&gt;Indexes&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1A1A2E;strokeColor=#000000;fontColor=#FFFFFF;fontSize=12;fontStyle=1;align=center;" vertex="1" parent="1">
+      <mxGeometry x="1080" y="460" width="280" height="30" as="geometry" />
+    </mxCell>
+    <mxCell id="indexes_body" value="idx_content_pool_status_scheduled&#xa;  ON tiktok_content_pool (status, scheduled_for)&#xa;&#xa;idx_content_pool_posted&#xa;  ON tiktok_content_pool (posted_at DESC)&#xa;&#xa;idx_pipeline_run_log_started&#xa;  ON pipeline_run_log (started_at DESC)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8EAF6;strokeColor=#1A1A2E;fontColor=#1A1A2E;fontSize=10;align=left;verticalAlign=top;spacingLeft=8;spacingTop=4;" vertex="1" parent="1">
+      <mxGeometry x="1080" y="490" width="280" height="120" as="geometry" />
+    </mxCell>
+
+    <!-- ============================================================ -->
+    <!-- RELATIONSHIPS / ARROWS -->
+    <!-- ============================================================ -->
+
+    <!-- pipeline_run_log.content_id → tiktok_content_pool.id (FK) -->
+    <mxCell id="rel_prl_tcp" value="FK ON DELETE SET NULL" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#3D9CA8;strokeWidth=2;fontColor=#1A1A2E;fontSize=10;fontStyle=1;exitX=0;exitY=0.3;exitDx=0;exitDy=0;entryX=1;entryY=0.15;entryDx=0;entryDy=0;endArrow=ERmany;startArrow=ERone;endFill=0;startFill=0;" edge="1" parent="1" source="prl_body" target="tcp_identity">
+      <mxGeometry relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="700" y="405" />
+          <mxPoint x="700" y="160" />
+        </Array>
+      </mxGeometry>
+    </mxCell>
+
+    <!-- View 1 → tiktok_content_pool (dashed) -->
+    <mxCell id="rel_view1_tcp" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#cc8800;strokeWidth=1.5;dashed=1;dashPattern=6 3;fontColor=#1A1A2E;fontSize=10;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.15;entryDx=0;entryDy=0;endArrow=open;endFill=0;startArrow=none;" edge="1" parent="1" source="view1_body" target="tcp_identity">
+      <mxGeometry relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="1040" y="136" />
+          <mxPoint x="1040" y="160" />
+        </Array>
+      </mxGeometry>
+    </mxCell>
+
+    <!-- View 2 → tiktok_content_pool (dashed) -->
+    <mxCell id="rel_view2_tcp" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#cc8800;strokeWidth=1.5;dashed=1;dashPattern=6 3;fontColor=#1A1A2E;fontSize=10;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.3;entryDx=0;entryDy=0;endArrow=open;endFill=0;startArrow=none;" edge="1" parent="1" source="view2_body" target="tcp_identity">
+      <mxGeometry relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="1040" y="256" />
+          <mxPoint x="1040" y="200" />
+        </Array>
+      </mxGeometry>
+    </mxCell>
+
+    <!-- View 3 → tiktok_content_pool (dashed) -->
+    <mxCell id="rel_view3_tcp" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#cc8800;strokeWidth=1.5;dashed=1;dashPattern=6 3;fontColor=#1A1A2E;fontSize=10;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.75;entryDx=0;entryDy=0;endArrow=open;endFill=0;startArrow=none;" edge="1" parent="1" source="view3_body" target="tcp_tiktok">
+      <mxGeometry relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="1040" y="371" />
+          <mxPoint x="1040" y="700" />
+        </Array>
+      </mxGeometry>
+    </mxCell>
+
+    <!-- content_type ENUM → tiktok_content_pool (usage arrow) -->
+    <mxCell id="rel_enum_type" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#FFB74D;strokeWidth=1.5;dashed=1;dashPattern=4 3;endArrow=open;endFill=0;startArrow=none;" edge="1" parent="1" source="enum_type_body" target="tcp_identity">
+      <mxGeometry relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="290" y="136" />
+          <mxPoint x="290" y="185" />
+        </Array>
+      </mxGeometry>
+    </mxCell>
+
+    <!-- content_status ENUM → tiktok_content_pool (usage arrow) -->
+    <mxCell id="rel_enum_status" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#FFB74D;strokeWidth=1.5;dashed=1;dashPattern=4 3;endArrow=open;endFill=0;startArrow=none;" edge="1" parent="1" source="enum_status_body" target="tcp_identity">
+      <mxGeometry relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="290" y="269" />
+          <mxPoint x="290" y="205" />
+        </Array>
+      </mxGeometry>
+    </mxCell>
+
+  </root>
+</mxGraphModel>
