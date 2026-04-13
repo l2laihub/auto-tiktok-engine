@@ -1827,6 +1827,7 @@
       const [running, setRunning] = useState(false);
       const [output, setOutput] = useState('');
       const [dryRun, setDryRun] = useState(true);
+      const [postOnly, setPostOnly] = useState(false);
       const [contentId, setContentId] = useState('');
       const [contentItems, setContentItems] = useState([]);
       const [history, setHistory] = useState([]);
@@ -1836,7 +1837,7 @@
       useEffect(() => {
         api('/api/stats').then(setStats).catch(console.error);
         api('/api/pipeline/history').then(setHistory).catch(console.error);
-        api('/api/content').then(items => setContentItems(items.filter(i => ['queued', 'scripted', 'rendered'].includes(i.status)))).catch(console.error);
+        api('/api/content').then(items => setContentItems(items.filter(i => ['queued', 'scripted', 'rendered', 'failed'].includes(i.status)))).catch(console.error);
         api('/api/pipeline/status').then(s => { setRunning(s.running); setOutput(s.output); });
       }, []);
 
@@ -1860,11 +1861,12 @@
 
       async function handleRun() {
         try {
-          const body = { dryRun, contentId: contentId.trim() || undefined };
+          const body = { dryRun, postOnly, contentId: contentId.trim() || undefined };
           await api('/api/pipeline/run', { method: 'POST', body });
           setRunning(true);
           setOutput('');
-          onToast('Pipeline started' + (dryRun ? ' (dry run)' : ''), 'success');
+          const flags = [dryRun && 'dry run', postOnly && 'post only'].filter(Boolean).join(', ');
+          onToast('Pipeline started' + (flags ? ` (${flags})` : ''), 'success');
         } catch (e) { onToast(e.message, 'error'); }
       }
 
@@ -1904,6 +1906,10 @@
             <button className=${"toggle" + (dryRun ? " on" : "")} onClick=${() => setDryRun(!dryRun)} />
             <span className="toggle-label">Dry Run</span>
           </div>
+          <div className="toggle-row">
+            <button className=${"toggle" + (postOnly ? " on" : "")} onClick=${() => setPostOnly(!postOnly)} />
+            <span className="toggle-label">Post Only</span>
+          </div>
           <select
             className="pipeline-id-input"
             value=${contentId}
@@ -1911,7 +1917,7 @@
             style=${{width: '320px', appearance: 'auto'}}
           >
             <option value="">Next queued (auto)</option>
-            ${contentItems.map(i => html`<option key=${i.id} value=${i.id}>${i.id.slice(0, 8)} \u2022 ${i.content_type} \u2022 ${i.status}${i.hook_text ? ' \u2022 ' + i.hook_text.slice(0, 30) : ''}</option>`)}
+            ${contentItems.map(i => html`<option key=${i.id} value=${i.id}>${i.status === 'failed' ? '\u26a0 ' : ''}${i.id.slice(0, 8)} \u2022 ${i.content_type} \u2022 ${i.status}${i.hook_text ? ' \u2022 ' + i.hook_text.slice(0, 30) : ''}</option>`)}
           </select>
         </div>
 

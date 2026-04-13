@@ -12,6 +12,7 @@
 //   npx tsx scripts/render-video.ts                   # process next queued item
 //   npx tsx scripts/render-video.ts <content-id>      # process specific item
 //   npx tsx scripts/render-video.ts --dry-run          # render without posting
+//   npx tsx scripts/render-video.ts <id> --post-only   # skip render, post existing video
 // ============================================================
 
 import { createClient } from '@supabase/supabase-js';
@@ -20,6 +21,14 @@ import { renderMedia, selectComposition } from '@remotion/renderer';
 import { generateScript } from './generate-script';
 import { generateMusicTrack, downloadAndTrim } from '../src/utils/suno';
 import { createRevealTiming, createTipsTiming, VIDEO } from '../src/config';
+import {
+  TikTokClient,
+  TikTokApiError,
+  TokenExpiredError,
+  ScopeError,
+  RateLimitError,
+  VideoProcessingError,
+} from './lib/tiktok-api';
 import path from 'path';
 import fs from 'fs';
 
@@ -28,6 +37,7 @@ const SUPABASE_URL = process.env.SUPABASE_URL!;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const OUTPUT_DIR = process.env.OUTPUT_DIR || './output';
 const DRY_RUN = process.argv.includes('--dry-run');
+const POST_ONLY = process.argv.includes('--post-only');
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -65,6 +75,8 @@ interface ContentRow {
   suno_audio_url?: string;
   music_file_path?: string;
   audio_volume?: number;
+  // Render fields
+  video_url?: string;
   // CTA
   slogan?: string;
 }
@@ -363,7 +375,7 @@ async function uploadVideo(
 }
 
 // --- Step 6: Post to TikTok ---
-async function postToTikTok(item: ContentRow, videoUrl: string): Promise<void> {
+async function postToTikTok(item: ContentRow, videoUrl: string, videoPath?: string): Promise<void> {
   if (DRY_RUN) {
     console.log('  [DRY RUN] Skipping TikTok post');
     console.log(`  Caption: ${item.caption}`);
@@ -371,63 +383,124 @@ async function postToTikTok(item: ContentRow, videoUrl: string): Promise<void> {
     return;
   }
 
-  const accessToken = process.env.TIKTOK_ACCESS_TOKEN;
+  const client = new TikTokClient(supabase);
+  const token = await client.getAccessToken();
 
-  if (!accessToken) {
-    console.log('  No TIKTOK_ACCESS_TOKEN set. Video saved for manual upload.');
+  if (!token) {
+    console.log('  No TikTok token available. Video saved for manual upload.');
     console.log(`  Caption: ${item.caption}`);
     console.log(`  Hashtags: ${item.hashtags?.join(' ')}`);
     return;
   }
 
+  // Resolve local video file path for FILE_UPLOAD
+  let localPath = videoPath;
+  if (!localPath || !fs.existsSync(localPath)) {
+    // Derive path from content ID (standard naming convention)
+    const derivedPath = path.join(OUTPUT_DIR, `${item.content_type}-${item.id.slice(0, 8)}.mp4`);
+    if (fs.existsSync(derivedPath)) {
+      localPath = derivedPath;
+      console.log(`  Using local video file: ${localPath}`);
+    }
+  }
+
+  // If no local file, download from Supabase Storage
+  if (!localPath || !fs.existsSync(localPath)) {
+    if (!videoUrl) {
+      console.error('  No video file or URL available. Cannot post.');
+      return;
+    }
+    console.log('  Local video not found, downloading from Supabase Storage...');
+    const downloadPath = path.join(OUTPUT_DIR, `${item.content_type}-${item.id.slice(0, 8)}.mp4`);
+    fs.mkdirSync(OUTPUT_DIR, { recursive: true });
+    const resp = await fetch(videoUrl);
+    if (!resp.ok) {
+      console.error(`  Download failed: HTTP ${resp.status}`);
+      return;
+    }
+    const buffer = Buffer.from(await resp.arrayBuffer());
+    fs.writeFileSync(downloadPath, buffer);
+    localPath = downloadPath;
+    console.log(`  Downloaded to ${localPath} (${(buffer.length / 1024 / 1024).toFixed(1)}MB)`);
+  }
+
+  const title = `${item.caption} ${item.hashtags?.map((h) => `#${h}`).join(' ') || ''}`;
+
   try {
-    const initResponse = await fetch(
-      'https://open.tiktokapis.com/v2/post/publish/video/init/',
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          post_info: {
-            title: `${item.caption} ${item.hashtags?.map((h) => `#${h}`).join(' ') || ''}`,
-            privacy_level: 'PUBLIC_TO_EVERYONE',
-            disable_duet: false,
-            disable_stitch: false,
-            disable_comment: false,
-          },
-          source_info: {
-            source: 'PULL_FROM_URL',
-            video_url: videoUrl,
-          },
-        }),
-      }
-    );
+    // FILE_UPLOAD: init → upload file → done
+    // Tries Direct Post first, falls back to Inbox Upload if scope is insufficient
+    const { publish_id, mode } = await client.initVideoPublish(localPath, title);
 
-    const result = await initResponse.json();
+    console.log(`  Publish initiated via ${mode === 'direct' ? 'Direct Post' : 'Inbox Upload'}! ID: ${publish_id}`);
 
-    if (result.error?.code) {
-      throw new Error(`TikTok API error: ${result.error.message}`);
+    // Mark as posted with processing status
+    await supabase
+      .from('tiktok_content_pool')
+      .update({
+        tiktok_post_id: publish_id,
+        posted_at: new Date().toISOString(),
+        status: 'posted',
+        publish_status: mode === 'inbox' ? 'inbox' : 'processing',
+      })
+      .eq('id', item.id);
+
+    if (mode === 'inbox') {
+      console.log('  Video sent to your TikTok inbox!');
+      console.log('  Open TikTok app → check inbox → review and post the video.');
+      console.log(`  Caption to use: ${title}`);
+      return;
+    }
+
+    // Poll for completion (Direct Post only)
+    console.log('  Polling for publish status...');
+    const result = await client.pollPublishStatus(publish_id);
+
+    if (result.status === 'PUBLISH_COMPLETE') {
+      await supabase
+        .from('tiktok_content_pool')
+        .update({ publish_status: 'published' })
+        .eq('id', item.id);
+      console.log(`  Published successfully on TikTok!`);
+    } else if (result.status === 'FAILED') {
+      await supabase
+        .from('tiktok_content_pool')
+        .update({
+          publish_status: 'publish_failed',
+          post_error: result.fail_reason || 'Unknown processing failure',
+          status: 'failed',
+        })
+        .eq('id', item.id);
+      console.error(`  TikTok publishing failed: ${result.fail_reason}`);
+    } else {
+      await supabase
+        .from('tiktok_content_pool')
+        .update({ publish_status: 'processing' })
+        .eq('id', item.id);
+      console.log('  Still processing — check TikTok creator portal manually.');
+    }
+  } catch (err) {
+    let errorMsg: string;
+
+    if (err instanceof TokenExpiredError) {
+      errorMsg = 'TikTok token expired. Run: npm run tiktok:setup';
+    } else if (err instanceof ScopeError) {
+      errorMsg = `TikTok scope error: ${err.message}`;
+    } else if (err instanceof RateLimitError) {
+      errorMsg = `Rate limited by TikTok. Retry after ${err.retryAfterSeconds}s`;
+    } else if (err instanceof VideoProcessingError) {
+      errorMsg = `TikTok rejected video: ${err.failReason}`;
+    } else if (err instanceof TikTokApiError) {
+      errorMsg = `TikTok API error: ${err.message}`;
+    } else {
+      errorMsg = err instanceof Error ? err.message : String(err);
     }
 
     await supabase
       .from('tiktok_content_pool')
       .update({
-        tiktok_post_id: result.data?.publish_id,
-        posted_at: new Date().toISOString(),
-        status: 'posted',
-      })
-      .eq('id', item.id);
-
-    console.log(`  Posted to TikTok! Publish ID: ${result.data?.publish_id}`);
-  } catch (err) {
-    const errorMsg = err instanceof Error ? err.message : String(err);
-    await supabase
-      .from('tiktok_content_pool')
-      .update({
         post_error: errorMsg,
         status: 'failed',
+        publish_status: 'publish_failed',
       })
       .eq('id', item.id);
 
@@ -455,6 +528,20 @@ async function main() {
     `  Found: ${item.content_type} (${item.id.slice(0, 8)}...) — status: ${item.status}`
   );
 
+  // --post-only: skip rendering if video already exists
+  if (POST_ONLY && item.video_url) {
+    console.log('\n  --post-only: Skipping steps 2-5 (video already rendered)');
+    console.log(`  Video URL: ${item.video_url}`);
+    console.log('\nStep 6: Posting to TikTok...');
+    await postToTikTok(item, item.video_url); // videoPath resolved inside from OUTPUT_DIR or downloaded
+    console.log('\n✅ Pipeline complete!');
+    return;
+  }
+
+  if (POST_ONLY && !item.video_url) {
+    console.log('\n  --post-only used but no video_url found. Running full pipeline.');
+  }
+
   // Step 2: Script
   console.log('\nStep 2: Script generation...');
   const scripted = await ensureScript(item);
@@ -473,7 +560,7 @@ async function main() {
 
   // Step 6: Post
   console.log('\nStep 6: Posting to TikTok...');
-  await postToTikTok(withMusic, videoUrl);
+  await postToTikTok(withMusic, videoUrl, videoPath);
 
   console.log('\n✅ Pipeline complete!');
 }

@@ -10,6 +10,8 @@
     "generate-script": "node --env-file=.env --import tsx scripts/generate-script.ts",
     "pipeline": "node --env-file=.env --import tsx scripts/render-video.ts",
     "pipeline:dry": "node --env-file=.env --import tsx scripts/render-video.ts --dry-run",
+    "pipeline:post": "node --env-file=.env --import tsx scripts/render-video.ts --post-only",
+    "tiktok:setup": "node --env-file=.env --import tsx scripts/tiktok-oauth-setup.ts",
     "dashboard": "node --env-file=.env --import tsx dashboard/server.ts"
   },
   "dependencies": {

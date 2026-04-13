@@ -29,7 +29,9 @@
       "Bash(curl -s http://localhost:3000/api/get_limit)",
       "Bash(timeout 12 npx remotion studio --port 3212)",
       "Bash(timeout 12 npx remotion studio --port 3213)",
-      "Bash(timeout 12 npx remotion studio --port 3214)"
+      "Bash(timeout 12 npx remotion studio --port 3214)",
+      "Bash(ls:*)",
+      "WebSearch"
     ]
   }
 }

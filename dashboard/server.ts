@@ -242,9 +242,10 @@ app.post('/api/pipeline/run', async (req, res) => {
     return res.status(409).json({ error: 'Pipeline is already running' });
   }
 
-  const { dryRun = true, contentId } = req.body;
+  const { dryRun = true, postOnly = false, contentId } = req.body;
   const args = ['--env-file=.env', '--import', 'tsx', 'scripts/render-video.ts'];
   if (dryRun) args.push('--dry-run');
+  if (postOnly) args.push('--post-only');
   if (contentId) args.push(contentId);
 
   // Log run start
@@ -307,6 +308,97 @@ app.get('/api/pipeline/history', async (_req, res) => {
 
   if (error) return res.status(500).json({ error: error.message });
   res.json(data);
+});
+
+// ============================================================
+// TikTok token management
+// ============================================================
+
+app.get('/api/tiktok/token-status', async (_req, res) => {
+  const { data, error } = await supabase
+    .from('tiktok_tokens')
+    .select('expires_at, scope, open_id, updated_at')
+    .eq('id', 'default')
+    .single();
+
+  if (error || !data) {
+    return res.json({
+      hasToken: false,
+      expiresAt: null,
+      isExpired: true,
+      scope: null,
+      updatedAt: null,
+    });
+  }
+
+  const expiresAt = new Date(data.expires_at);
+  const isExpired = expiresAt.getTime() < Date.now();
+
+  res.json({
+    hasToken: true,
+    expiresAt: data.expires_at,
+    isExpired,
+    scope: data.scope,
+    openId: data.open_id,
+    updatedAt: data.updated_at,
+  });
+});
+
+app.post('/api/tiktok/refresh-token', async (_req, res) => {
+  const { data } = await supabase
+    .from('tiktok_tokens')
+    .select('refresh_token')
+    .eq('id', 'default')
+    .single();
+
+  if (!data?.refresh_token) {
+    return res.status(404).json({ error: 'No refresh token found. Run: npm run tiktok:setup' });
+  }
+
+  const clientKey = process.env.TIKTOK_CLIENT_KEY;
+  const clientSecret = process.env.TIKTOK_CLIENT_SECRET;
+
+  if (!clientKey || !clientSecret) {
+    return res.status(400).json({ error: 'TIKTOK_CLIENT_KEY and TIKTOK_CLIENT_SECRET required in .env' });
+  }
+
+  try {
+    const response = await fetch('https://open.tiktokapis.com/v2/oauth/token/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_key: clientKey,
+        client_secret: clientSecret,
+        grant_type: 'refresh_token',
+        refresh_token: data.refresh_token,
+      }),
+    });
+
+    const result = await response.json();
+
+    if (result.error || !result.access_token) {
+      return res.status(400).json({
+        error: `Refresh failed: ${result.error_description || result.error}. Run: npm run tiktok:setup`,
+      });
+    }
+
+    const expiresAt = new Date(Date.now() + result.expires_in * 1000);
+
+    await supabase.from('tiktok_tokens').upsert({
+      id: 'default',
+      access_token: result.access_token,
+      refresh_token: result.refresh_token,
+      expires_at: expiresAt.toISOString(),
+      scope: result.scope,
+      open_id: result.open_id,
+      updated_at: new Date().toISOString(),
+    });
+
+    res.json({ ok: true, expiresAt: expiresAt.toISOString() });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: msg });
+  }
 });
 
 // ============================================================
