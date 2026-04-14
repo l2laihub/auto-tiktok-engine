@@ -7,7 +7,7 @@ import { execSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 
-const SUNO_API_URL = process.env.SUNO_API_URL || 'http://localhost:3000';
+const SUNO_API_URL = process.env.SUNO_API_URL || 'http://localhost:3100';
 const POLL_INTERVAL_MS = 5_000;
 const MAX_POLL_ATTEMPTS = 60; // 5 minutes max
 

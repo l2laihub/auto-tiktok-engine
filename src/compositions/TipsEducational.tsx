@@ -5,10 +5,13 @@ import {
   staticFile,
   Audio,
 } from 'remotion';
-import { BRAND, createTipsTiming, interpolate } from '../config';
+import { BRAND, VIDEO, createTipsTiming, interpolate } from '../config';
+import { loadFont as loadPlayfair } from '@remotion/google-fonts/PlayfairDisplay';
 import { HookText } from '../components/HookText';
 import { EternalFrameCTA } from '../components/EternalFrameCTA';
 import { TipCard } from '../components/TipCard';
+
+const { fontFamily: playfair } = loadPlayfair();
 
 // Per-tip data
 export interface TipItem {
@@ -58,6 +61,19 @@ export const TipsEducational: React.FC<TipsProps> = ({
 
   const timing = createTipsTiming(tips.length);
 
+  // === Slogan intro: visible at frame 0 for thumbnail ===
+  const sloganIntroDuration = Math.floor(1.5 * VIDEO.fps); // 1.5s
+  const sloganOpacity = interpolate(
+    frame,
+    [0, 8, sloganIntroDuration - 12, sloganIntroDuration],
+    [1, 1, 1, 0]
+  );
+  const sloganScale = interpolate(
+    frame,
+    [0, 10],
+    [0.92, 1]
+  );
+
   // === Animated background gradient shift ===
   const gradientAngle = interpolate(frame, [0, timing.totalDuration], [135, 160]);
 
@@ -83,7 +99,7 @@ export const TipsEducational: React.FC<TipsProps> = ({
     x: 100 + i * 160,
     y: 300 + Math.sin(frame * 0.03 + i * 1.2) * 40,
     size: 4 + (i % 3) * 2,
-    opacity: 0.15 + Math.sin(frame * 0.05 + i) * 0.1,
+    opacity: 0.25 + Math.sin(frame * 0.05 + i) * 0.15,
   }));
 
   // Resolve audio source: URL or static file
@@ -94,7 +110,7 @@ export const TipsEducational: React.FC<TipsProps> = ({
   return (
     <AbsoluteFill
       style={{
-        background: `linear-gradient(${gradientAngle}deg, ${BRAND.dark} 0%, ${BRAND.darkSurface} 50%, #0F3460 100%)`,
+        background: `linear-gradient(${gradientAngle}deg, ${BRAND.dark} 0%, ${BRAND.darkSurface} 40%, #0F3460 75%, #1A4A5A 100%)`,
       }}
     >
       {audioSrc && <Audio src={audioSrc} volume={audioVolume} />}
@@ -116,10 +132,58 @@ export const TipsEducational: React.FC<TipsProps> = ({
         />
       ))}
 
-      {/* === HOOK TEXT === */}
+      {/* === SLOGAN INTRO (visible at frame 0 for thumbnail) === */}
+      {frame < sloganIntroDuration && (
+        <div
+          style={{
+            position: 'absolute',
+            top: '30%',
+            left: 0,
+            right: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            opacity: sloganOpacity,
+            transform: `scale(${sloganScale})`,
+          }}
+        >
+          <div
+            style={{
+              fontFamily: playfair,
+              fontSize: 52,
+              fontWeight: 700,
+              fontStyle: 'italic',
+              color: BRAND.amber,
+              textAlign: 'center',
+              paddingLeft: 60,
+              paddingRight: 60,
+              lineHeight: 1.35,
+              textShadow: `0 4px 30px ${BRAND.dark}, 0 0 60px ${BRAND.dark}CC`,
+            }}
+          >
+            {slogan || 'Every photo tells their story.'}
+          </div>
+          <div
+            style={{
+              marginTop: 20,
+              fontFamily: playfair,
+              fontSize: 28,
+              fontWeight: 400,
+              color: BRAND.textLight,
+              letterSpacing: 3,
+              textTransform: 'uppercase',
+              textShadow: `0 2px 20px ${BRAND.dark}`,
+            }}
+          >
+            EternalFrame
+          </div>
+        </div>
+      )}
+
+      {/* === HOOK TEXT (delayed to start after slogan) === */}
       <HookText
         text={hookText}
-        startFrame={timing.hookStart}
+        startFrame={sloganIntroDuration - 10}
         endFrame={timing.hookEnd}
         fontSize={52}
         position="center"

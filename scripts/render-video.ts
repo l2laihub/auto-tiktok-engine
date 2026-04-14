@@ -228,7 +228,14 @@ async function generateAudio(item: ContentRow): Promise<ContentRow> {
   } catch (err) {
     console.warn(`  Suno music generation failed: ${err instanceof Error ? err.message : err}`);
     console.log('  Proceeding without background music.');
-    return item;
+    // Clear stale audio URL so Remotion doesn't try to use an expired Suno link
+    if (item.suno_audio_url) {
+      await supabase
+        .from('tiktok_content_pool')
+        .update({ suno_audio_url: null })
+        .eq('id', item.id);
+    }
+    return { ...item, suno_audio_url: undefined, music_file_path: undefined };
   }
 }
 

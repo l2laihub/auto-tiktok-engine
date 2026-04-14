@@ -31,7 +31,14 @@
       "Bash(timeout 12 npx remotion studio --port 3213)",
       "Bash(timeout 12 npx remotion studio --port 3214)",
       "Bash(ls:*)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(wc -l /Users/huybuilds/repos/auto-tiktok-engine/docs/**/*.md /Users/huybuilds/repos/auto-tiktok-engine/docs/*.md)",
+      "mcp__plugin_playwright_playwright__browser_navigate",
+      "mcp__plugin_playwright_playwright__browser_take_screenshot",
+      "mcp__plugin_playwright_playwright__browser_snapshot",
+      "mcp__plugin_playwright_playwright__browser_evaluate",
+      "mcp__plugin_playwright_playwright__browser_click",
+      "mcp__plugin_playwright_playwright__browser_fill_form"
     ]
   }
 }

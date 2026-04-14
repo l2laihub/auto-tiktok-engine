@@ -1,0 +1,26 @@
+- generic [ref=e3]:
+  - generic [ref=e4]:
+    - generic [ref=e5]:
+      - img "EternalFrame" [ref=e7]
+      - generic [ref=e8]:
+        - generic [ref=e9]: EternalFrame
+        - generic [ref=e10]: TikTok Engine
+    - generic [ref=e11]: Dashboard
+  - generic [ref=e13]:
+    - generic [ref=e14]:
+      - button "Content Pool0" [ref=e15] [cursor=pointer]
+      - button "Schedule" [ref=e16] [cursor=pointer]
+      - button "Add Content" [ref=e17] [cursor=pointer]
+      - button "Pipeline" [ref=e18] [cursor=pointer]
+    - table [ref=e22]:
+      - rowgroup [ref=e23]:
+        - row "ID Type Status Hook Text Pairs Music Scheduled Actions" [ref=e24]:
+          - columnheader "ID" [ref=e25]
+          - columnheader "Type" [ref=e26]
+          - columnheader "Status" [ref=e27]
+          - columnheader "Hook Text" [ref=e28]
+          - columnheader "Pairs" [ref=e29]
+          - columnheader "Music" [ref=e30]
+          - columnheader "Scheduled" [ref=e31]
+          - columnheader "Actions" [ref=e32]
+      - rowgroup

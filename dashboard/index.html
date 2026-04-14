@@ -1837,7 +1837,7 @@
       useEffect(() => {
         api('/api/stats').then(setStats).catch(console.error);
         api('/api/pipeline/history').then(setHistory).catch(console.error);
-        api('/api/content').then(items => setContentItems(items.filter(i => ['queued', 'scripted', 'rendered', 'failed'].includes(i.status)))).catch(console.error);
+        api('/api/content').then(items => setContentItems(items.filter(i => ['queued', 'scripted', 'rendering', 'rendered', 'posted', 'failed'].includes(i.status)))).catch(console.error);
         api('/api/pipeline/status').then(s => { setRunning(s.running); setOutput(s.output); });
       }, []);
 
@@ -1850,6 +1850,7 @@
           if (!s.running) {
             api('/api/stats').then(setStats);
             api('/api/pipeline/history').then(setHistory);
+            api('/api/content').then(items => setContentItems(items.filter(i => ['queued', 'scripted', 'rendering', 'rendered', 'posted', 'failed'].includes(i.status)))).catch(console.error);
           }
         }, 2000);
         return () => clearInterval(interval);
@@ -1917,7 +1918,7 @@
             style=${{width: '320px', appearance: 'auto'}}
           >
             <option value="">Next queued (auto)</option>
-            ${contentItems.map(i => html`<option key=${i.id} value=${i.id}>${i.status === 'failed' ? '\u26a0 ' : ''}${i.id.slice(0, 8)} \u2022 ${i.content_type} \u2022 ${i.status}${i.hook_text ? ' \u2022 ' + i.hook_text.slice(0, 30) : ''}</option>`)}
+            ${contentItems.map(i => html`<option key=${i.id} value=${i.id}>${i.status === 'failed' ? '\u26a0 ' : ''}${i.status === 'posted' ? '\u21bb ' : ''}${i.id.slice(0, 8)} \u2022 ${i.content_type} \u2022 ${i.status}${i.hook_text ? ' \u2022 ' + i.hook_text.slice(0, 30) : ''}</option>`)}
           </select>
         </div>
 

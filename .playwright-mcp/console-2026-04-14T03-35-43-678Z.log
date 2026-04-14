@@ -1,0 +1,8 @@
+[      95ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ http://localhost:3000/bundle.js:77049
+[      96ms] [WARNING] Made 24 network requests to load fonts for Playfair Display. Consider loading fewer weights and subsets by passing options to loadFont(). Disable this warning by passing "ignoreTooManyRequestsWarning: true" to "options". @ http://localhost:3000/bundle.js:138352
+[      97ms] [WARNING] Made 48 network requests to load fonts for Playfair Display. Consider loading fewer weights and subsets by passing options to loadFont(). Disable this warning by passing "ignoreTooManyRequestsWarning: true" to "options". @ http://localhost:3000/bundle.js:138352
+[      98ms] [WARNING] Made 63 network requests to load fonts for Inter. Consider loading fewer weights and subsets by passing options to loadFont(). Disable this warning by passing "ignoreTooManyRequestsWarning: true" to "options". @ http://localhost:3000/bundle.js:138027
+[     100ms] [WARNING] Made 126 network requests to load fonts for Inter. Consider loading fewer weights and subsets by passing options to loadFont(). Disable this warning by passing "ignoreTooManyRequestsWarning: true" to "options". @ http://localhost:3000/bundle.js:138027
+[   14446ms] [LOG] [Fast refresh] ./src/compositions/TipsEducational.tsx fast refreshed. @ http://localhost:3000/bundle.js:45410
+[   21350ms] [LOG] [Fast refresh] ./src/compositions/TipsEducational.tsx fast refreshed. @ http://localhost:3000/bundle.js:45410
+[   31375ms] [LOG] [Fast refresh] ./src/compositions/TipsEducational.tsx fast refreshed. @ http://localhost:3000/bundle.js:45410

@@ -1,0 +1,10 @@
+[     160ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ http://localhost:3000/bundle.js:76983
+[     163ms] [WARNING] Made 24 network requests to load fonts for Playfair Display. Consider loading fewer weights and subsets by passing options to loadFont(). Disable this warning by passing "ignoreTooManyRequestsWarning: true" to "options". @ http://localhost:3000/bundle.js:138286
+[     164ms] [WARNING] Made 48 network requests to load fonts for Playfair Display. Consider loading fewer weights and subsets by passing options to loadFont(). Disable this warning by passing "ignoreTooManyRequestsWarning: true" to "options". @ http://localhost:3000/bundle.js:138286
+[     166ms] [WARNING] Made 63 network requests to load fonts for Inter. Consider loading fewer weights and subsets by passing options to loadFont(). Disable this warning by passing "ignoreTooManyRequestsWarning: true" to "options". @ http://localhost:3000/bundle.js:137961
+[     168ms] [WARNING] Made 126 network requests to load fonts for Inter. Consider loading fewer weights and subsets by passing options to loadFont(). Disable this warning by passing "ignoreTooManyRequestsWarning: true" to "options". @ http://localhost:3000/bundle.js:137961
+[  253167ms] [LOG] [Fast refresh] ./src/compositions/BeforeAfterReveal.tsx fast refreshed. @ http://localhost:3000/bundle.js:45344
+[  260818ms] [LOG] [Fast refresh] ./src/compositions/BeforeAfterReveal.tsx fast refreshed. @ http://localhost:3000/bundle.js:45344
+[  270843ms] [LOG] [Fast refresh] ./src/compositions/BeforeAfterReveal.tsx fast refreshed. @ http://localhost:3000/bundle.js:45344
+[  275694ms] [LOG] [Fast refresh] ./src/components/HookText.tsx fast refreshed. @ http://localhost:3000/bundle.js:45344
+[  280252ms] [LOG] [Fast refresh] ./src/components/HookText.tsx fast refreshed. @ http://localhost:3000/bundle.js:45344

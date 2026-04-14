@@ -1,0 +1,112 @@
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - generic [ref=e4]:
+      - button [ref=e5]:
+        - img [ref=e7]
+      - button "File" [ref=e9]
+      - button "View" [ref=e10]
+      - button "Tools" [ref=e11]
+      - button "Packages" [ref=e12]
+      - button "Help" [ref=e13]
+    - generic "/Users/huybuilds/repos/auto-tiktok-engine" [ref=e14]:
+      - generic "Open GitHub Repo" [ref=e15] [cursor=pointer]: auto-tiktok-engine
+      - generic [ref=e16]: /
+      - generic "BeforeAfterReveal" [ref=e17]
+    - generic [ref=e18]:
+      - button [ref=e19]:
+        - generic "Toggle Left Sidebar (⌘+B)" [ref=e20]
+      - button [ref=e22]:
+        - generic "Toggle Right Sidebar (⌘+J)" [ref=e23]
+  - generic [ref=e25]:
+    - generic [ref=e27]:
+      - generic [ref=e38]:
+        - generic [ref=e39]:
+          - img [ref=e41]
+          - img [ref=e43]
+        - generic [ref=e46]:
+          - generic [ref=e48]:
+            - generic [ref=e50]:
+              - generic [ref=e51]: These
+              - generic [ref=e52]: photos
+              - generic [ref=e53]: sat
+              - generic [ref=e54]: in
+              - generic [ref=e55]: a
+              - generic [ref=e56]: drawer
+            - generic [ref=e57]:
+              - generic [ref=e58]: for
+              - generic [ref=e59]: decades...
+          - generic [ref=e62]:
+            - generic [ref=e63]: ▼
+            - text: watch the transformation
+            - generic [ref=e64]: ▼
+      - generic [ref=e66]:
+        - generic [ref=e68]:
+          - button "Zoom out timeline" [disabled] [ref=e69]:
+            - img [ref=e70]
+          - slider "Timeline zoom (1x)" [ref=e72]: "1"
+          - button "Zoom in timeline" [ref=e73]:
+            - img [ref=e74]
+        - generic "Preview Size" [ref=e76]:
+          - button "Fit" [ref=e77]:
+            - generic "Fit" [ref=e78]
+            - img [ref=e79]
+        - generic "Change the playback rate" [ref=e81]:
+          - button "1x" [ref=e82]:
+            - generic "1x" [ref=e83]
+            - img [ref=e84]
+        - button "Jump to beginning" [disabled] [ref=e86]:
+          - img [ref=e87]
+        - button "Step back one frame" [disabled] [ref=e89]:
+          - img [ref=e90]
+        - button "Play" [ref=e92]:
+          - img [ref=e93]
+        - button "Step forward one frame" [ref=e95]:
+          - img [ref=e96]
+        - button "Loop video" [ref=e98]:
+          - img [ref=e99]
+        - button "Mute video" [ref=e101]:
+          - img [ref=e102]
+        - button "Mark In (I) - right click to clear" [disabled] [ref=e104]:
+          - img [ref=e105]
+        - button "Mark Out (O) - right click to clear" [ref=e107]:
+          - img [ref=e108]
+        - button "Show transparency as checkerboard (T)" [ref=e110]:
+          - img [ref=e111]
+        - button "Enter fullscreen preview (F)" [ref=e113]:
+          - img [ref=e114]
+        - generic "Export the current composition (R)" [ref=e117] [cursor=pointer]:
+          - button "Render" [ref=e118]:
+            - generic [ref=e119]:
+              - img [ref=e120]
+              - generic [ref=e122]: Render
+    - generic [ref=e127]:
+      - generic [ref=e129]:
+        - generic [ref=e132]:
+          - generic [ref=e133]:
+            - img
+          - generic "666?text=Before+1" [ref=e134]
+        - generic [ref=e136]:
+          - generic [ref=e137]:
+            - img
+          - generic "999?text=After+1" [ref=e138]
+      - generic [ref=e140]:
+        - generic [ref=e141]: 00:00.00
+        - button "0" [ref=e142]
+      - generic [ref=e146]:
+        - generic [ref=e148]:
+          - generic "666?text=Before+1" [ref=e152]
+          - generic "999?text=After+1" [ref=e157]
+        - generic:
+          - generic:
+            - generic: 00:05.00
+          - generic:
+            - generic: 00:10.00
+          - generic:
+            - generic: 00:15.00
+          - generic:
+            - generic: 00:20.00
+          - generic:
+            - generic: 00:25.00
+        - generic:
+          - generic:
+            - img
