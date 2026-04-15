@@ -17,8 +17,8 @@ const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const CLIENT_KEY = process.env.TIKTOK_CLIENT_KEY;
 const CLIENT_SECRET = process.env.TIKTOK_CLIENT_SECRET;
 // Scopes must match products enabled in your TikTok Developer app.
-// Override via env var if needed, e.g. TIKTOK_SCOPES=user.info.basic,video.upload
-const SCOPES = process.env.TIKTOK_SCOPES || 'user.info.basic,video.upload';
+// Override via env var if needed, e.g. TIKTOK_SCOPES=user.info.basic,video.upload,video.publish
+const SCOPES = process.env.TIKTOK_SCOPES || 'user.info.basic,video.upload,video.publish';
 
 // TikTok requires HTTPS redirect URIs. For desktop/CLI apps, use their
 // special desktop redirect URI or a registered HTTPS domain.

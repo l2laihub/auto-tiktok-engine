@@ -376,7 +376,7 @@ export class TikTokClient {
       const requestBody = {
         post_info: {
           title,
-          privacy_level: 'PUBLIC_TO_EVERYONE',
+          privacy_level: 'SELF_ONLY',
           disable_duet: false,
           disable_stitch: false,
           disable_comment: false,

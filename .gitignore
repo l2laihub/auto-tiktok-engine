@@ -5,3 +5,9 @@ output/
 .env.local
 *.mp4
 .DS_Store
+public/music/*.mp3
+.playwright-mcp/
+frame0-*.png
+pipeline-tab.png
+suno-create-page.png
+suno-snapshot.md
