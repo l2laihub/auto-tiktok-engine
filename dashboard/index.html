@@ -1416,6 +1416,149 @@
         padding: 1.25rem 1.5rem;
       }
     }
+
+    /* ===== CONTENT POOL MOBILE ===== */
+    @media (max-width: 767px) {
+      .data-table-desktop {
+        display: none;
+      }
+
+      .content-cards-mobile {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+      }
+
+      .content-card {
+        background: var(--glass);
+        border: 1px solid var(--glass-border);
+        border-radius: 12px;
+        padding: 1rem;
+      }
+
+      .content-card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 0.6rem;
+      }
+
+      .content-card-badges {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .content-card-hook {
+        font-size: 0.87rem;
+        color: var(--text-light);
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        margin-bottom: 0.6rem;
+        line-height: 1.5;
+      }
+
+      .content-card-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.7rem;
+        color: var(--text-muted);
+      }
+
+      .content-card-actions {
+        display: flex;
+        gap: 0.35rem;
+        margin-top: 0.75rem;
+        padding-top: 0.75rem;
+        border-top: 1px solid var(--dark-border);
+      }
+
+      .content-card-actions .btn {
+        flex: 1;
+        justify-content: center;
+      }
+
+      .script-editor-mobile {
+        position: fixed;
+        inset: 0;
+        z-index: 500;
+        background: var(--dark);
+        overflow-y: auto;
+        padding: 1rem;
+        animation: slideUp 0.25s ease;
+      }
+
+      @keyframes slideUp {
+        from { transform: translateY(100%); }
+        to { transform: translateY(0); }
+      }
+
+      .script-editor-mobile .script-editor {
+        display: flex;
+        flex-direction: column;
+        grid-template-columns: unset;
+        border: none;
+        background: none;
+        padding: 0;
+        min-height: calc(100vh - 2rem);
+      }
+
+      .script-editor-mobile .script-editor .form-group {
+        grid-column: unset;
+      }
+
+      .script-editor-mobile .script-editor .script-actions {
+        margin-top: auto;
+        position: sticky;
+        bottom: 0;
+        background: var(--dark);
+        padding: 1rem 0;
+      }
+
+      .script-editor-mobile-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 1px solid var(--dark-border);
+      }
+
+      .script-editor-mobile-title {
+        font-family: 'Syne', sans-serif;
+        font-weight: 700;
+        font-size: 1rem;
+        color: var(--white);
+      }
+    }
+
+    @media (min-width: 768px) {
+      .content-cards-mobile {
+        display: none;
+      }
+    }
+
+    @media (min-width: 768px) and (max-width: 1024px) {
+      .data-table .id-cell {
+        display: none;
+      }
+
+      .data-table th:first-child {
+        display: none;
+      }
+
+      .hook-cell {
+        max-width: 180px;
+      }
+
+      .data-table td, .data-table th {
+        padding: 0.6rem 0.75rem;
+      }
+    }
   </style>
 </head>
 <body>
@@ -1758,7 +1901,7 @@
       return html`<div>
         ${hasActive ? html`<div className="auto-refresh-bar"><div className="spinner"></div> Auto-refreshing every 5s</div>` : null}
 
-        <div className="panel">
+        <div className="panel data-table-desktop">
           <table className="data-table">
             <thead>
               <tr>
@@ -1832,6 +1975,50 @@
               `)}
             </tbody>
           </table>
+        </div>
+
+        <div className="content-cards-mobile">
+          ${items.length === 0 && !loading ? html`
+            <div className="empty-state">
+              <div className="empty-state-icon">\ud83c\udfac</div>
+              <div className="empty-state-text">No content in the pool yet</div>
+              <div className="empty-state-hint">Switch to the Add tab to get started</div>
+            </div>
+          ` : null}
+          ${items.map(item => html`
+            <div className="content-card" key=${item.id}>
+              <div className="content-card-header">
+                <div className="content-card-badges">
+                  <${TypeBadge} type=${item.content_type} />
+                  <${StatusBadge} status=${item.status} />
+                </div>
+              </div>
+              <div className="content-card-hook">${item.hook_text || 'No script yet'}</div>
+              <div className="content-card-footer">
+                <span>${formatDate(item.scheduled_for)}</span>
+                <span>${item.id.slice(0, 8)}</span>
+              </div>
+              <div className="content-card-actions">
+                <button className="btn btn-secondary btn-sm" onClick=${() => setExpandedId(expandedId === item.id ? null : item.id)}>Edit Script</button>
+                ${item.video_url ? html`<button className="btn btn-ghost btn-sm" onClick=${() => setVideoUrl(item.video_url)}>\u25b6 Video</button>` : null}
+                <button className="btn btn-ghost btn-sm btn-danger" onClick=${() => handleDelete(item.id)}>\u2715</button>
+              </div>
+            </div>
+          `)}
+          ${expandedId ? html`
+            <div className="script-editor-mobile">
+              <div className="script-editor-mobile-header">
+                <span className="script-editor-mobile-title">Edit Script</span>
+                <button className="btn btn-ghost" onClick=${() => setExpandedId(null)}>\u2715</button>
+              </div>
+              <${ScriptEditor}
+                item=${items.find(i => i.id === expandedId) || {}}
+                onSave=${(fields) => handleSave(expandedId, fields)}
+                onRegenerate=${() => handleRegenerate(expandedId)}
+                onClose=${() => setExpandedId(null)}
+              />
+            </div>
+          ` : null}
         </div>
 
         <${VideoModal} url=${videoUrl} onClose=${() => setVideoUrl(null)} />
