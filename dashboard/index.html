@@ -1559,6 +1559,156 @@
         padding: 0.6rem 0.75rem;
       }
     }
+
+    /* ===== SCHEDULE MOBILE ===== */
+    @media (max-width: 767px) {
+      .schedule-grid {
+        display: none;
+      }
+
+      .schedule-mobile {
+        display: block;
+      }
+
+      .date-chip-strip {
+        display: flex;
+        gap: 0.5rem;
+        overflow-x: auto;
+        padding: 0.5rem 0 1rem;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+      }
+
+      .date-chip-strip::-webkit-scrollbar {
+        display: none;
+      }
+
+      .date-chip {
+        flex-shrink: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.15rem;
+        padding: 0.5rem 0.75rem;
+        border-radius: 10px;
+        border: 1px solid var(--dark-border);
+        background: var(--glass);
+        cursor: pointer;
+        transition: all 0.2s ease;
+        min-width: 56px;
+      }
+
+      .date-chip.active {
+        background: rgba(255, 183, 77, 0.15);
+        border-color: var(--amber);
+      }
+
+      .date-chip.today {
+        border-color: var(--amber);
+      }
+
+      .date-chip-day {
+        font-family: 'DM Sans', sans-serif;
+        font-size: 0.65rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        color: var(--text-muted);
+      }
+
+      .date-chip.active .date-chip-day {
+        color: var(--amber);
+      }
+
+      .date-chip-num {
+        font-family: 'Syne', sans-serif;
+        font-weight: 700;
+        font-size: 1.1rem;
+        color: var(--text-light);
+      }
+
+      .date-chip.active .date-chip-num {
+        color: var(--amber);
+      }
+
+      .schedule-day-cards {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+      }
+
+      .schedule-mobile-card {
+        background: var(--glass);
+        border: 1px solid var(--glass-border);
+        border-radius: 10px;
+        padding: 0.85rem 1rem;
+        border-left: 3px solid;
+      }
+
+      .schedule-mobile-card.type-reveal {
+        border-left-color: var(--coral);
+      }
+
+      .schedule-mobile-card.type-tip {
+        border-left-color: var(--teal);
+      }
+
+      .schedule-mobile-card-title {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--text-light);
+        margin-bottom: 0.4rem;
+      }
+
+      .schedule-mobile-card-meta {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .schedule-mobile-card-reschedule {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.7rem;
+        color: var(--amber);
+        background: none;
+        border: 1px solid rgba(255, 183, 77, 0.3);
+        border-radius: 6px;
+        padding: 0.25rem 0.5rem;
+        cursor: pointer;
+      }
+
+      .schedule-mobile-card-reschedule:hover {
+        background: rgba(255, 183, 77, 0.1);
+      }
+
+      .scheduler-row {
+        flex-direction: column;
+        gap: 1rem;
+      }
+
+      .scheduler-field {
+        width: 100%;
+      }
+
+      .day-picker {
+        flex-wrap: wrap;
+      }
+
+      .time-input {
+        width: 100%;
+      }
+
+      .scheduler-settings-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.75rem;
+      }
+    }
+
+    @media (min-width: 768px) {
+      .schedule-mobile {
+        display: none;
+      }
+    }
   </style>
 </head>
 <body>
@@ -2187,6 +2337,8 @@
       const [items, setItems] = useState([]);
       const [dragItem, setDragItem] = useState(null);
       const [cronDays, setCronDays] = useState(null); // null = loading
+      const [selectedDate, setSelectedDate] = useState(null);
+      const [rescheduleId, setRescheduleId] = useState(null);
 
       useEffect(() => {
         api('/api/schedule').then(setItems).catch(console.error);
@@ -2245,6 +2397,76 @@
 
       return html`<div>
         <${SchedulerSettings} onToast=${onToast} onSettingsChanged=${setCronDays} />
+        <div className="schedule-mobile">
+          ${(() => {
+            const allDates = weeks.flat();
+            const selStr = selectedDate ? dateStr(selectedDate) : dateStr(new Date());
+            const selDay = allDates.find(d => dateStr(d) === selStr) || allDates[0];
+            const dayItems = selDay ? getItemsForDate(selDay) : [];
+
+            return html`<div>
+              <div className="date-chip-strip">
+                ${allDates.map(d => {
+                  const ds = dateStr(d);
+                  const isActive = ds === (selectedDate ? dateStr(selectedDate) : dateStr(new Date()));
+                  const isTodayDate = isToday(d);
+                  return html`
+                    <button
+                      key=${ds}
+                      className=${"date-chip" + (isActive ? " active" : "") + (isTodayDate ? " today" : "")}
+                      onClick=${() => setSelectedDate(d)}
+                    >
+                      <span className="date-chip-day">${DAY_NAMES[d.getDay()]}</span>
+                      <span className="date-chip-num">${d.getDate()}</span>
+                    </button>
+                  `;
+                })}
+              </div>
+
+              <div className="schedule-day-cards">
+                ${dayItems.length === 0 ? html`
+                  <div className="empty-state" style=${{padding: '2rem'}}>
+                    <div className="empty-state-text">No content scheduled</div>
+                    <div className="empty-state-hint">Tap a different day or add content from the Add tab</div>
+                  </div>
+                ` : null}
+                ${dayItems.map(item => html`
+                  <div key=${item.id} className=${"schedule-mobile-card type-" + item.content_type}>
+                    <div className="schedule-mobile-card-title">${item.hook_text || item.content_type}</div>
+                    <div className="schedule-mobile-card-meta">
+                      <${StatusBadge} status=${item.status} />
+                      ${rescheduleId === item.id ? html`
+                        <input
+                          type="date"
+                          className="form-input"
+                          style=${{padding: '0.2rem 0.4rem', fontSize: '0.75rem', width: '140px'}}
+                          value=${selDay ? dateStr(selDay) : ''}
+                          onChange=${async e => {
+                            const newDate = e.target.value;
+                            if (!newDate) return;
+                            try {
+                              await api('/api/content/' + item.id, { method: 'PATCH', body: { scheduled_for: newDate } });
+                              onToast('Rescheduled', 'success');
+                              const updated = await api('/api/schedule');
+                              setItems(updated);
+                              setRescheduleId(null);
+                            } catch (err) { onToast(err.message, 'error'); }
+                          }}
+                          onBlur=${() => setRescheduleId(null)}
+                          autoFocus
+                        />
+                      ` : html`
+                        <button className="schedule-mobile-card-reschedule" onClick=${() => setRescheduleId(item.id)}>
+                          Reschedule
+                        </button>
+                      `}
+                    </div>
+                  </div>
+                `)}
+              </div>
+            </div>`;
+          })()}
+        </div>
         <div className="schedule-grid" style=${{ gridTemplateColumns: 'repeat(' + activeDays.length + ', 1fr)' }}>
           ${activeDays.map(d => html`
             <div key=${'hdr-' + d} className="schedule-header">${DAY_NAMES[d]}</div>
