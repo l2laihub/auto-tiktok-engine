@@ -1757,6 +1757,73 @@
         grid-column: unset;
       }
     }
+
+    /* ===== PIPELINE MOBILE ===== */
+    @media (max-width: 767px) {
+      .pipeline-controls {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .pipeline-id-input {
+        width: 100% !important;
+      }
+
+      .pipeline-controls .toggle-row {
+        justify-content: space-between;
+      }
+
+      .pipeline-controls .btn-primary {
+        width: 100%;
+        justify-content: center;
+      }
+
+      .terminal-body {
+        font-size: 0.8rem;
+        word-break: normal;
+        overflow-x: auto;
+      }
+
+      .history-table-desktop {
+        display: none;
+      }
+
+      .history-cards-mobile {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        padding: 0.75rem;
+      }
+
+      .history-card {
+        background: var(--dark-elevated);
+        border: 1px solid var(--dark-border);
+        border-radius: 8px;
+        padding: 0.85rem;
+      }
+
+      .history-card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 0.5rem;
+      }
+
+      .history-card-meta {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.7rem;
+        color: var(--text-muted);
+      }
+    }
+
+    @media (min-width: 768px) {
+      .history-cards-mobile {
+        display: none;
+      }
+    }
   </style>
 </head>
 <body>
@@ -2955,7 +3022,7 @@
 
         <div className="panel" style=${{marginTop: '1.5rem'}}>
           <div className="panel-header">Run History</div>
-          <table className="data-table">
+          <table className="data-table history-table-desktop">
             <thead>
               <tr>
                 <th>Time</th>
@@ -2994,6 +3061,33 @@
               `)}
             </tbody>
           </table>
+          <div className="history-cards-mobile">
+            ${history.length === 0 ? html`
+              <div style=${{textAlign: 'center', padding: '1.5rem', color: 'var(--text-muted)'}}>No runs yet</div>
+            ` : null}
+            ${history.map(run => html`
+              <div className="history-card" key=${run.id}>
+                <div className="history-card-header">
+                  ${run.success === null ? html`<${StatusBadge} status="rendering" />`
+                    : run.success ? html`<span className="status-badge status-posted"><span className="led"></span>success</span>`
+                    : html`<span className="status-badge status-failed"><span className="led"></span>failed</span>`
+                  }
+                  <span className="duration">${formatDuration(run.started_at, run.finished_at)}</span>
+                </div>
+                <div className="history-card-meta">
+                  <span>${formatTime(run.started_at)}</span>
+                  <span>${run.dry_run ? 'dry' : 'live'}</span>
+                  ${run.content_id ? html`<span>${run.content_id.slice(0, 8)}</span>` : null}
+                </div>
+                ${run.output ? html`
+                  <button className="expand-btn" style=${{marginTop: '0.5rem'}} onClick=${() => setExpandedRun(expandedRun === run.id ? null : run.id)}>
+                    ${expandedRun === run.id ? 'hide log' : 'show log'}
+                  </button>
+                  ${expandedRun === run.id ? html`<div className="history-output">${run.output}</div>` : null}
+                ` : null}
+              </div>
+            `)}
+          </div>
         </div>
       </div>`;
     }
