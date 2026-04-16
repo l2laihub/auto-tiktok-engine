@@ -38,7 +38,11 @@
       "mcp__plugin_playwright_playwright__browser_snapshot",
       "mcp__plugin_playwright_playwright__browser_evaluate",
       "mcp__plugin_playwright_playwright__browser_click",
-      "mcp__plugin_playwright_playwright__browser_fill_form"
+      "mcp__plugin_playwright_playwright__browser_fill_form",
+      "Bash(brew install:*)",
+      "Bash(git rm:*)",
+      "Bash(git commit:*)",
+      "Bash(gtimeout 5 node --env-file=.env --import tsx dashboard/server.ts)"
     ]
   }
 }

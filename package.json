@@ -25,12 +25,14 @@
     "@types/multer": "^2.1.0",
     "express": "^5.2.1",
     "multer": "^2.1.1",
+    "node-cron": "^4.2.1",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
     "remotion": "^4.0.0",
     "tsx": "^4.19.0"
   },
   "devDependencies": {
+    "@types/node-cron": "^3.0.11",
     "@types/react": "^18.3.0",
     "typescript": "^5.7.0"
   }

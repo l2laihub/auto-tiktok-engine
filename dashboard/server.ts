@@ -5,6 +5,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import multer from 'multer';
 import Anthropic from '@anthropic-ai/sdk';
+import cron from 'node-cron';
 import { generateScript } from '../scripts/generate-script';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -237,12 +238,10 @@ let pipelineOutput = '';
 let pipelineRunning = false;
 let currentRunId: string | null = null;
 
-app.post('/api/pipeline/run', async (req, res) => {
-  if (pipelineRunning) {
-    return res.status(409).json({ error: 'Pipeline is already running' });
-  }
+async function runPipeline(opts: { dryRun?: boolean; postOnly?: boolean; contentId?: string } = {}): Promise<string | null> {
+  if (pipelineRunning) return null;
 
-  const { dryRun = true, postOnly = false, contentId } = req.body;
+  const { dryRun = false, postOnly = false, contentId } = opts;
   const args = ['--env-file=.env', '--import', 'tsx', 'scripts/render-video.ts'];
   if (dryRun) args.push('--dry-run');
   if (postOnly) args.push('--post-only');
@@ -292,7 +291,17 @@ app.post('/api/pipeline/run', async (req, res) => {
     currentRunId = null;
   });
 
-  res.json({ ok: true, runId: currentRunId });
+  return currentRunId;
+}
+
+app.post('/api/pipeline/run', async (req, res) => {
+  if (pipelineRunning) {
+    return res.status(409).json({ error: 'Pipeline is already running' });
+  }
+
+  const { dryRun = true, postOnly = false, contentId } = req.body;
+  const runId = await runPipeline({ dryRun, postOnly, contentId });
+  res.json({ ok: true, runId });
 });
 
 app.get('/api/pipeline/status', (_req, res) => {
@@ -402,9 +411,126 @@ app.post('/api/tiktok/refresh-token', async (_req, res) => {
 });
 
 // ============================================================
+// Auto-post scheduler
+// ============================================================
+
+let scheduleCron = process.env.SCHEDULE_CRON || '0 10 * * 1,3,5'; // Mon/Wed/Fri 10 AM
+let schedulerEnabled = process.env.SCHEDULE_ENABLED !== 'false';
+let schedulerTask: ReturnType<typeof cron.schedule> | null = null;
+
+async function hasScheduledItems(): Promise<boolean> {
+  const today = new Date();
+  const yyyy = today.getFullYear();
+  const mm = String(today.getMonth() + 1).padStart(2, '0');
+  const dd = String(today.getDate()).padStart(2, '0');
+  const todayStr = `${yyyy}-${mm}-${dd}`;
+
+  const { count } = await supabase
+    .from('tiktok_content_pool')
+    .select('id', { count: 'exact', head: true })
+    .in('status', ['queued', 'scripted'])
+    .lte('scheduled_for', todayStr);
+
+  return (count ?? 0) > 0;
+}
+
+function startScheduler() {
+  if (schedulerTask) schedulerTask.stop();
+
+  if (!cron.validate(scheduleCron)) {
+    console.error(`Invalid SCHEDULE_CRON: "${scheduleCron}"`);
+    return;
+  }
+
+  schedulerTask = cron.schedule(scheduleCron, async () => {
+    if (!schedulerEnabled) return;
+    console.log(`[scheduler] Cron fired at ${new Date().toLocaleString()}`);
+
+    if (pipelineRunning) {
+      console.log('[scheduler] Pipeline already running, skipping');
+      return;
+    }
+
+    const hasItems = await hasScheduledItems();
+    if (!hasItems) {
+      console.log('[scheduler] No scheduled items due today, skipping');
+      return;
+    }
+
+    console.log('[scheduler] Starting pipeline for scheduled content...');
+    const runId = await runPipeline({ dryRun: false });
+    console.log(`[scheduler] Pipeline started (runId: ${runId})`);
+  });
+
+  console.log(`Scheduler started: ${scheduleCron} (${schedulerEnabled ? 'enabled' : 'disabled'})`);
+}
+
+function getNextRun(): string | null {
+  if (!schedulerEnabled || !schedulerTask) return null;
+  try {
+    const now = new Date();
+    const [min, hour, , , dow] = scheduleCron.split(' ');
+    // Check next 14 days for a match
+    for (let i = 1; i < 14 * 24 * 60; i++) {
+      const candidate = new Date(now.getTime() + i * 60_000);
+      const minMatch = min === '*' || min === String(candidate.getMinutes());
+      const hourMatch = hour === '*' || hour === String(candidate.getHours());
+      const dowParts = dow === '*' ? null : dow.split(',').map(Number);
+      const dowMatch = !dowParts || dowParts.includes(candidate.getDay());
+      if (minMatch && hourMatch && dowMatch && candidate > now) {
+        return candidate.toISOString();
+      }
+    }
+  } catch { /* ignore */ }
+  return null;
+}
+
+app.get('/api/scheduler/status', (_req, res) => {
+  res.json({
+    enabled: schedulerEnabled,
+    cron: scheduleCron,
+    nextRun: getNextRun(),
+    pipelineRunning,
+  });
+});
+
+app.post('/api/scheduler/toggle', (_req, res) => {
+  schedulerEnabled = !schedulerEnabled;
+  console.log(`[scheduler] ${schedulerEnabled ? 'Enabled' : 'Disabled'}`);
+  res.json({ enabled: schedulerEnabled });
+});
+
+app.patch('/api/scheduler/settings', (req, res) => {
+  const { cronExpression, enabled } = req.body;
+
+  if (cronExpression !== undefined) {
+    if (!cron.validate(cronExpression)) {
+      return res.status(400).json({ error: `Invalid cron expression: "${cronExpression}"` });
+    }
+    scheduleCron = cronExpression;
+    console.log(`[scheduler] Cron updated to: ${scheduleCron}`);
+  }
+
+  if (enabled !== undefined) {
+    schedulerEnabled = Boolean(enabled);
+    console.log(`[scheduler] ${schedulerEnabled ? 'Enabled' : 'Disabled'}`);
+  }
+
+  // Restart scheduler with new settings
+  startScheduler();
+
+  res.json({
+    enabled: schedulerEnabled,
+    cron: scheduleCron,
+    nextRun: getNextRun(),
+  });
+});
+
+// ============================================================
 // Start server
 // ============================================================
 
 app.listen(PORT, () => {
   console.log(`Dashboard running at http://localhost:${PORT}`);
+  startScheduler();
 });
