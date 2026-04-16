@@ -55,8 +55,8 @@ Both compositions accept optional `musicFile` (relative path from `public/` for 
 ### TikTok posting (scripts/lib/tiktok-api.ts)
 `TikTokClient` class handles OAuth token lifecycle (stored in Supabase `tiktok_tokens` table), FILE_UPLOAD flow, and publish status polling. Tries Direct Post first, falls back to Inbox Upload if scope is insufficient. Custom error classes: `TokenExpiredError`, `ScopeError`, `RateLimitError`, `VideoProcessingError`.
 
-### Music generation (src/utils/suno.ts)
-Optional Suno AI integration via self-hosted `gcui-art/suno-api` server. Generates instrumental tracks, downloads and trims to video duration. Files saved to `public/music/` for Remotion's `staticFile()`.
+### Music generation (src/utils/lyria.ts, src/utils/suno.ts)
+Background music via Google Lyria 3 (preferred, `GOOGLE_API_KEY`) or Suno AI (fallback, `SUNO_API_URL`). Lyria 3 Clip generates 30-second instrumental MP3 clips via the Gemini API. Suno requires a self-hosted `gcui-art/suno-api` server with browser cookies. Both are trimmed to video duration with ffmpeg fade-out. Files saved to `public/music/` for Remotion's `staticFile()`.
 
 ### Dashboard (dashboard/)
 Express server with HTML frontend for content management. Runs on port 3001. Provides CRUD for content pool, pipeline execution, and image upload via multer.
@@ -75,6 +75,6 @@ Defined in `src/config.ts` as `BRAND`: coral `#E85A71`, teal `#3D9CA8`, amber `#
 ## Environment Variables
 
 Required: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `ANTHROPIC_API_KEY`
-Optional: `TIKTOK_CLIENT_KEY`, `TIKTOK_CLIENT_SECRET`, `TIKTOK_REDIRECT_URI`, `TIKTOK_ACCESS_TOKEN`, `SUNO_API_URL`, `SUNO_COOKIE`, `OUTPUT_DIR`
+Optional: `TIKTOK_CLIENT_KEY`, `TIKTOK_CLIENT_SECRET`, `TIKTOK_REDIRECT_URI`, `TIKTOK_ACCESS_TOKEN`, `GOOGLE_API_KEY`, `SUNO_API_URL`, `SUNO_COOKIE`, `OUTPUT_DIR`
 
-See `.env.example` for details. Without TikTok tokens, pipeline saves videos for manual upload. Without Suno, music generation is skipped.
+See `.env.example` for details. Without TikTok tokens, pipeline saves videos for manual upload. Without `GOOGLE_API_KEY` or `SUNO_API_URL`, music generation is skipped. Lyria 3 is preferred over Suno when both are configured.

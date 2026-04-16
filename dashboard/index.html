@@ -610,7 +610,6 @@
     /* ===== SCHEDULE ===== */
     .schedule-grid {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
       gap: 0.5rem;
     }
 
@@ -1370,12 +1369,38 @@
     // ============================================================
     // ScriptEditor
     // ============================================================
-    function ScriptEditor({ item, onSave, onRegenerate, onClose }) {
+    function ScriptEditor({ item, onSave, onRegenerate, onRegenerateMusic, onReRender, onClose }) {
       const [hookText, setHookText] = useState(item.hook_text || '');
       const [caption, setCaption] = useState(item.caption || '');
       const [hashtags, setHashtags] = useState(item.hashtags || []);
       const [newTag, setNewTag] = useState('');
+      const [musicStyle, setMusicStyle] = useState(item.music_style || '');
+      const [photoStory, setPhotoStory] = useState(item.photo_story || '');
       const [saving, setSaving] = useState(false);
+      const [regenMusic, setRegenMusic] = useState(false);
+      const [reRendering, setReRendering] = useState(false);
+
+      // Image pairs state (reveal only)
+      const initPairs = () => {
+        if (item.content_type !== 'reveal') return [];
+        if (item.image_pairs && item.image_pairs.length > 0) return item.image_pairs.map(p => ({ ...p }));
+        // Legacy single-pair fallback
+        if (item.before_image_url || item.after_image_url) return [{ before_url: item.before_image_url || '', after_url: item.after_image_url || '', era: item.photo_era || '' }];
+        return [{ before_url: '', after_url: '', era: '' }];
+      };
+      const [pairs, setPairs] = useState(initPairs);
+
+      // Tip fields state
+      const [tipTitle, setTipTitle] = useState(item.tip_title || '');
+      const [tipBody, setTipBody] = useState(item.tip_body || '');
+
+      const eras = ['1940s', '1950s', '1960s', '1970s', '1980s', '1990s', '2000s', '2010s'];
+
+      function updatePair(index, field, value) {
+        setPairs(prev => prev.map((p, i) => i === index ? { ...p, [field]: value } : p));
+      }
+      function addPair() { if (pairs.length < 6) setPairs(prev => [...prev, { before_url: '', after_url: '', era: '' }]); }
+      function removePair(index) { if (pairs.length > 1) setPairs(prev => prev.filter((_, i) => i !== index)); }
 
       const hookLen = hookText.replace(/\\n/g, '').length;
       const capLen = caption.length;
@@ -1391,22 +1416,102 @@
       async function handleSave() {
         setSaving(true);
         try {
-          await onSave({ hook_text: hookText, caption, hashtags });
+          const fields = { hook_text: hookText, caption, hashtags, music_style: musicStyle, photo_story: photoStory };
+          if (item.content_type === 'reveal') {
+            const validPairs = pairs.filter(p => p.before_url && p.after_url);
+            fields.image_pairs = validPairs;
+            if (validPairs.length > 0) {
+              fields.before_image_url = validPairs[0].before_url;
+              fields.after_image_url = validPairs[0].after_url;
+              fields.photo_era = validPairs[0].era || null;
+            }
+          } else {
+            fields.tip_title = tipTitle;
+            fields.tip_body = tipBody;
+          }
+          await onSave(fields);
         } finally { setSaving(false); }
       }
 
-      return html`<div className="script-editor">
-        <div className="form-group">
-          <label className="form-label">Hook Text</label>
-          <textarea className="form-textarea" rows="2" value=${hookText} onInput=${e => setHookText(e.target.value)} />
-          <div className=${"char-counter " + (hookLen <= 60 ? 'char-ok' : hookLen <= 80 ? 'char-warn' : 'char-over')}>${hookLen}/60</div>
+      async function handleRegenMusic() {
+        setRegenMusic(true);
+        try {
+          await onRegenerateMusic(musicStyle || undefined);
+        } finally { setRegenMusic(false); }
+      }
+
+      async function handleReRender() {
+        setReRendering(true);
+        try {
+          await onReRender();
+        } finally { setReRendering(false); }
+      }
+
+      const hasVideo = !!item.video_url;
+      const hasMusic = !!item.music_file_path;
+
+      return html`<div className="script-editor" style=${{display: 'block'}}>
+        ${item.content_type === 'reveal' ? html`
+          <div style=${{marginBottom: '1rem'}}>
+            <label className="form-label" style=${{marginBottom: '0.6rem', display: 'block'}}>Photo Pairs</label>
+            <div className="pair-list" style=${{gap: '0.75rem'}}>
+              ${pairs.map((pair, i) => html`
+                <div key=${i} className="pair-item" style=${{padding: '0.75rem'}}>
+                  <div className="pair-header" style=${{marginBottom: '0.5rem'}}>
+                    <span className="pair-number">Pair ${i + 1}</span>
+                    ${pairs.length > 1 ? html`<button type="button" className="pair-remove" onClick=${() => removePair(i)}>\u2715</button>` : null}
+                  </div>
+                  <div style=${{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem'}}>
+                    <${PhotoUploader}
+                      label="Before"
+                      url=${pair.before_url}
+                      onUploaded=${url => updatePair(i, 'before_url', url)}
+                      onRemove=${() => updatePair(i, 'before_url', '')}
+                    />
+                    <${PhotoUploader}
+                      label="After"
+                      url=${pair.after_url}
+                      onUploaded=${url => updatePair(i, 'after_url', url)}
+                      onRemove=${() => updatePair(i, 'after_url', '')}
+                    />
+                  </div>
+                  <div className="form-group" style=${{marginTop: '0.5rem'}}>
+                    <select className="form-select" style=${{fontSize: '0.8rem'}} value=${pair.era || ''} onChange=${e => updatePair(i, 'era', e.target.value)}>
+                      <option value="">Era...</option>
+                      ${eras.map(e => html`<option key=${e} value=${e}>${e}</option>`)}
+                    </select>
+                  </div>
+                </div>
+              `)}
+            </div>
+            ${pairs.length < 6 ? html`<button type="button" className="add-pair-btn" style=${{marginTop: '0.5rem', marginBottom: '0'}} onClick=${addPair}>+ Add Pair (${pairs.length}/6)</button>` : null}
+          </div>
+        ` : html`
+          <div style=${{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem'}}>
+            <div className="form-group">
+              <label className="form-label">Tip Title</label>
+              <input className="form-input" value=${tipTitle} onInput=${e => setTipTitle(e.target.value)} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Tip Body</label>
+              <textarea className="form-textarea" rows="2" value=${tipBody} onInput=${e => setTipBody(e.target.value)} />
+            </div>
+          </div>
+        `}
+
+        <div style=${{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem'}}>
+          <div className="form-group">
+            <label className="form-label">Hook Text</label>
+            <textarea className="form-textarea" rows="2" value=${hookText} onInput=${e => setHookText(e.target.value)} />
+            <div className=${"char-counter " + (hookLen <= 60 ? 'char-ok' : hookLen <= 80 ? 'char-warn' : 'char-over')}>${hookLen}/60</div>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Caption</label>
+            <textarea className="form-textarea" rows="2" value=${caption} onInput=${e => setCaption(e.target.value)} />
+            <div className=${"char-counter " + (capLen >= 150 && capLen <= 300 ? 'char-ok' : capLen < 150 ? 'char-warn' : 'char-over')}>${capLen}/150-300</div>
+          </div>
         </div>
-        <div className="form-group">
-          <label className="form-label">Caption</label>
-          <textarea className="form-textarea" rows="3" value=${caption} onInput=${e => setCaption(e.target.value)} />
-          <div className=${"char-counter " + (capLen >= 150 && capLen <= 300 ? 'char-ok' : capLen < 150 ? 'char-warn' : 'char-over')}>${capLen}/150-300</div>
-        </div>
-        <div className="form-group full-width">
+        <div className="form-group" style=${{marginTop: '1rem'}}>
           <label className="form-label">Hashtags</label>
           <div className="hashtag-container">
             ${hashtags.map((tag, i) => html`
@@ -1415,9 +1520,31 @@
             <input className="hashtag-input" placeholder="add tag..." value=${newTag} onInput=${e => setNewTag(e.target.value)} onKeyDown=${addTag} />
           </div>
         </div>
-        <div className="script-actions">
+        ${item.content_type === 'reveal' ? html`
+          <div className="form-group" style=${{marginTop: '1rem'}}>
+            <label className="form-label">Photo Story</label>
+            <textarea className="form-textarea" rows="2" placeholder="Context about the photos for AI script generation..." value=${photoStory} onInput=${e => setPhotoStory(e.target.value)} />
+          </div>
+        ` : null}
+        <div className="form-group" style=${{marginTop: '1rem'}}>
+          <label className="form-label">Music Style Prompt</label>
+          <div style=${{display: 'flex', gap: '0.5rem', alignItems: 'flex-start'}}>
+            <textarea className="form-textarea" rows="2" style=${{flex: 1}} placeholder="e.g. warm nostalgic piano with gentle strings..." value=${musicStyle} onInput=${e => setMusicStyle(e.target.value)} />
+            <button className="btn btn-secondary btn-sm" style=${{whiteSpace: 'nowrap', marginTop: '0.1rem'}} onClick=${handleRegenMusic} disabled=${regenMusic}>
+              ${regenMusic ? html`<div className="spinner" style=${{width:'12px',height:'12px'}}></div> Generating...` : '\u266b Regen Music'}
+            </button>
+          </div>
+          ${hasMusic ? html`<div style=${{fontSize: '0.7rem', color: 'var(--green)', marginTop: '0.25rem'}}>\u2713 Music file ready</div>`
+            : html`<div style=${{fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.25rem'}}>No music generated yet</div>`}
+        </div>
+        <div className="script-actions" style=${{marginTop: '1rem'}}>
           <button className="btn btn-ghost btn-sm" onClick=${onClose}>Cancel</button>
-          <button className="btn btn-secondary btn-sm" onClick=${onRegenerate}>\u21bb Regenerate</button>
+          <button className="btn btn-secondary btn-sm" onClick=${onRegenerate}>\u21bb Regen Script</button>
+          ${hasVideo || ['rendered', 'posted', 'failed'].includes(item.status) ? html`
+            <button className="btn btn-secondary btn-sm" onClick=${handleReRender} disabled=${reRendering}>
+              ${reRendering ? html`<div className="spinner" style=${{width:'12px',height:'12px'}}></div> Rendering...` : '\u21bb Re-render'}
+            </button>
+          ` : null}
           <button className="btn btn-teal btn-sm" onClick=${handleSave} disabled=${saving}>${saving ? 'Saving...' : 'Save Changes'}</button>
         </div>
       </div>`;
@@ -1463,6 +1590,27 @@
           onToast('Regenerating script...', 'success');
           await api('/api/content/' + id + '/regenerate', { method: 'POST' });
           onToast('Script regenerated', 'success');
+          fetchItems();
+        } catch (e) { onToast(e.message, 'error'); }
+      }
+
+      async function handleRegenerateMusic(id, musicStyle) {
+        try {
+          onToast('Generating music...', 'success');
+          await api('/api/content/' + id + '/regenerate-music', {
+            method: 'POST',
+            body: musicStyle ? { music_style: musicStyle } : {},
+          });
+          onToast('Music regenerated', 'success');
+          fetchItems();
+        } catch (e) { onToast(e.message, 'error'); }
+      }
+
+      async function handleReRender(id) {
+        try {
+          onToast('Re-rendering video...', 'success');
+          await api('/api/content/' + id + '/re-render', { method: 'POST' });
+          onToast('Re-render started — check Pipeline tab', 'success');
           fetchItems();
         } catch (e) { onToast(e.message, 'error'); }
       }
@@ -1559,6 +1707,8 @@
                         item=${item}
                         onSave=${(fields) => handleSave(item.id, fields)}
                         onRegenerate=${() => handleRegenerate(item.id)}
+                        onRegenerateMusic=${(musicStyle) => handleRegenerateMusic(item.id, musicStyle)}
+                        onReRender=${() => handleReRender(item.id)}
                         onClose=${() => setExpandedId(null)}
                       />
                     </td></tr>
@@ -1595,7 +1745,7 @@
       return `${min} ${hour} * * ${sorted.join(',')}`;
     }
 
-    function SchedulerSettings({ onToast }) {
+    function SchedulerSettings({ onToast, onSettingsChanged }) {
       const [status, setStatus] = useState(null);
       const [saving, setSaving] = useState(false);
       const [days, setDays] = useState([1, 3, 5]);
@@ -1612,6 +1762,7 @@
           setDays(parsed.days);
           setHour(parsed.hour);
           setMin(parsed.min);
+          if (onSettingsChanged) onSettingsChanged(parsed.days);
         }).catch(() => {});
       }, []);
 
@@ -1645,6 +1796,7 @@
           });
           setStatus(res);
           setDirty(false);
+          if (onSettingsChanged) onSettingsChanged([...days].sort((a, b) => a - b));
           onToast('Schedule settings saved', 'success');
         } catch (e) {
           onToast(e.message, 'error');
@@ -1732,22 +1884,24 @@
     function Schedule({ onToast }) {
       const [items, setItems] = useState([]);
       const [dragItem, setDragItem] = useState(null);
+      const [cronDays, setCronDays] = useState(null); // null = loading
 
       useEffect(() => {
         api('/api/schedule').then(setItems).catch(console.error);
       }, []);
 
-      function getWeeks() {
+      function getWeeks(activeDays) {
         const weeks = [];
         const today = new Date();
+        // Start of week = Sunday
         const startOfWeek = new Date(today);
-        startOfWeek.setDate(today.getDate() - today.getDay() + 1); // Monday
+        startOfWeek.setDate(today.getDate() - today.getDay());
 
         for (let w = 0; w < 3; w++) {
           const week = [];
-          for (const dayOffset of [0, 2, 4]) { // Mon, Wed, Fri
+          for (const cronDay of activeDays) {
             const d = new Date(startOfWeek);
-            d.setDate(startOfWeek.getDate() + w * 7 + dayOffset);
+            d.setDate(startOfWeek.getDate() + w * 7 + cronDay);
             week.push(d);
           }
           weeks.push(week);
@@ -1784,14 +1938,15 @@
         setDragItem(null);
       }
 
-      const weeks = getWeeks();
+      const activeDays = cronDays || [1, 3, 5]; // fallback while loading
+      const weeks = getWeeks(activeDays);
 
       return html`<div>
-        <${SchedulerSettings} onToast=${onToast} />
-        <div className="schedule-grid">
-          <div className="schedule-header">Mon</div>
-          <div className="schedule-header">Wed</div>
-          <div className="schedule-header">Fri</div>
+        <${SchedulerSettings} onToast=${onToast} onSettingsChanged=${setCronDays} />
+        <div className="schedule-grid" style=${{ gridTemplateColumns: 'repeat(' + activeDays.length + ', 1fr)' }}>
+          ${activeDays.map(d => html`
+            <div key=${'hdr-' + d} className="schedule-header">${DAY_NAMES[d]}</div>
+          `)}
           ${weeks.map((week, wi) => html`
             <${React.Fragment} key=${wi}>
               ${week.map(day => html`

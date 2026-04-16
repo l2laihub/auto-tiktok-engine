@@ -3,7 +3,7 @@
 // Render Pipeline — Full pipeline for one content item:
 // 1. Fetch from Supabase content pool
 // 2. Generate AI script (if not already scripted)
-// 3. Generate background music via Suno AI
+// 3. Generate background music via Lyria 3 / Suno AI
 // 4. Render video with Remotion
 // 5. Upload to Supabase Storage
 // 6. Post to TikTok (or save to review folder)
@@ -19,7 +19,8 @@ import { createClient } from '@supabase/supabase-js';
 import { bundle } from '@remotion/bundler';
 import { renderMedia, selectComposition } from '@remotion/renderer';
 import { generateScript } from './generate-script';
-import { generateMusicTrack, downloadAndTrim } from '../src/utils/suno';
+import { generateMusicTrack as generateSunoTrack, downloadAndTrim } from '../src/utils/suno';
+import { generateMusicTrack as generateLyriaTrack, trimAudioFile } from '../src/utils/lyria';
 import { createRevealTiming, createTipsTiming, VIDEO } from '../src/config';
 import {
   TikTokClient,
@@ -161,7 +162,7 @@ async function ensureScript(item: ContentRow): Promise<ContentRow> {
   };
 }
 
-// --- Step 3: Generate background music via Suno AI ---
+// --- Step 3: Generate background music via Lyria 3 / Suno AI ---
 async function generateAudio(item: ContentRow): Promise<ContentRow> {
   // Skip if already has a music file
   if (item.music_file_path && fs.existsSync(item.music_file_path)) {
@@ -169,9 +170,11 @@ async function generateAudio(item: ContentRow): Promise<ContentRow> {
     return item;
   }
 
-  // Skip if no Suno API configured
-  if (!process.env.SUNO_API_URL) {
-    console.log('  No SUNO_API_URL set. Skipping music generation.');
+  const hasLyria = !!process.env.GOOGLE_API_KEY;
+  const hasSuno = !!process.env.SUNO_API_URL;
+
+  if (!hasLyria && !hasSuno) {
+    console.log('  No GOOGLE_API_KEY or SUNO_API_URL set. Skipping music generation.');
     return item;
   }
 
@@ -184,59 +187,125 @@ async function generateAudio(item: ContentRow): Promise<ContentRow> {
     const timing = createRevealTiming(pairCount);
     durationMs = Math.ceil(timing.totalDuration / VIDEO.fps * 1000);
   } else {
-    const timing = createTipsTiming(1); // TODO: support multi-tip count from DB
+    const timing = createTipsTiming(1);
     durationMs = Math.ceil(timing.totalDuration / VIDEO.fps * 1000);
   }
 
-  console.log(`  Generating Suno AI music (~${(durationMs / 1000).toFixed(0)}s target)...`);
-  console.log(`  Prompt: "${musicPrompt}"`);
+  const musicDir = path.resolve(__dirname, '../public/music');
+  fs.mkdirSync(musicDir, { recursive: true });
+  const musicFilename = `${item.id.slice(0, 8)}.mp3`;
+  const outputPath = path.join(musicDir, musicFilename);
+  const title = `EternalFrame - ${item.content_type} - ${item.id.slice(0, 8)}`;
 
-  try {
-    const track = await generateMusicTrack({
-      prompt: musicPrompt,
-      instrumental: true,
-      title: `EternalFrame - ${item.content_type} - ${item.id.slice(0, 8)}`,
-    });
+  // --- Try Lyria 3 first ---
+  if (hasLyria) {
+    console.log(`  Generating Lyria 3 music (~${(durationMs / 1000).toFixed(0)}s target)...`);
+    try {
+      const { audioBuffer } = await generateLyriaTrack({
+        prompt: musicPrompt,
+        instrumental: true,
+        title,
+        durationSeconds: durationMs / 1000,
+      });
 
-    // Download and trim to video duration
-    // Save into public/music/ so Remotion's staticFile() can serve it
-    const musicDir = path.resolve(__dirname, '../public/music');
-    fs.mkdirSync(musicDir, { recursive: true });
-    const musicFilename = `${item.id.slice(0, 8)}.mp3`;
-    const outputPath = path.join(musicDir, musicFilename);
+      // Write raw clip to temp file, then trim to exact video duration
+      const rawPath = outputPath.replace(/\.mp3$/, '.raw.mp3');
+      fs.writeFileSync(rawPath, audioBuffer);
 
-    await downloadAndTrim({
-      audioUrl: track.audioUrl,
-      targetDurationMs: durationMs,
-      outputPath,
-    });
+      trimAudioFile({
+        inputPath: rawPath,
+        targetDurationMs: durationMs,
+        outputPath,
+      });
 
-    // Update DB with audio info
-    await supabase
-      .from('tiktok_content_pool')
-      .update({
-        suno_audio_url: track.audioUrl,
-        music_file_path: outputPath,
-      })
-      .eq('id', item.id);
+      // Clean up raw file
+      if (fs.existsSync(rawPath)) fs.unlinkSync(rawPath);
 
-    return {
-      ...item,
-      suno_audio_url: track.audioUrl,
-      music_file_path: outputPath,
-    };
-  } catch (err) {
-    console.warn(`  Suno music generation failed: ${err instanceof Error ? err.message : err}`);
-    console.log('  Proceeding without background music.');
-    // Clear stale audio URL so Remotion doesn't try to use an expired Suno link
-    if (item.suno_audio_url) {
       await supabase
         .from('tiktok_content_pool')
-        .update({ suno_audio_url: null })
+        .update({ music_file_path: outputPath })
         .eq('id', item.id);
+
+      return { ...item, music_file_path: outputPath };
+    } catch (err) {
+      console.warn(`  Lyria 3 failed: ${err instanceof Error ? err.message : err}`);
+      if (hasSuno) {
+        console.log('  Falling back to Suno AI...');
+      }
     }
-    return { ...item, suno_audio_url: undefined, music_file_path: undefined };
   }
+
+  // --- Fall back to Suno ---
+  if (hasSuno) {
+    console.log(`  Generating Suno AI music (~${(durationMs / 1000).toFixed(0)}s target)...`);
+    console.log(`  Prompt: "${musicPrompt}"`);
+
+    try {
+      const track = await generateSunoTrack({
+        prompt: musicPrompt,
+        instrumental: true,
+        title,
+      });
+
+      await downloadAndTrim({
+        audioUrl: track.audioUrl,
+        targetDurationMs: durationMs,
+        outputPath,
+      });
+
+      await supabase
+        .from('tiktok_content_pool')
+        .update({
+          suno_audio_url: track.audioUrl,
+          music_file_path: outputPath,
+        })
+        .eq('id', item.id);
+
+      return {
+        ...item,
+        suno_audio_url: track.audioUrl,
+        music_file_path: outputPath,
+      };
+    } catch (err) {
+      console.warn(`  Suno music generation failed: ${err instanceof Error ? err.message : err}`);
+    }
+  }
+
+  // --- Fallback: pick a random track from the music library ---
+  const musicLibDir = path.resolve(__dirname, '../public/music');
+  const ownFile = `${item.id.slice(0, 8)}.mp3`;
+  try {
+    const existing = fs.readdirSync(musicLibDir)
+      .filter(f => f.endsWith('.mp3') && f !== ownFile && !f.endsWith('.raw.mp3'));
+    if (existing.length > 0) {
+      const pick = existing[Math.floor(Math.random() * existing.length)];
+      const srcPath = path.join(musicLibDir, pick);
+      console.log(`  Using fallback music from library: ${pick}`);
+
+      trimAudioFile({
+        inputPath: srcPath,
+        targetDurationMs: durationMs,
+        outputPath,
+      });
+
+      await supabase
+        .from('tiktok_content_pool')
+        .update({ music_file_path: outputPath })
+        .eq('id', item.id);
+
+      return { ...item, music_file_path: outputPath };
+    }
+  } catch { /* music dir may not exist */ }
+
+  // --- No music at all ---
+  console.log('  Proceeding without background music.');
+  if (item.suno_audio_url) {
+    await supabase
+      .from('tiktok_content_pool')
+      .update({ suno_audio_url: null })
+      .eq('id', item.id);
+  }
+  return { ...item, suno_audio_url: undefined, music_file_path: undefined };
 }
 
 // --- Step 4: Render video with Remotion ---
@@ -400,6 +469,9 @@ async function postToTikTok(item: ContentRow, videoUrl: string, videoPath?: stri
     return;
   }
 
+  // Proactively refresh token if it expires within 30 min (large uploads take time)
+  await client.ensureFreshToken(30 * 60 * 1000);
+
   // Resolve local video file path for FILE_UPLOAD
   let localPath = videoPath;
   if (!localPath || !fs.existsSync(localPath)) {
@@ -455,11 +527,10 @@ async function postToTikTok(item: ContentRow, videoUrl: string, videoPath?: stri
       console.log('  Video sent to your TikTok inbox!');
       console.log('  Open TikTok app → check inbox → review and post the video.');
       console.log(`  Caption to use: ${title}`);
-      return;
     }
 
-    // Poll for completion (Direct Post only)
-    console.log('  Polling for publish status...');
+    // Poll for completion (both direct and inbox uploads)
+    console.log(`  Polling for publish status (${mode})...`);
     const result = await client.pollPublishStatus(publish_id);
 
     if (result.status === 'PUBLISH_COMPLETE') {
@@ -483,7 +554,11 @@ async function postToTikTok(item: ContentRow, videoUrl: string, videoPath?: stri
         .from('tiktok_content_pool')
         .update({ publish_status: 'processing' })
         .eq('id', item.id);
-      console.log('  Still processing — check TikTok creator portal manually.');
+      if (mode === 'inbox') {
+        console.log('  Upload received by TikTok — check your TikTok inbox to review and post.');
+      } else {
+        console.log('  Still processing — check TikTok creator portal manually.');
+      }
     }
   } catch (err) {
     let errorMsg: string;

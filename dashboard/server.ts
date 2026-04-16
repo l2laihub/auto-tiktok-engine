@@ -2,11 +2,16 @@ import express from 'express';
 import { createClient } from '@supabase/supabase-js';
 import { spawn, type ChildProcess } from 'child_process';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import multer from 'multer';
 import Anthropic from '@anthropic-ai/sdk';
 import cron from 'node-cron';
+import basicAuth from 'express-basic-auth';
 import { generateScript } from '../scripts/generate-script';
+import { generateMusicTrack as generateLyriaTrack, trimAudioFile } from '../src/utils/lyria';
+import { generateMusicTrack as generateSunoTrack, downloadAndTrim } from '../src/utils/suno';
+import { createRevealTiming, createTipsTiming, VIDEO } from '../src/config';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = 3001;
@@ -19,6 +24,20 @@ const supabase = createClient(
 
 const app = express();
 app.use(express.json());
+
+// Basic auth for remote access (skipped for localhost)
+if (process.env.DASHBOARD_USER && process.env.DASHBOARD_PASS) {
+  app.use((req, res, next) => {
+    const ip = req.ip || req.socket.remoteAddress || '';
+    const isLocal = ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1' || ip === 'localhost';
+    if (isLocal) return next();
+    return basicAuth({
+      users: { [process.env.DASHBOARD_USER!]: process.env.DASHBOARD_PASS! },
+      challenge: true,
+      realm: 'EternalFrame Dashboard',
+    })(req, res, next);
+  });
+}
 
 // Serve static assets (logo, etc.)
 app.use('/static', express.static(path.join(ROOT, 'public')));
@@ -125,6 +144,122 @@ app.post('/api/content/:id/regenerate', async (req, res) => {
     const msg = err instanceof Error ? err.message : String(err);
     res.status(500).json({ error: msg });
   }
+});
+
+// Regenerate music for an item
+app.post('/api/content/:id/regenerate-music', async (req, res) => {
+  const { data: item, error: fetchErr } = await supabase
+    .from('tiktok_content_pool')
+    .select('id, content_type, music_style, music_track, music_file_path, image_pairs')
+    .eq('id', req.params.id)
+    .single();
+
+  if (fetchErr || !item) return res.status(404).json({ error: 'Item not found' });
+
+  // Allow overriding the music prompt from the request body
+  const musicPrompt = req.body.music_style || item.music_style || item.music_track || 'warm nostalgic instrumental, gentle piano';
+
+  // Calculate target duration
+  const pairCount = (item.image_pairs as any[])?.length || 1;
+  let durationMs: number;
+  if (item.content_type === 'reveal') {
+    const timing = createRevealTiming(pairCount);
+    durationMs = Math.ceil(timing.totalDuration / VIDEO.fps * 1000);
+  } else {
+    const timing = createTipsTiming(1);
+    durationMs = Math.ceil(timing.totalDuration / VIDEO.fps * 1000);
+  }
+
+  const musicDir = path.join(ROOT, 'public/music');
+  const musicFilename = `${item.id.slice(0, 8)}.mp3`;
+  const outputPath = path.join(musicDir, musicFilename);
+  const title = `EternalFrame - ${item.content_type} - ${item.id.slice(0, 8)}`;
+
+  // Delete old music file if it exists
+  if (item.music_file_path) {
+    try { fs.unlinkSync(item.music_file_path); } catch {}
+  }
+
+  try {
+    // Try Lyria first
+    if (process.env.GOOGLE_API_KEY) {
+      const { audioBuffer } = await generateLyriaTrack({
+        prompt: musicPrompt,
+        instrumental: true,
+        title,
+        durationSeconds: durationMs / 1000,
+      });
+
+      const rawPath = outputPath.replace(/\.mp3$/, '.raw.mp3');
+      fs.mkdirSync(musicDir, { recursive: true });
+      fs.writeFileSync(rawPath, audioBuffer);
+      trimAudioFile({ inputPath: rawPath, targetDurationMs: durationMs, outputPath });
+      try { fs.unlinkSync(rawPath); } catch {}
+    } else if (process.env.SUNO_API_URL) {
+      // Suno fallback
+      const track = await generateSunoTrack({ prompt: musicPrompt, instrumental: true, title });
+      await downloadAndTrim({ audioUrl: track.audioUrl, targetDurationMs: durationMs, outputPath });
+
+      await supabase.from('tiktok_content_pool')
+        .update({ suno_audio_url: track.audioUrl })
+        .eq('id', item.id);
+    } else {
+      return res.status(400).json({ error: 'No music provider configured (GOOGLE_API_KEY or SUNO_API_URL)' });
+    }
+
+    // Update DB
+    const updateFields: Record<string, any> = { music_file_path: outputPath };
+    if (req.body.music_style) updateFields.music_style = req.body.music_style;
+
+    await supabase.from('tiktok_content_pool')
+      .update(updateFields)
+      .eq('id', item.id);
+
+    res.json({ ok: true, music_file_path: outputPath });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: msg });
+  }
+});
+
+// Re-render video for an item (resets to scripted, triggers pipeline)
+app.post('/api/content/:id/re-render', async (req, res) => {
+  if (pipelineRunning) {
+    return res.status(409).json({ error: 'Pipeline is already running' });
+  }
+
+  const { data: item, error: fetchErr } = await supabase
+    .from('tiktok_content_pool')
+    .select('id, status')
+    .eq('id', req.params.id)
+    .single();
+
+  if (fetchErr || !item) return res.status(404).json({ error: 'Item not found' });
+
+  // Reset status to scripted so pipeline processes from step 3 (music) onward
+  const { error: updateErr } = await supabase
+    .from('tiktok_content_pool')
+    .update({
+      status: 'scripted',
+      video_url: null,
+      publish_status: null,
+      post_error: null,
+      tiktok_post_id: null,
+    })
+    .eq('id', req.params.id);
+
+  if (updateErr) return res.status(500).json({ error: updateErr.message });
+
+  // Optionally clear music to force regeneration
+  if (req.body.regenerateMusic) {
+    await supabase.from('tiktok_content_pool')
+      .update({ music_file_path: null, suno_audio_url: null })
+      .eq('id', req.params.id);
+  }
+
+  // Kick off the pipeline for this specific item (dry run — no TikTok posting)
+  const runId = await runPipeline({ dryRun: true, contentId: req.params.id });
+  res.json({ ok: true, runId });
 });
 
 // ============================================================

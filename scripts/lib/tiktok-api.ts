@@ -515,6 +515,30 @@ export class TikTokClient {
   }
 
   /**
+   * Proactively refresh the token if it expires within the given window.
+   * Call this before large uploads to avoid mid-upload expiry.
+   */
+  async ensureFreshToken(minRemainingMs = 30 * 60 * 1000): Promise<void> {
+    const { data } = await this.supabase
+      .from('tiktok_tokens')
+      .select('access_token, refresh_token, expires_at')
+      .eq('id', 'default')
+      .single();
+
+    if (!data) return;
+
+    const remainingMs = new Date(data.expires_at).getTime() - Date.now();
+    if (remainingMs < minRemainingMs && data.refresh_token) {
+      console.log(`  Token expires in ${Math.round(remainingMs / 1000 / 60)} min, proactively refreshing...`);
+      try {
+        await this.refreshToken(data.refresh_token);
+      } catch (err) {
+        console.warn('  Proactive refresh failed:', err instanceof Error ? err.message : err);
+      }
+    }
+  }
+
+  /**
    * Full publish flow: init → upload file → return publish_id.
    * Tries Direct Post first (video.publish), falls back to Inbox Upload (video.upload).
    */
@@ -533,6 +557,8 @@ export class TikTokClient {
     } catch (err) {
       if (err instanceof ScopeError) {
         console.log('  Direct Post not available (scope), falling back to Inbox Upload...');
+      } else if (err instanceof TikTokApiError && err.httpStatus === 403) {
+        console.log(`  Direct Post blocked (${err.code || '403'}), falling back to Inbox Upload...`);
       } else {
         throw err;
       }
