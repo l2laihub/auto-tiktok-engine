@@ -1,0 +1,1356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EternalFrame — TikTok Demo</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --coral: #E85A71;
+      --teal: #3D9CA8;
+      --amber: #FFB74D;
+      --dark: #1A1A2E;
+      --dark-surface: #16213E;
+      --text-light: #E8E8E8;
+      --text-muted: #A0A0B0;
+      --bezel: #0D0D1A;
+      --phone-w: 390px;
+      --phone-h: 844px;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif;
+      background: #0a0a14;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      color: var(--text-light);
+    }
+
+    /* Phone bezel */
+    .phone {
+      width: calc(var(--phone-w) + 24px);
+      height: calc(var(--phone-h) + 24px);
+      background: var(--bezel);
+      border-radius: 54px;
+      padding: 12px;
+      box-shadow: 0 0 80px rgba(232, 90, 113, 0.08), 0 20px 60px rgba(0,0,0,0.5);
+      position: relative;
+    }
+
+    /* Screen viewport */
+    .phone-screen {
+      width: var(--phone-w);
+      height: var(--phone-h);
+      border-radius: 42px;
+      overflow: hidden;
+      position: relative;
+      background: var(--dark);
+    }
+
+    /* Notch */
+    .notch {
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 126px;
+      height: 34px;
+      background: var(--bezel);
+      border-radius: 0 0 20px 20px;
+      z-index: 100;
+    }
+
+    /* Status bar */
+    .status-bar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 54px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 28px;
+      z-index: 99;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .status-bar .time { margin-top: 2px; }
+    .status-bar .icons { display: flex; gap: 6px; font-size: 12px; margin-top: 2px; }
+
+    /* Home indicator */
+    .home-indicator {
+      position: absolute;
+      bottom: 8px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 134px;
+      height: 5px;
+      background: rgba(255,255,255,0.2);
+      border-radius: 3px;
+      z-index: 100;
+    }
+
+    /* Screen container — holds all screens side by side */
+    .screens {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .screen {
+      min-width: 100%;
+      height: 100%;
+      position: relative;
+      overflow-y: auto;
+      padding: 54px 0 34px;
+    }
+
+    /* Hide scrollbar on screens */
+    .screen::-webkit-scrollbar { display: none; }
+    .screen { -ms-overflow-style: none; scrollbar-width: none; }
+
+    /* Skip navigation arrows */
+    .skip-nav {
+      position: absolute;
+      bottom: 48px;
+      z-index: 101;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: none;
+      background: rgba(255,255,255,0.08);
+      color: rgba(255,255,255,0.3);
+      font-size: 14px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .skip-nav:hover { background: rgba(255,255,255,0.15); color: rgba(255,255,255,0.6); }
+    .skip-prev { left: 12px; }
+    .skip-next { right: 12px; }
+
+    /* Common component styles */
+    .top-bar {
+      height: 44px;
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      gap: 12px;
+    }
+    .top-bar .title {
+      flex: 1;
+      text-align: center;
+      font-size: 17px;
+      font-weight: 600;
+    }
+    .top-bar .back {
+      width: 28px;
+      font-size: 20px;
+      cursor: pointer;
+      color: var(--text-light);
+      background: none;
+      border: none;
+    }
+    .top-bar .spacer { width: 28px; }
+
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 16px;
+      border: none;
+      border-radius: 14px;
+      font-size: 17px;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: center;
+      transition: opacity 0.2s, transform 0.15s;
+    }
+    .btn:active { transform: scale(0.97); opacity: 0.85; }
+    .btn-coral { background: var(--coral); color: #fff; }
+    .btn-teal { background: var(--teal); color: #fff; }
+    .btn-dark { background: #000; color: #fff; }
+    .btn-outline {
+      background: transparent;
+      border: 2px solid var(--teal);
+      color: var(--teal);
+    }
+
+    /* === Screen 1: Splash === */
+    .splash {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      gap: 16px;
+    }
+    .splash .logo {
+      width: 100px;
+      height: 100px;
+      border-radius: 22px;
+      object-fit: cover;
+      opacity: 0;
+      animation: fadeScale 0.8s ease forwards;
+    }
+    .splash .app-name {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--coral);
+      opacity: 0;
+      animation: fadeUp 0.6s ease 0.4s forwards;
+    }
+    .splash .tagline {
+      font-size: 14px;
+      color: var(--text-muted);
+      opacity: 0;
+      animation: fadeUp 0.6s ease 0.6s forwards;
+    }
+
+    @keyframes fadeScale {
+      from { opacity: 0; transform: scale(0.8); }
+      to { opacity: 1; transform: scale(1); }
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* === Screen 2: Gallery === */
+    .gallery-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      padding: 16px;
+    }
+    .gallery-card {
+      background: var(--dark-surface);
+      border-radius: 14px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: transform 0.15s;
+      border: 2px solid transparent;
+    }
+    .gallery-card:active { transform: scale(0.96); }
+    .gallery-card.featured { border-color: var(--teal); }
+    .gallery-card .thumb {
+      height: 120px;
+      display: flex;
+    }
+    .gallery-card .thumb .before,
+    .gallery-card .thumb .after {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: 600;
+      color: rgba(255,255,255,0.5);
+    }
+    .gallery-card .thumb .before { background: linear-gradient(135deg, #2a2a3e, #1a1a2e); }
+    .gallery-card .thumb .after { background: linear-gradient(135deg, var(--coral), var(--teal)); opacity: 0.7; }
+    .gallery-card .card-info {
+      padding: 10px 12px;
+    }
+    .gallery-card .card-info .card-title {
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 2px;
+    }
+    .gallery-card .card-info .card-date {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 10px;
+      font-weight: 600;
+    }
+    .badge-teal { background: rgba(61,156,168,0.2); color: var(--teal); }
+
+    /* === Screen 3: Video Generation === */
+    .video-gen { padding: 0 20px; }
+    .video-gen .preview-pair {
+      display: flex;
+      gap: 10px;
+      margin: 16px 0;
+      justify-content: center;
+    }
+    .video-gen .preview-pair .img-box {
+      width: 100px;
+      height: 130px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 600;
+      color: rgba(255,255,255,0.5);
+    }
+    .video-gen .preview-pair .img-before {
+      background: linear-gradient(135deg, #2a2a3e, #1a1a2e);
+      border: 1px solid var(--text-muted);
+    }
+    .video-gen .preview-pair .img-after {
+      background: linear-gradient(135deg, var(--coral), var(--teal));
+      border: 1px solid var(--teal);
+    }
+    .video-gen .arrow { font-size: 24px; color: var(--amber); align-self: center; }
+    .video-preview {
+      width: 100%;
+      border-radius: 14px;
+      margin: 12px 0;
+      background: #000;
+    }
+    .pipeline-steps {
+      margin: 20px 0;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .pipeline-step {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 15px;
+      color: var(--text-muted);
+      transition: color 0.3s;
+    }
+    .pipeline-step.active { color: var(--text-light); }
+    .pipeline-step.done { color: var(--teal); }
+    .step-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--dark-surface);
+      font-size: 13px;
+      flex-shrink: 0;
+    }
+    .pipeline-step.done .step-icon { background: rgba(61,156,168,0.2); }
+    .pipeline-step.active .step-icon { background: rgba(232,90,113,0.2); }
+
+    /* Spinner */
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner {
+      width: 16px; height: 16px;
+      border: 2px solid var(--dark-surface);
+      border-top-color: var(--coral);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    /* Progress bar */
+    .progress-bar {
+      height: 6px;
+      background: var(--dark-surface);
+      border-radius: 3px;
+      flex: 1;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--coral), var(--teal));
+      border-radius: 3px;
+      width: 0%;
+      transition: width 2s ease-in-out;
+    }
+
+    .btn-appear {
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.4s, transform 0.4s;
+    }
+    .btn-appear.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* === Screen 4: TikTok OAuth === */
+    .oauth-connect {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: calc(100% - 44px);
+      padding: 40px 24px;
+      text-align: center;
+      gap: 20px;
+    }
+    .tiktok-logo {
+      background: #fff;
+      color: #000;
+      font-size: 22px;
+      font-weight: 800;
+      padding: 10px 20px;
+      border-radius: 12px;
+    }
+    .oauth-connect .desc {
+      font-size: 15px;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    /* Consent overlay */
+    .consent-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: #fff;
+      color: #000;
+      display: none;
+      flex-direction: column;
+      padding: 54px 24px 40px;
+      z-index: 50;
+    }
+    .consent-overlay.visible { display: flex; }
+    .consent-header {
+      text-align: center;
+      padding: 20px 0 16px;
+      border-bottom: 1px solid #eee;
+      margin-bottom: 20px;
+    }
+    .consent-header .tt-brand { font-size: 24px; font-weight: 800; }
+    .consent-app {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .consent-app .app-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      object-fit: cover;
+    }
+    .consent-app .app-label .name {
+      font-size: 16px;
+      font-weight: 600;
+    }
+    .consent-app .app-label .url {
+      font-size: 12px;
+      color: #888;
+    }
+    .consent-perms {
+      margin: 16px 0 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .consent-perm {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 15px;
+    }
+    .consent-perm .check {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: rgba(61,156,168,0.15);
+      color: var(--teal);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+    .consent-actions {
+      margin-top: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .consent-actions .btn-authorize {
+      padding: 16px;
+      border: none;
+      border-radius: 14px;
+      font-size: 17px;
+      font-weight: 600;
+      cursor: pointer;
+      background: var(--coral);
+      color: #fff;
+    }
+    .consent-actions .btn-cancel {
+      background: none;
+      border: none;
+      font-size: 15px;
+      color: #888;
+      cursor: pointer;
+      padding: 8px;
+    }
+    .consent-loader {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: #fff;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 51;
+    }
+    .consent-loader.visible { display: flex; }
+    .consent-loader .spinner {
+      width: 32px; height: 32px;
+      border-width: 3px;
+      border-top-color: #000;
+    }
+
+    /* === Screen 5: Publish === */
+    .publish { padding: 0 20px 100px; }
+    .publish .account {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      margin-bottom: 16px;
+    }
+    .avatar {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: var(--teal);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      font-weight: 700;
+      color: #fff;
+      flex-shrink: 0;
+    }
+    .account .info .nickname {
+      font-size: 16px;
+      font-weight: 600;
+    }
+    .account .info .app-label {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .publish .video-row {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      padding: 12px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      margin-bottom: 20px;
+    }
+    .publish .video-thumb {
+      width: 56px;
+      height: 100px;
+      border-radius: 8px;
+      background: #000;
+      object-fit: cover;
+      flex-shrink: 0;
+    }
+    .publish .video-info .vid-title {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    .publish .video-info .vid-meta {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+    .publish .duration-badge {
+      background: rgba(0,0,0,0.6);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 11px;
+      color: #fff;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+    .form-label {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      display: block;
+    }
+    .form-hint {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    /* Custom dropdown */
+    .custom-select {
+      width: 100%;
+      padding: 14px 16px;
+      background: var(--dark-surface);
+      border: 1.5px solid rgba(255,255,255,0.1);
+      border-radius: 12px;
+      color: var(--text-light);
+      font-size: 15px;
+      font-family: inherit;
+      appearance: none;
+      -webkit-appearance: none;
+      cursor: pointer;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='%23A0A0B0'%3E%3Cpath d='M6 8L0 0h12z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 16px center;
+    }
+    .custom-select:focus {
+      outline: none;
+      border-color: var(--teal);
+    }
+    .custom-select option { background: var(--dark-surface); color: var(--text-light); }
+
+    /* Toggle switch */
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    .toggle-row .toggle-label { font-size: 15px; }
+    .toggle {
+      position: relative;
+      width: 50px;
+      height: 30px;
+      flex-shrink: 0;
+    }
+    .toggle input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .toggle-track {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(255,255,255,0.12);
+      border-radius: 15px;
+      transition: background 0.25s;
+    }
+    .toggle input:checked + .toggle-track {
+      background: var(--teal);
+    }
+    .toggle-track::after {
+      content: '';
+      position: absolute;
+      width: 24px;
+      height: 24px;
+      left: 3px;
+      bottom: 3px;
+      background: #fff;
+      border-radius: 50%;
+      transition: transform 0.25s;
+    }
+    .toggle input:checked + .toggle-track::after {
+      transform: translateX(20px);
+    }
+
+    /* Commercial section */
+    .commercial-section {
+      margin-top: 20px;
+      padding: 16px;
+      background: var(--dark-surface);
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+    .commercial-section .section-title {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    .commercial-section .section-desc {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+
+    /* Consent text */
+    .consent-text {
+      font-size: 12px;
+      color: var(--text-muted);
+      text-align: center;
+      margin-top: 24px;
+      line-height: 1.5;
+    }
+
+    /* Fixed bottom button */
+    .publish-footer {
+      position: absolute;
+      bottom: 34px;
+      left: 0;
+      right: 0;
+      padding: 12px 20px;
+      background: linear-gradient(transparent, var(--dark) 30%);
+    }
+
+    /* === Screen 6: Upload === */
+    .upload-screen {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 24px;
+      height: calc(100% - 44px);
+    }
+    .upload-screen .upload-thumb {
+      width: 80px;
+      height: 142px;
+      border-radius: 12px;
+      background: #000;
+      object-fit: cover;
+      margin-bottom: 32px;
+    }
+    .upload-screen .upload-label {
+      font-size: 17px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .upload-screen .upload-size {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 24px;
+    }
+    .upload-progress-bar {
+      width: 100%;
+      height: 8px;
+      background: var(--dark-surface);
+      border-radius: 4px;
+      overflow: hidden;
+      margin-bottom: 12px;
+    }
+    .upload-progress-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--coral), var(--teal));
+      border-radius: 4px;
+      transition: width 3s ease-in-out;
+    }
+    .upload-percent {
+      font-size: 32px;
+      font-weight: 700;
+      color: var(--teal);
+      margin-bottom: 8px;
+    }
+
+    /* === Screen 7: Success === */
+    .success-screen {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: calc(100% - 44px);
+      padding: 40px 24px;
+      text-align: center;
+      gap: 12px;
+    }
+    @keyframes checkBounce {
+      0% { transform: scale(0); opacity: 0; }
+      60% { transform: scale(1.2); opacity: 1; }
+      80% { transform: scale(0.9); }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    .success-check {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background: rgba(61,156,168,0.15);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 36px;
+      color: var(--teal);
+      opacity: 0;
+      margin-bottom: 8px;
+    }
+    .success-check.animate { animation: checkBounce 0.6s ease forwards; }
+    .success-screen h2 {
+      font-size: 24px;
+      font-weight: 700;
+    }
+    .success-screen .success-account {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 4px 0;
+    }
+    .success-screen .success-account .avatar {
+      width: 28px;
+      height: 28px;
+      font-size: 12px;
+    }
+    .success-screen .success-desc {
+      font-size: 14px;
+      color: var(--text-muted);
+      line-height: 1.5;
+      max-width: 280px;
+    }
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: 600;
+      margin: 12px 0;
+      transition: all 0.4s ease;
+    }
+    .status-badge.processing {
+      background: rgba(255,183,77,0.15);
+      color: var(--amber);
+    }
+    .status-badge.ready {
+      background: rgba(61,156,168,0.15);
+      color: var(--teal);
+    }
+    .success-actions {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 16px;
+    }
+  </style>
+</head>
+<body>
+  <div class="phone">
+    <!-- Start hint overlay -->
+    <div id="start-hint" style="
+      position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+      z-index:200; background:rgba(0,0,0,0.85); color:#fff; padding:16px 24px;
+      border-radius:12px; text-align:center; font-size:14px; cursor:pointer;
+      max-width:300px; line-height:1.5;
+    " onclick="this.style.display='none'">
+      <div style="font-size:18px;font-weight:700;margin-bottom:8px;color:var(--coral);">EternalFrame Demo</div>
+      Tap through screens to simulate the app flow. Use corner arrows to skip.<br>
+      <span style="color:var(--text-muted);font-size:12px;margin-top:8px;display:block;">Tap to dismiss</span>
+    </div>
+
+    <div class="phone-screen">
+      <div class="notch"></div>
+      <div class="status-bar">
+        <span class="time">9:41</span>
+        <span class="icons">
+          <span>&#9679;&#9679;&#9679;&#9679;</span>
+          <span>WiFi</span>
+          <span>100%</span>
+        </span>
+      </div>
+
+      <div class="screens" id="screens">
+
+        <!-- Screen 1: App Splash -->
+        <section class="screen" id="screen-splash">
+          <div class="splash">
+            <img class="logo" src="../public/eternalframe-logo.jpg" alt="EternalFrame">
+            <div class="app-name">EternalFrame</div>
+            <div class="tagline">Restore. Remember. Share.</div>
+          </div>
+        </section>
+
+        <!-- Screen 2: Photo Gallery -->
+        <section class="screen" id="screen-gallery">
+          <div class="top-bar">
+            <div class="spacer"></div>
+            <div class="title">My Restorations</div>
+            <div class="spacer"></div>
+          </div>
+          <div class="gallery-grid">
+            <div class="gallery-card featured" onclick="nextScreen()">
+              <div class="thumb">
+                <div class="before">BEFORE</div>
+                <div class="after">AFTER</div>
+              </div>
+              <div class="card-info">
+                <div class="card-title">Family Portrait 1960 <span class="badge badge-teal">&#10003; Ready</span></div>
+                <div class="card-date">Apr 15, 2026</div>
+              </div>
+            </div>
+            <div class="gallery-card">
+              <div class="thumb">
+                <div class="before">BEFORE</div>
+                <div class="after">AFTER</div>
+              </div>
+              <div class="card-info">
+                <div class="card-title">Wedding 1975</div>
+                <div class="card-date">Apr 14, 2026</div>
+              </div>
+            </div>
+            <div class="gallery-card">
+              <div class="thumb">
+                <div class="before">BEFORE</div>
+                <div class="after">AFTER</div>
+              </div>
+              <div class="card-info">
+                <div class="card-title">Childhood Home</div>
+                <div class="card-date">Apr 12, 2026</div>
+              </div>
+            </div>
+            <div class="gallery-card">
+              <div class="thumb">
+                <div class="before">BEFORE</div>
+                <div class="after">AFTER</div>
+              </div>
+              <div class="card-info">
+                <div class="card-title">Grandparents</div>
+                <div class="card-date">Apr 10, 2026</div>
+              </div>
+            </div>
+            <div class="gallery-card">
+              <div class="thumb">
+                <div class="before">BEFORE</div>
+                <div class="after">AFTER</div>
+              </div>
+              <div class="card-info">
+                <div class="card-title">Beach Day 1985</div>
+                <div class="card-date">Apr 8, 2026</div>
+              </div>
+            </div>
+            <div class="gallery-card">
+              <div class="thumb">
+                <div class="before">BEFORE</div>
+                <div class="after">AFTER</div>
+              </div>
+              <div class="card-info">
+                <div class="card-title">School Photo</div>
+                <div class="card-date">Apr 5, 2026</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Screen 3: Video Generation -->
+        <section class="screen" id="screen-videogen">
+          <div class="top-bar">
+            <button class="back" onclick="prevScreen()">&#8249;</button>
+            <div class="title">Create TikTok Video</div>
+            <div class="spacer"></div>
+          </div>
+          <div class="video-gen">
+            <div class="preview-pair">
+              <div class="img-box img-before">BEFORE</div>
+              <span class="arrow">&#8594;</span>
+              <div class="img-box img-after">AFTER</div>
+            </div>
+
+            <video class="video-preview" src="../output/reveal-949d7485.mp4"
+                   playsinline muted loop
+                   style="height: 200px; object-fit: cover;"
+                   onclick="this.paused ? this.play() : this.pause()"></video>
+
+            <button class="btn btn-coral" id="gen-btn" onclick="startGeneration()">
+              Generate TikTok Video
+            </button>
+
+            <div class="pipeline-steps" id="pipeline-steps" style="display:none;">
+              <div class="pipeline-step" id="step-script">
+                <div class="step-icon">1</div>
+                <span>Creating AI script...</span>
+              </div>
+              <div class="pipeline-step" id="step-music">
+                <div class="step-icon">2</div>
+                <span>Generating background music...</span>
+              </div>
+              <div class="pipeline-step" id="step-render">
+                <div class="step-icon">3</div>
+                <span>Rendering video...</span>
+                <div class="progress-bar" style="display:none;"><div class="progress-fill" id="render-progress"></div></div>
+              </div>
+            </div>
+
+            <button class="btn btn-teal btn-appear" id="share-btn" onclick="nextScreen()"
+                    style="margin-top:20px;">
+              Share to TikTok
+            </button>
+          </div>
+        </section>
+
+        <!-- Screen 4: TikTok OAuth -->
+        <section class="screen" id="screen-oauth">
+          <div class="top-bar">
+            <button class="back" onclick="prevScreen()">&#8249;</button>
+            <div class="title">Connect Account</div>
+            <div class="spacer"></div>
+          </div>
+          <div class="oauth-connect">
+            <div class="tiktok-logo">TikTok</div>
+            <p class="desc">
+              Connect your TikTok account to share restoration videos directly from EternalFrame.
+            </p>
+            <button class="btn btn-dark" onclick="showConsent()" style="width:100%;">
+              Connect with TikTok
+            </button>
+          </div>
+
+          <!-- Consent overlay -->
+          <div class="consent-overlay" id="consent-overlay">
+            <div class="consent-header">
+              <div class="tt-brand">TikTok</div>
+            </div>
+            <div class="consent-app">
+              <img class="app-icon" src="../public/eternalframe-logo.jpg" alt="EternalFrame">
+              <div class="app-label">
+                <div class="name">EternalFrame</div>
+                <div class="url">eternalframe.app</div>
+              </div>
+            </div>
+            <p style="font-size:14px;color:#444;margin-bottom:8px;">This app would like to:</p>
+            <div class="consent-perms">
+              <div class="consent-perm">
+                <div class="check">&#10003;</div>
+                <span>Post videos on your behalf</span>
+              </div>
+              <div class="consent-perm">
+                <div class="check">&#10003;</div>
+                <span>Access your public profile information</span>
+              </div>
+            </div>
+            <div class="consent-actions">
+              <button class="btn-authorize" onclick="authorizeOAuth()">Authorize</button>
+              <button class="btn-cancel" onclick="hideConsent()">Cancel</button>
+            </div>
+            <div class="consent-loader" id="consent-loader">
+              <div class="spinner"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Screen 5: Publish (Critical) -->
+        <section class="screen" id="screen-publish">
+          <div class="top-bar">
+            <button class="back" onclick="prevScreen()">&#8249;</button>
+            <div class="title">Post to TikTok</div>
+            <div class="spacer"></div>
+          </div>
+          <div class="publish">
+            <!-- Account -->
+            <div class="account">
+              <div class="avatar">H</div>
+              <div class="info">
+                <div class="nickname">@huybuilds</div>
+                <div class="app-label">EternalFrame</div>
+              </div>
+            </div>
+
+            <!-- Video preview -->
+            <div class="video-row">
+              <video class="video-thumb" src="../output/reveal-949d7485.mp4"
+                     playsinline muted></video>
+              <div class="video-info">
+                <div class="vid-title">Family Portrait Restoration</div>
+                <div class="vid-meta">Before &amp; After Reveal</div>
+                <div class="vid-meta"><span class="duration-badge">0:15</span> &middot; 12.4 MB</div>
+              </div>
+            </div>
+
+            <!-- Privacy dropdown -->
+            <div class="form-group">
+              <label class="form-label">Who can view this video</label>
+              <select class="custom-select" id="privacy-select">
+                <option value="" disabled selected>Select privacy level</option>
+                <option value="public">Public</option>
+                <option value="friends">Friends</option>
+                <option value="private">Private</option>
+              </select>
+            </div>
+
+            <!-- Interaction toggles -->
+            <div class="form-group">
+              <label class="form-label">Interactions</label>
+              <div class="form-hint">These settings reflect your account preferences</div>
+              <div class="toggle-row">
+                <span class="toggle-label">Allow Comments</span>
+                <label class="toggle">
+                  <input type="checkbox" checked>
+                  <span class="toggle-track"></span>
+                </label>
+              </div>
+              <div class="toggle-row">
+                <span class="toggle-label">Allow Duet</span>
+                <label class="toggle">
+                  <input type="checkbox" checked>
+                  <span class="toggle-track"></span>
+                </label>
+              </div>
+              <div class="toggle-row">
+                <span class="toggle-label">Allow Stitch</span>
+                <label class="toggle">
+                  <input type="checkbox" checked>
+                  <span class="toggle-track"></span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Commercial content -->
+            <div class="commercial-section">
+              <div class="section-title">Commercial Content</div>
+              <div class="section-desc">Promote branded content or paid partnership</div>
+              <div class="toggle-row" style="border:none;padding-bottom:0;">
+                <span class="toggle-label">Branded content</span>
+                <label class="toggle">
+                  <input type="checkbox">
+                  <span class="toggle-track"></span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Consent -->
+            <p class="consent-text">
+              By posting, you agree to TikTok's<br>
+              <span style="color:var(--teal);">Music Usage Confirmation</span>
+            </p>
+          </div>
+
+          <div class="publish-footer">
+            <button class="btn btn-coral" onclick="nextScreen()">Post to TikTok</button>
+          </div>
+        </section>
+
+        <!-- Screen 6: Upload Progress -->
+        <section class="screen" id="screen-upload">
+          <div class="top-bar">
+            <div class="spacer"></div>
+            <div class="title">Uploading...</div>
+            <div class="spacer"></div>
+          </div>
+          <div class="upload-screen">
+            <video class="upload-thumb" src="../output/reveal-949d7485.mp4"
+                   playsinline muted></video>
+            <div class="upload-label">Uploading to TikTok...</div>
+            <div class="upload-size">12.4 MB</div>
+            <div class="upload-progress-bar">
+              <div class="upload-progress-fill" id="upload-fill"></div>
+            </div>
+            <div class="upload-percent" id="upload-percent">0%</div>
+          </div>
+        </section>
+
+        <!-- Screen 7: Inbox Confirmation -->
+        <section class="screen" id="screen-success">
+          <div class="top-bar">
+            <div class="spacer"></div>
+            <div class="title"></div>
+            <div class="spacer"></div>
+          </div>
+          <div class="success-screen">
+            <div class="success-check" id="success-check">&#10003;</div>
+            <h2>Video Sent to Inbox!</h2>
+            <div class="success-account">
+              <div class="avatar" style="width:28px;height:28px;font-size:12px;">H</div>
+              <span style="font-weight:600;">@huybuilds</span>
+            </div>
+            <p class="success-desc">
+              Your video has been sent to your TikTok inbox. Open TikTok to review and publish it.
+            </p>
+            <div class="status-badge processing" id="status-badge">
+              <div class="spinner" style="width:14px;height:14px;border-width:2px;border-top-color:var(--amber);"></div>
+              Processing...
+            </div>
+            <div class="success-actions">
+              <button class="btn btn-outline">Open TikTok</button>
+              <button class="btn btn-coral" onclick="goTo(0)">Done</button>
+            </div>
+          </div>
+        </section>
+
+      </div>
+
+      <div class="home-indicator"></div>
+      <button class="skip-nav skip-prev" onclick="prevScreen()">&#8249;</button>
+      <button class="skip-nav skip-next" onclick="nextScreen()">&#8250;</button>
+    </div>
+  </div>
+
+  <script>
+    let current = 0;
+    const container = document.getElementById('screens');
+    const totalScreens = () => container.children.length;
+
+    function goTo(index) {
+      if (index < 0 || index >= totalScreens()) return;
+      if (index === 0 && current !== 0) resetDemo();
+      current = index;
+      container.style.transform = `translateX(-${current * 100}%)`;
+      // Trigger enter animation for the screen
+      const screen = container.children[current];
+      if (screen && screen.dataset.entered !== 'true') {
+        screen.dataset.entered = 'true';
+        const event = new CustomEvent('screen-enter', { detail: { index: current } });
+        screen.dispatchEvent(event);
+      }
+    }
+
+    function nextScreen() { goTo(current + 1); }
+    function prevScreen() { goTo(current - 1); }
+
+    // Auto-trigger Screen 1 enter on load
+    window.addEventListener('DOMContentLoaded', () => {
+      setTimeout(() => goTo(0), 100);
+    });
+
+    // Screen 1 auto-advances after 2 seconds
+    document.getElementById('screen-splash').addEventListener('screen-enter', () => {
+      setTimeout(() => nextScreen(), 2000);
+    });
+
+    // Screen 3: Video generation pipeline animation
+    function startGeneration() {
+      document.getElementById('gen-btn').style.display = 'none';
+      const steps = document.getElementById('pipeline-steps');
+      steps.style.display = 'flex';
+
+      const stepScript = document.getElementById('step-script');
+      const stepMusic = document.getElementById('step-music');
+      const stepRender = document.getElementById('step-render');
+
+      // Step 1: Script
+      stepScript.classList.add('active');
+      stepScript.querySelector('.step-icon').innerHTML = '<div class="spinner"></div>';
+
+      setTimeout(() => {
+        stepScript.classList.remove('active');
+        stepScript.classList.add('done');
+        stepScript.querySelector('.step-icon').innerHTML = '&#10003;';
+
+        // Step 2: Music
+        stepMusic.classList.add('active');
+        stepMusic.querySelector('.step-icon').innerHTML = '<div class="spinner"></div>';
+
+        setTimeout(() => {
+          stepMusic.classList.remove('active');
+          stepMusic.classList.add('done');
+          stepMusic.querySelector('.step-icon').innerHTML = '&#10003;';
+
+          // Step 3: Render
+          stepRender.classList.add('active');
+          stepRender.querySelector('.step-icon').innerHTML = '<div class="spinner"></div>';
+          const bar = stepRender.querySelector('.progress-bar');
+          bar.style.display = 'block';
+
+          setTimeout(() => {
+            document.getElementById('render-progress').style.width = '100%';
+          }, 100);
+
+          setTimeout(() => {
+            stepRender.classList.remove('active');
+            stepRender.classList.add('done');
+            stepRender.querySelector('.step-icon').innerHTML = '&#10003;';
+
+            // Show share button
+            document.getElementById('share-btn').classList.add('visible');
+          }, 2200);
+
+        }, 1500);
+      }, 1500);
+    }
+
+    // Screen 4: OAuth
+    function showConsent() {
+      document.getElementById('consent-overlay').classList.add('visible');
+    }
+
+    function hideConsent() {
+      document.getElementById('consent-overlay').classList.remove('visible');
+    }
+
+    function authorizeOAuth() {
+      document.getElementById('consent-loader').classList.add('visible');
+      setTimeout(() => {
+        document.getElementById('consent-loader').classList.remove('visible');
+        document.getElementById('consent-overlay').classList.remove('visible');
+        nextScreen();
+      }, 1200);
+    }
+
+    // Screen 6: Upload progress animation
+    document.getElementById('screen-upload').addEventListener('screen-enter', () => {
+      const fill = document.getElementById('upload-fill');
+      const pct = document.getElementById('upload-percent');
+      fill.style.width = '100%';
+
+      const steps = [
+        { time: 600, text: '25%' },
+        { time: 1200, text: '50%' },
+        { time: 1800, text: '75%' },
+        { time: 2600, text: '100%' },
+      ];
+      steps.forEach(s => {
+        setTimeout(() => { pct.textContent = s.text; }, s.time);
+      });
+
+      // Auto-advance after upload completes
+      setTimeout(() => nextScreen(), 3200);
+    });
+
+    // Screen 7: Success animation
+    document.getElementById('screen-success').addEventListener('screen-enter', () => {
+      const check = document.getElementById('success-check');
+      check.classList.add('animate');
+
+      // Status: processing -> ready after 2s
+      setTimeout(() => {
+        const badge = document.getElementById('status-badge');
+        badge.classList.remove('processing');
+        badge.classList.add('ready');
+        badge.innerHTML = '&#10003; Ready for Review';
+      }, 2000);
+    });
+
+    // Reset all screens to initial state
+    function resetDemo() {
+      // Reset video gen
+      document.getElementById('gen-btn').style.display = 'block';
+      document.getElementById('pipeline-steps').style.display = 'none';
+      document.getElementById('share-btn').classList.remove('visible');
+      ['step-script', 'step-music', 'step-render'].forEach(id => {
+        const el = document.getElementById(id);
+        el.classList.remove('active', 'done');
+        el.querySelector('.step-icon').textContent = id === 'step-script' ? '1' :
+          id === 'step-music' ? '2' : '3';
+      });
+      document.querySelector('#step-render .progress-bar').style.display = 'none';
+      document.getElementById('render-progress').style.width = '0%';
+
+      // Reset oauth
+      document.getElementById('consent-overlay').classList.remove('visible');
+      document.getElementById('consent-loader').classList.remove('visible');
+
+      // Reset publish
+      document.getElementById('privacy-select').selectedIndex = 0;
+      document.querySelectorAll('.publish .toggle input').forEach(t => {
+        // Comments, Duet, Stitch ON; Commercial OFF
+        t.checked = !t.closest('.commercial-section');
+      });
+
+      // Reset upload
+      document.getElementById('upload-fill').style.width = '0%';
+      document.getElementById('upload-percent').textContent = '0%';
+
+      // Reset success
+      document.getElementById('success-check').classList.remove('animate');
+      const badge = document.getElementById('status-badge');
+      badge.classList.remove('ready');
+      badge.classList.add('processing');
+      badge.innerHTML = '<div class="spinner" style="width:14px;height:14px;border-width:2px;border-top-color:var(--amber);"></div>Processing...';
+
+      // Reset screen-enter flags
+      document.querySelectorAll('.screen').forEach(s => delete s.dataset.entered);
+    }
+  </script>
+</body>
+</html>
