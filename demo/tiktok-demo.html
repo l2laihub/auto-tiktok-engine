@@ -513,7 +513,6 @@
     }
 
     /* === Screen 5: Publish === */
-    .publish { padding: 0 20px 100px; }
     .publish .account {
       display: flex;
       align-items: center;
@@ -689,14 +688,9 @@
       line-height: 1.5;
     }
 
-    /* Fixed bottom button */
+    /* Post button (overridden by .screen-publish-layout rules at end) */
     .publish-footer {
-      position: absolute;
-      bottom: 34px;
-      left: 0;
-      right: 0;
-      padding: 12px 20px;
-      background: linear-gradient(transparent, var(--dark) 30%);
+      padding: 10px 20px 8px;
     }
 
     /* === Screen 6: Upload === */
@@ -824,6 +818,25 @@
       flex-direction: column;
       gap: 10px;
       margin-top: 16px;
+    }
+
+    /* Publish screen: flex layout with pinned footer */
+    .screen.screen-publish-layout {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .screen.screen-publish-layout .publish {
+      padding: 0 20px 20px;
+      flex: 1;
+      overflow-y: auto;
+      scrollbar-width: none;
+    }
+    .screen.screen-publish-layout .publish::-webkit-scrollbar { display: none; }
+    .screen.screen-publish-layout .publish-footer {
+      padding: 10px 20px 8px;
+      background: var(--dark);
+      flex-shrink: 0;
     }
   </style>
 </head>
@@ -1031,7 +1044,7 @@
         </section>
 
         <!-- Screen 5: Publish (Critical) -->
-        <section class="screen" id="screen-publish">
+        <section class="screen screen-publish-layout" id="screen-publish">
           <div class="top-bar">
             <button class="back" onclick="prevScreen()">&#8249;</button>
             <div class="title">Post to TikTok</div>
@@ -1115,7 +1128,6 @@
               <span style="color:var(--teal);">Music Usage Confirmation</span>
             </p>
           </div>
-
           <div class="publish-footer">
             <button class="btn btn-coral" onclick="nextScreen()">Post to TikTok</button>
           </div>
