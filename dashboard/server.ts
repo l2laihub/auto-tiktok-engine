@@ -1,4 +1,5 @@
 import express from 'express';
+import basicAuth from 'express-basic-auth';
 import { createClient } from '@supabase/supabase-js';
 import { spawn, type ChildProcess } from 'child_process';
 import path from 'path';
@@ -17,6 +18,20 @@ const supabase = createClient(
 );
 
 const app = express();
+
+const dashboardUser = process.env.DASHBOARD_USER;
+const dashboardPass = process.env.DASHBOARD_PASS;
+if (!dashboardUser || !dashboardPass) {
+  throw new Error('DASHBOARD_USER and DASHBOARD_PASS must be set');
+}
+app.use(
+  basicAuth({
+    users: { [dashboardUser]: dashboardPass },
+    challenge: true,
+    realm: 'auto-tiktok-engine',
+  })
+);
+
 app.use(express.json());
 
 // Serve static assets (logo, etc.)
