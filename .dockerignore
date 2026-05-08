@@ -40,7 +40,7 @@ npm-debug.log*
 TESTING.md
 README.md
 
-# Docker files themselves
+# Docker files themselves (docker-entrypoint.sh is COPY'd by the Dockerfile, so
+# it must remain in the build context)
 Dockerfile
 .dockerignore
-docker-entrypoint.sh
