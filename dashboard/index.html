@@ -1562,14 +1562,6 @@
 
     /* ===== SCHEDULE MOBILE ===== */
     @media (max-width: 767px) {
-      .schedule-grid {
-        display: none;
-      }
-
-      .schedule-mobile {
-        display: block;
-      }
-
       .date-chip-strip {
         display: flex;
         gap: 0.5rem;
@@ -1657,12 +1649,19 @@
         font-weight: 600;
         color: var(--text-light);
         margin-bottom: 0.4rem;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        word-break: break-word;
       }
 
       .schedule-mobile-card-meta {
         display: flex;
         align-items: center;
         justify-content: space-between;
+        gap: 0.5rem;
+        flex-wrap: wrap;
       }
 
       .schedule-mobile-card-reschedule {
@@ -1701,12 +1700,6 @@
         flex-direction: column;
         align-items: flex-start;
         gap: 0.75rem;
-      }
-    }
-
-    @media (min-width: 768px) {
-      .schedule-mobile {
-        display: none;
       }
     }
 
@@ -1848,6 +1841,24 @@
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Request failed');
       return data;
+    }
+
+    // Responsive breakpoint detection. Combines matchMedia with a UA sniff so
+    // iOS Safari's "Request Desktop Website" mode still resolves to mobile.
+    function useIsMobile() {
+      const check = () => {
+        const narrow = window.matchMedia('(max-width: 767px)').matches;
+        const phoneUA = /iPhone|Android.+Mobile|iPod/i.test(navigator.userAgent);
+        return narrow || phoneUA;
+      };
+      const [isMobile, setIsMobile] = useState(check);
+      useEffect(() => {
+        const mq = window.matchMedia('(max-width: 767px)');
+        const handler = () => setIsMobile(check());
+        mq.addEventListener('change', handler);
+        return () => mq.removeEventListener('change', handler);
+      }, []);
+      return isMobile;
     }
 
     // ============================================================
@@ -2454,6 +2465,7 @@
       const [cronDays, setCronDays] = useState(null); // null = loading
       const [selectedDate, setSelectedDate] = useState(null);
       const [rescheduleId, setRescheduleId] = useState(null);
+      const isMobile = useIsMobile();
 
       useEffect(() => {
         api('/api/schedule').then(setItems).catch(console.error);
@@ -2512,7 +2524,7 @@
 
       return html`<div>
         <${SchedulerSettings} onToast=${onToast} onSettingsChanged=${setCronDays} />
-        <div className="schedule-mobile">
+        ${isMobile ? html`<div className="schedule-mobile">
           ${(() => {
             const allDates = weeks.flat();
             const selStr = selectedDate ? dateStr(selectedDate) : dateStr(new Date());
@@ -2554,7 +2566,7 @@
                         <input
                           type="date"
                           className="form-input"
-                          style=${{padding: '0.2rem 0.4rem', fontSize: '0.75rem', width: '140px'}}
+                          style=${{padding: '0.2rem 0.4rem', fontSize: '0.75rem', width: '100%', maxWidth: '140px'}}
                           value=${selDay ? dateStr(selDay) : ''}
                           onChange=${async e => {
                             const newDate = e.target.value;
@@ -2581,8 +2593,7 @@
               </div>
             </div>`;
           })()}
-        </div>
-        <div className="schedule-grid" style=${{ gridTemplateColumns: 'repeat(' + activeDays.length + ', 1fr)' }}>
+        </div>` : html`<div className="schedule-grid" style=${{ gridTemplateColumns: 'repeat(' + activeDays.length + ', 1fr)' }}>
           ${activeDays.map(d => html`
             <div key=${'hdr-' + d} className="schedule-header">${DAY_NAMES[d]}</div>
           `)}
@@ -2619,7 +2630,7 @@
               `)}
             </${React.Fragment}>
           `)}
-        </div>
+        </div>`}
       </div>`;
     }
 

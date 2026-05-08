@@ -1,0 +1,46 @@
+# Build artifacts and dependencies
+node_modules
+output
+.expo
+.next
+dist
+build
+
+# Volumes — provided at runtime by Coolify
+public/music
+
+# Local secrets
+.env
+.env.local
+.env.*.local
+
+# VCS and editor
+.git
+.gitignore
+.gitattributes
+.vscode
+.idea
+.DS_Store
+
+# Tool/agent metadata
+.claude
+.superpowers
+
+# Demo and screenshots — not needed in production image
+demo
+docs
+*.png
+suno-snapshot.md
+
+# Logs
+*.log
+npm-debug.log*
+
+# Tests / docs
+TESTING.md
+README.md
+
+# Docker files themselves
+Dockerfile
+.dockerignore
+docker-entrypoint.sh

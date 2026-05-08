@@ -54,6 +54,10 @@ cp .env.example .env
 #   ANTHROPIC_API_KEY=your-key
 #   TIKTOK_ACCESS_TOKEN=your-token  (optional, for auto-posting)
 ```
+### 2.2 Run dashboard locally
+```bash
+npm run dashboard
+```
 
 ### 3. Run the database migration
 
