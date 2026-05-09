@@ -12,6 +12,7 @@ import { generateScript } from '../scripts/generate-script';
 import { generateMusicTrack as generateLyriaTrack, trimAudioFile } from '../src/utils/lyria';
 import { generateMusicTrack as generateSunoTrack, downloadAndTrim } from '../src/utils/suno';
 import { createRevealTiming, createTipsTiming, VIDEO } from '../src/config';
+import { withRetry } from '../scripts/lib/retry';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = 3001;
@@ -290,9 +291,28 @@ app.get('/api/schedule', async (_req, res) => {
 // Photo upload & AI analysis
 // ============================================================
 
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+// 15MB ceiling — well above the ~1MB the client uploads after compression,
+// but tolerant of edge cases (e.g. Chrome on Android receiving a HEIC it can't
+// decode in canvas and falling back to the raw file).
+const UPLOAD_MAX_BYTES = 15 * 1024 * 1024;
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: UPLOAD_MAX_BYTES } });
 
-app.post('/api/upload-photo', upload.single('photo'), async (req, res) => {
+function uploadHandler(req: express.Request, res: express.Response, next: express.NextFunction) {
+  upload.single('photo')(req, res, (err: unknown) => {
+    if (err) {
+      const isMulterErr = err && typeof err === 'object' && 'code' in err;
+      const code = isMulterErr ? (err as { code?: string }).code : null;
+      if (code === 'LIMIT_FILE_SIZE') {
+        return res.status(413).json({ error: `File too large (max ${Math.round(UPLOAD_MAX_BYTES / 1024 / 1024)}MB)` });
+      }
+      const msg = err instanceof Error ? err.message : 'Upload failed';
+      return res.status(400).json({ error: msg });
+    }
+    next();
+  });
+}
+
+app.post('/api/upload-photo', uploadHandler, async (req, res) => {
   const file = req.file;
   if (!file) return res.status(400).json({ error: 'No file provided' });
 
@@ -300,14 +320,42 @@ app.post('/api/upload-photo', upload.single('photo'), async (req, res) => {
   const filename = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}${ext}`;
   const storagePath = `uploads/${filename}`;
 
-  const { error } = await supabase.storage
-    .from('photos')
-    .upload(storagePath, file.buffer, {
-      contentType: file.mimetype,
-      upsert: false,
-    });
-
-  if (error) return res.status(500).json({ error: error.message });
+  // The supabase-js storage upload uses a single fetch with no retry;
+  // residential uplinks occasionally fail with a generic "fetch failed".
+  // Retry transient errors and abort each attempt at 30s so a hung TCP
+  // socket doesn't hold the request open until the proxy 502s.
+  try {
+    await withRetry(
+      async () => {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 30_000);
+        try {
+          const { error } = await supabase.storage
+            .from('photos')
+            .upload(storagePath, file.buffer, {
+              contentType: file.mimetype,
+              upsert: false,
+              // @ts-expect-error storage-js accepts AbortSignal at runtime, types lag
+              signal: controller.signal,
+            });
+          if (error) throw new Error(error.message);
+        } finally {
+          clearTimeout(timeout);
+        }
+      },
+      {
+        maxRetries: 2,
+        baseDelayMs: 500,
+        maxDelayMs: 4000,
+        onAttempt: (attempt, err, nextDelayMs) => {
+          console.log(`[upload-photo] attempt ${attempt} failed (${err.message}); retrying in ${Math.round(nextDelayMs)}ms`);
+        },
+      }
+    );
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return res.status(502).json({ error: `Storage upload failed after retries: ${msg}` });
+  }
 
   const { data: { publicUrl } } = supabase.storage.from('photos').getPublicUrl(storagePath);
   res.json({ url: publicUrl });
@@ -453,6 +501,40 @@ app.get('/api/pipeline/history', async (_req, res) => {
   if (error) return res.status(500).json({ error: error.message });
   res.json(data);
 });
+
+app.delete('/api/pipeline/history/:id', async (req, res) => {
+  const { id } = req.params;
+  if (pipelineRunning && currentRunId === id) {
+    return res.status(409).json({ error: 'Cannot delete an active run' });
+  }
+  const { error } = await supabase
+    .from('pipeline_run_log')
+    .delete()
+    .eq('id', id);
+
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ ok: true });
+});
+
+async function reconcileOrphanedRuns() {
+  const { data, error } = await supabase
+    .from('pipeline_run_log')
+    .update({
+      finished_at: new Date().toISOString(),
+      success: false,
+      error: 'Server restarted mid-run',
+    })
+    .is('finished_at', null)
+    .select('id');
+
+  if (error) {
+    console.error('Failed to reconcile orphaned runs:', error.message);
+    return;
+  }
+  if (data && data.length > 0) {
+    console.log(`Reconciled ${data.length} orphaned pipeline run(s)`);
+  }
+}
 
 // ============================================================
 // TikTok token management
@@ -665,7 +747,8 @@ app.patch('/api/scheduler/settings', (req, res) => {
 // Start server
 // ============================================================
 
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`Dashboard running at http://localhost:${PORT}`);
+  await reconcileOrphanedRuns();
   startScheduler();
 });

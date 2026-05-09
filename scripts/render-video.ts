@@ -30,6 +30,7 @@ import {
   RateLimitError,
   VideoProcessingError,
 } from './lib/tiktok-api';
+import * as tus from 'tus-js-client';
 import path from 'path';
 import fs from 'fs';
 
@@ -418,18 +419,16 @@ async function uploadVideo(
 ): Promise<string> {
   const filename = path.basename(localPath);
   const storagePath = `tiktok-videos/${filename}`;
+  const fileSize = fs.statSync(localPath).size;
+  const fileSizeMb = (fileSize / 1024 / 1024).toFixed(1);
 
-  console.log(`  Uploading to Supabase Storage: ${storagePath}`);
+  console.log(`  Uploading to Supabase Storage: ${storagePath} (${fileSizeMb} MB)`);
 
-  const fileBuffer = fs.readFileSync(localPath);
-  const { error } = await supabase.storage
-    .from('videos')
-    .upload(storagePath, fileBuffer, {
-      contentType: 'video/mp4',
-      upsert: true,
-    });
-
-  if (error) throw new Error(`Upload failed: ${error.message}`);
+  // Use the TUS resumable protocol. Supabase explicitly recommends it for
+  // anything >6MB, and it sidesteps the "fetch failed" failure mode of a
+  // single buffered upload via supabase-js storage on Node 20 — chunks are
+  // sent independently and retried per-chunk with exponential backoff.
+  await uploadVideoTus(localPath, storagePath, fileSize);
 
   const {
     data: { publicUrl },
@@ -448,6 +447,46 @@ async function uploadVideo(
     .eq('id', item.id);
 
   return videoUrl;
+}
+
+function uploadVideoTus(localPath: string, storagePath: string, fileSize: number): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const fileStream = fs.createReadStream(localPath);
+    let lastLoggedPct = -10;
+
+    const upload = new tus.Upload(fileStream, {
+      endpoint: `${SUPABASE_URL}/storage/v1/upload/resumable`,
+      retryDelays: [0, 3000, 5000, 10000, 20000, 30000],
+      headers: {
+        authorization: `Bearer ${SUPABASE_KEY}`,
+        'x-upsert': 'true',
+      },
+      uploadDataDuringCreation: true,
+      removeFingerprintOnSuccess: true,
+      metadata: {
+        bucketName: 'videos',
+        objectName: storagePath,
+        contentType: 'video/mp4',
+        cacheControl: '3600',
+      },
+      chunkSize: 6 * 1024 * 1024,
+      uploadSize: fileSize,
+      onError: (err) => reject(new Error(`TUS upload failed: ${err.message}`)),
+      onProgress: (bytesUploaded, bytesTotal) => {
+        const pct = Math.floor((bytesUploaded / bytesTotal) * 100);
+        if (pct >= lastLoggedPct + 10) {
+          lastLoggedPct = pct;
+          console.log(`  Upload progress: ${pct}% (${(bytesUploaded / 1024 / 1024).toFixed(1)}/${(bytesTotal / 1024 / 1024).toFixed(1)} MB)`);
+        }
+      },
+      onSuccess: () => {
+        console.log('  Upload complete');
+        resolve();
+      },
+    });
+
+    upload.start();
+  });
 }
 
 // --- Step 6: Post to TikTok ---
