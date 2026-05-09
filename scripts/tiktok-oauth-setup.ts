@@ -8,9 +8,16 @@
 // ============================================================
 
 import { createClient } from '@supabase/supabase-js';
-import { URL } from 'url';
-import crypto from 'crypto';
 import { createInterface } from 'readline';
+import {
+  generateCodeVerifier,
+  generateCodeChallenge,
+  generateState,
+  buildAuthUrl,
+  exchangeCodeForTokens as exchangeOAuthCode,
+  parseCallbackInput,
+  type TikTokTokenResponse,
+} from './lib/tiktok-oauth';
 
 const SUPABASE_URL = process.env.SUPABASE_URL!;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -38,16 +45,6 @@ if (!CLIENT_KEY || !CLIENT_SECRET) {
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// --- PKCE Helpers ---
-
-function generateCodeVerifier(): string {
-  return crypto.randomBytes(64).toString('base64url').slice(0, 128);
-}
-
-function generateCodeChallenge(verifier: string): string {
-  return crypto.createHash('sha256').update(verifier).digest('base64url');
-}
-
 // --- Readline Helper ---
 
 function askQuestion(prompt: string): Promise<string> {
@@ -62,38 +59,14 @@ function askQuestion(prompt: string): Promise<string> {
 
 // --- Token Exchange ---
 
-async function exchangeCodeForTokens(code: string, codeVerifier: string): Promise<void> {
-  console.log('\nExchanging authorization code for tokens...');
-
-  const response = await fetch('https://open.tiktokapis.com/v2/oauth/token/', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      client_key: CLIENT_KEY!,
-      client_secret: CLIENT_SECRET!,
-      code,
-      grant_type: 'authorization_code',
-      redirect_uri: REDIRECT_URI,
-      code_verifier: codeVerifier,
-    }),
-  });
-
-  const result = await response.json();
-
-  if (result.error || !result.access_token) {
-    console.error('Token exchange failed:', result.error_description || result.error || result);
-    process.exit(1);
-  }
-
-  const expiresAt = new Date(Date.now() + result.expires_in * 1000);
-
+async function persistTokens(tokens: TikTokTokenResponse): Promise<void> {
   const { error } = await supabase.from('tiktok_tokens').upsert({
     id: 'default',
-    access_token: result.access_token,
-    refresh_token: result.refresh_token,
-    expires_at: expiresAt.toISOString(),
-    scope: result.scope,
-    open_id: result.open_id,
+    access_token: tokens.accessToken,
+    refresh_token: tokens.refreshToken,
+    expires_at: tokens.expiresAt.toISOString(),
+    scope: tokens.scope,
+    open_id: tokens.openId,
     updated_at: new Date().toISOString(),
   });
 
@@ -101,12 +74,32 @@ async function exchangeCodeForTokens(code: string, codeVerifier: string): Promis
     console.error('Failed to store tokens in Supabase:', error.message);
     process.exit(1);
   }
+}
+
+async function exchangeAndPersist(code: string, codeVerifier: string): Promise<void> {
+  console.log('\nExchanging authorization code for tokens...');
+
+  let tokens: TikTokTokenResponse;
+  try {
+    tokens = await exchangeOAuthCode({
+      code,
+      codeVerifier,
+      clientKey: CLIENT_KEY!,
+      clientSecret: CLIENT_SECRET!,
+      redirectUri: REDIRECT_URI,
+    });
+  } catch (err) {
+    console.error(err instanceof Error ? err.message : String(err));
+    process.exit(1);
+  }
+
+  await persistTokens(tokens);
 
   console.log('\nTokens stored successfully!');
-  console.log(`  Open ID: ${result.open_id}`);
-  console.log(`  Scope: ${result.scope}`);
-  console.log(`  Expires at: ${expiresAt.toISOString()}`);
-  console.log(`  Refresh token: ${result.refresh_token ? 'received' : 'NOT received'}`);
+  console.log(`  Open ID: ${tokens.openId}`);
+  console.log(`  Scope: ${tokens.scope}`);
+  console.log(`  Expires at: ${tokens.expiresAt.toISOString()}`);
+  console.log(`  Refresh token: ${tokens.refreshToken ? 'received' : 'NOT received'}`);
 }
 
 // --- Refresh Only ---
@@ -164,38 +157,36 @@ async function refreshOnly(): Promise<void> {
 // --- Full OAuth Flow (Manual Code Paste) ---
 
 async function fullOAuthFlow(): Promise<void> {
-  const state = crypto.randomBytes(16).toString('hex');
+  const state = generateState();
   const codeVerifier = generateCodeVerifier();
   const codeChallenge = generateCodeChallenge(codeVerifier);
-
-  const authUrl = new URL('https://www.tiktok.com/v2/auth/authorize/');
-  authUrl.searchParams.set('client_key', CLIENT_KEY!);
-  authUrl.searchParams.set('scope', SCOPES);
-  authUrl.searchParams.set('response_type', 'code');
-  authUrl.searchParams.set('redirect_uri', REDIRECT_URI);
-  authUrl.searchParams.set('state', state);
-  authUrl.searchParams.set('code_challenge', codeChallenge);
-  authUrl.searchParams.set('code_challenge_method', 'S256');
+  const authUrl = buildAuthUrl({
+    clientKey: CLIENT_KEY!,
+    redirectUri: REDIRECT_URI,
+    scopes: SCOPES,
+    state,
+    codeChallenge,
+  });
 
   console.log('\n=== TikTok OAuth Setup ===\n');
   console.log('Step 1: Open this URL in your browser:\n');
-  console.log(authUrl.toString());
+  console.log(authUrl);
   console.log('\nStep 2: Authorize the app on TikTok.');
   console.log('\nStep 3: After authorizing, you will be redirected to a URL.');
   console.log(`        It will look like: ${REDIRECT_URI}?code=XXXXX&state=XXXXX`);
   console.log('\nStep 4: Copy the ENTIRE redirect URL from your browser address bar');
   console.log('        and paste it below.\n');
 
-  // Try to open browser automatically
+  // Try to open browser automatically — execFile avoids shell interpolation.
   try {
-    const { exec } = await import('child_process');
-    const openCmd =
-      process.platform === 'darwin'
-        ? 'open'
-        : process.platform === 'win32'
-          ? 'start'
-          : 'xdg-open';
-    exec(`${openCmd} "${authUrl.toString()}"`);
+    const { execFile } = await import('child_process');
+    if (process.platform === 'darwin') {
+      execFile('open', [authUrl]);
+    } else if (process.platform === 'win32') {
+      execFile('cmd', ['/c', 'start', '', authUrl]);
+    } else {
+      execFile('xdg-open', [authUrl]);
+    }
     console.log('(Browser should open automatically)\n');
   } catch {
     // Best-effort
@@ -203,36 +194,16 @@ async function fullOAuthFlow(): Promise<void> {
 
   const input = await askQuestion('Paste the redirect URL here: ');
 
-  if (!input) {
-    console.error('No URL provided.');
-    process.exit(1);
-  }
-
-  // Parse the code from the pasted URL or raw code
   let code: string;
-  let returnedState: string | null = null;
-
-  if (input.startsWith('http')) {
-    const redirectUrl = new URL(input);
-    code = redirectUrl.searchParams.get('code') || '';
-    returnedState = redirectUrl.searchParams.get('state');
-
-    if (returnedState && returnedState !== state) {
-      console.error('State mismatch — the URL may be from a different auth attempt.');
-      process.exit(1);
-    }
-  } else {
-    // User pasted just the code directly
-    code = input;
-  }
-
-  if (!code) {
-    console.error('Could not extract authorization code from input.');
+  try {
+    code = parseCallbackInput(input, state).code;
+  } catch (err) {
+    console.error(err instanceof Error ? err.message : String(err));
     process.exit(1);
   }
 
   console.log(`  Authorization code: ${code.slice(0, 10)}...`);
-  await exchangeCodeForTokens(code, codeVerifier);
+  await exchangeAndPersist(code, codeVerifier);
 }
 
 // --- Main ---

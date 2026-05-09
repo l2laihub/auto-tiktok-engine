@@ -3072,6 +3072,160 @@
     }
 
     // ============================================================
+    // TikTok Re-auth Modal
+    // ============================================================
+    function ReauthModal({ onClose, onToast, onSuccess }) {
+      const [authUrl, setAuthUrl] = useState('');
+      const [callbackUrl, setCallbackUrl] = useState('');
+      const [starting, setStarting] = useState(true);
+      const [submitting, setSubmitting] = useState(false);
+
+      useEffect(() => {
+        let cancelled = false;
+        api('/api/tiktok/auth/start', { method: 'POST', body: {} })
+          .then(({ authUrl }) => {
+            if (cancelled) return;
+            setAuthUrl(authUrl);
+            window.open(authUrl, '_blank', 'noopener,noreferrer');
+          })
+          .catch(e => onToast(e.message, 'error'))
+          .finally(() => { if (!cancelled) setStarting(false); });
+        return () => { cancelled = true; };
+      }, []);
+
+      async function copyAuthUrl() {
+        try {
+          await navigator.clipboard.writeText(authUrl);
+          onToast('Auth URL copied');
+        } catch { onToast('Copy failed — select and copy manually', 'error'); }
+      }
+
+      async function handleSubmit() {
+        if (!callbackUrl.trim()) {
+          onToast('Paste the redirect URL from your browser', 'error');
+          return;
+        }
+        setSubmitting(true);
+        try {
+          await api('/api/tiktok/auth/complete', { method: 'POST', body: { callbackUrl: callbackUrl.trim() } });
+          onToast('TikTok re-authorized', 'success');
+          onSuccess?.();
+          onClose();
+        } catch (e) { onToast(e.message, 'error'); }
+        finally { setSubmitting(false); }
+      }
+
+      return html`<div className="modal-overlay" onClick=${onClose}>
+        <div className="modal-content" style=${{maxWidth: '540px', width: '90%'}} onClick=${e => e.stopPropagation()}>
+          <button className="modal-close" onClick=${onClose}>×</button>
+          <div className="panel" style=${{padding: '1.25rem'}}>
+            <div className="panel-header" style=${{padding: '0 0 0.75rem 0', border: 'none'}}>Re-authorize TikTok</div>
+            ${starting ? html`
+              <div style=${{display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)', fontSize: '0.85rem'}}>
+                <div className="spinner" style=${{width: '14px', height: '14px'}}></div>
+                Generating authorization URL...
+              </div>
+            ` : html`
+              <ol style=${{margin: '0 0 1rem', paddingLeft: '1.2rem', fontSize: '0.85rem', color: 'var(--text-light)', lineHeight: 1.6}}>
+                <li>A new tab opened with TikTok's authorization page. Sign in and authorize.</li>
+                <li>TikTok will redirect to a 404 page (expected) — copy the <strong>full URL</strong> from the address bar.</li>
+                <li>Paste it below and tap Submit.</li>
+              </ol>
+              <div style=${{marginBottom: '1rem'}}>
+                <div style=${{fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.35rem'}}>Auth URL (if the new tab didn't open)</div>
+                <div style=${{display: 'flex', gap: '0.5rem'}}>
+                  <a href=${authUrl} target="_blank" rel="noopener noreferrer" style=${{flex: 1, fontSize: '0.7rem', fontFamily: 'JetBrains Mono', color: 'var(--amber)', wordBreak: 'break-all', padding: '0.5rem', background: 'rgba(255,255,255,0.04)', borderRadius: '6px', textDecoration: 'none'}}>${authUrl}</a>
+                  <button className="btn btn-ghost btn-sm" onClick=${copyAuthUrl}>copy</button>
+                </div>
+              </div>
+              <div className="form-group">
+                <label style=${{fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em'}}>Pasted redirect URL</label>
+                <textarea
+                  className="form-textarea"
+                  style=${{minHeight: '90px', fontFamily: 'JetBrains Mono', fontSize: '0.7rem'}}
+                  placeholder="https://eternalframe.app/auth/tiktok/callback?code=...&state=..."
+                  value=${callbackUrl}
+                  onChange=${e => setCallbackUrl(e.target.value)}
+                  disabled=${submitting}
+                />
+              </div>
+              <div style=${{display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '1rem'}}>
+                <button className="btn btn-ghost" onClick=${onClose} disabled=${submitting}>Cancel</button>
+                <button className="btn btn-primary" onClick=${handleSubmit} disabled=${submitting || !callbackUrl.trim()}>
+                  ${submitting ? html`<div className="spinner" style=${{width: '14px', height: '14px', borderTopColor: 'white'}}></div> Submitting...` : 'Submit'}
+                </button>
+              </div>
+            `}
+          </div>
+        </div>
+      </div>`;
+    }
+
+    // ============================================================
+    // TikTok Auth Panel (rendered inside Pipeline tab)
+    // ============================================================
+    function TikTokAuthPanel({ onToast }) {
+      const [status, setStatus] = useState(null);
+      const [refreshing, setRefreshing] = useState(false);
+      const [showReauth, setShowReauth] = useState(false);
+
+      function loadStatus() {
+        api('/api/tiktok/token-status').then(setStatus).catch(() => setStatus({ hasToken: false, isExpired: true }));
+      }
+      useEffect(loadStatus, []);
+
+      async function handleRefresh() {
+        setRefreshing(true);
+        try {
+          await api('/api/tiktok/refresh-token', { method: 'POST', body: {} });
+          onToast('Token refreshed', 'success');
+          loadStatus();
+        } catch (e) { onToast(e.message, 'error'); }
+        finally { setRefreshing(false); }
+      }
+
+      function formatExpiry(iso) {
+        if (!iso) return '—';
+        const ms = new Date(iso) - new Date();
+        if (ms < 0) return `expired ${Math.round(-ms / 60000)} min ago`;
+        if (ms < 3600_000) return `in ${Math.round(ms / 60000)} min`;
+        if (ms < 86400_000) return `in ${Math.round(ms / 3600_000)}h`;
+        return `in ${Math.round(ms / 86400_000)}d`;
+      }
+
+      const badge = !status ? null
+        : !status.hasToken ? html`<span className="status-badge status-failed"><span className="led"></span>no token</span>`
+        : status.isExpired ? html`<span className="status-badge status-failed"><span className="led"></span>expired</span>`
+        : html`<span className="status-badge status-posted"><span className="led"></span>active</span>`;
+
+      return html`<div className="panel" style=${{marginTop: '1.5rem'}}>
+        <div className="panel-header">TikTok Account</div>
+        <div style=${{padding: '1rem', display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center'}}>
+          <div style=${{display: 'flex', flexDirection: 'column', gap: '0.35rem', flex: 1, minWidth: '200px'}}>
+            <div style=${{display: 'flex', gap: '0.5rem', alignItems: 'center'}}>
+              ${badge}
+              <span style=${{fontSize: '0.75rem', color: 'var(--text-muted)'}}>
+                ${status?.hasToken ? `expires ${formatExpiry(status.expiresAt)}` : ''}
+              </span>
+            </div>
+            ${status?.scope ? html`<div style=${{fontSize: '0.65rem', color: 'var(--text-muted)', fontFamily: 'JetBrains Mono'}}>${status.scope}</div>` : null}
+          </div>
+          <div style=${{display: 'flex', gap: '0.5rem', flexWrap: 'wrap'}}>
+            <button className="btn btn-secondary btn-sm" onClick=${handleRefresh} disabled=${refreshing || !status?.hasToken}>
+              ${refreshing ? 'Refreshing...' : 'Refresh Token'}
+            </button>
+            <button className="btn btn-primary btn-sm" onClick=${() => setShowReauth(true)}>Re-authorize</button>
+          </div>
+        </div>
+        ${showReauth ? html`<${ReauthModal}
+          onClose=${() => setShowReauth(false)}
+          onToast=${onToast}
+          onSuccess=${loadStatus}
+        />` : null}
+      </div>`;
+    }
+
+    // ============================================================
     // Pipeline Tab
     // ============================================================
     function Pipeline({ onToast }) {
@@ -3269,6 +3423,8 @@
             `)}
           </div>
         </div>
+
+        <${TikTokAuthPanel} onToast=${onToast} />
       </div>`;
     }
 

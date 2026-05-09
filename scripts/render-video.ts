@@ -502,10 +502,9 @@ async function postToTikTok(item: ContentRow, videoUrl: string, videoPath?: stri
   const token = await client.getAccessToken();
 
   if (!token) {
-    console.log('  No TikTok token available. Video saved for manual upload.');
-    console.log(`  Caption: ${item.caption}`);
-    console.log(`  Hashtags: ${item.hashtags?.join(' ')}`);
-    return;
+    console.log(`  Caption (for manual upload): ${item.caption}`);
+    console.log(`  Hashtags (for manual upload): ${item.hashtags?.join(' ')}`);
+    throw new TokenExpiredError('No TikTok token available. Run: npm run tiktok:setup');
   }
 
   // Proactively refresh token if it expires within 30 min (large uploads take time)
@@ -525,16 +524,14 @@ async function postToTikTok(item: ContentRow, videoUrl: string, videoPath?: stri
   // If no local file, download from Supabase Storage
   if (!localPath || !fs.existsSync(localPath)) {
     if (!videoUrl) {
-      console.error('  No video file or URL available. Cannot post.');
-      return;
+      throw new Error('No video file or URL available. Cannot post.');
     }
     console.log('  Local video not found, downloading from Supabase Storage...');
     const downloadPath = path.join(OUTPUT_DIR, `${item.content_type}-${item.id.slice(0, 8)}.mp4`);
     fs.mkdirSync(OUTPUT_DIR, { recursive: true });
     const resp = await fetch(videoUrl);
     if (!resp.ok) {
-      console.error(`  Download failed: HTTP ${resp.status}`);
-      return;
+      throw new Error(`Video download from Supabase Storage failed: HTTP ${resp.status}`);
     }
     const buffer = Buffer.from(await resp.arrayBuffer());
     fs.writeFileSync(downloadPath, buffer);
@@ -626,6 +623,7 @@ async function postToTikTok(item: ContentRow, videoUrl: string, videoPath?: stri
       .eq('id', item.id);
 
     console.error(`  TikTok post failed: ${errorMsg}`);
+    throw err;
   }
 }
 

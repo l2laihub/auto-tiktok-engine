@@ -13,6 +13,15 @@ import { generateMusicTrack as generateLyriaTrack, trimAudioFile } from '../src/
 import { generateMusicTrack as generateSunoTrack, downloadAndTrim } from '../src/utils/suno';
 import { createRevealTiming, createTipsTiming, VIDEO } from '../src/config';
 import { withRetry } from '../scripts/lib/retry';
+import { TikTokClient } from '../scripts/lib/tiktok-api';
+import {
+  generateCodeVerifier,
+  generateCodeChallenge,
+  generateState,
+  buildAuthUrl,
+  exchangeCodeForTokens,
+  parseCallbackInput,
+} from '../scripts/lib/tiktok-oauth';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = 3001;
@@ -627,6 +636,109 @@ app.post('/api/tiktok/refresh-token', async (_req, res) => {
   }
 });
 
+// In-memory state for the re-auth OAuth flow. Re-auth is rare and the
+// dashboard is single-instance, so a process-local Map is sufficient;
+// entries auto-expire after 10 minutes.
+const STATE_TTL_MS = 10 * 60 * 1000;
+const pendingAuthStates = new Map<string, { codeVerifier: string; expiresAt: number }>();
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [state, entry] of pendingAuthStates) {
+    if (entry.expiresAt < now) pendingAuthStates.delete(state);
+  }
+}, 5 * 60 * 1000).unref();
+
+app.post('/api/tiktok/auth/start', (_req, res) => {
+  const clientKey = process.env.TIKTOK_CLIENT_KEY;
+  const redirectUri = process.env.TIKTOK_REDIRECT_URI || 'https://www.tiktok.com/';
+  const scopes = process.env.TIKTOK_SCOPES || 'user.info.basic,video.upload,video.publish';
+
+  if (!clientKey) {
+    return res.status(400).json({ error: 'TIKTOK_CLIENT_KEY required in .env' });
+  }
+
+  const state = generateState();
+  const codeVerifier = generateCodeVerifier();
+  const codeChallenge = generateCodeChallenge(codeVerifier);
+
+  pendingAuthStates.set(state, { codeVerifier, expiresAt: Date.now() + STATE_TTL_MS });
+
+  const authUrl = buildAuthUrl({ clientKey, redirectUri, scopes, state, codeChallenge });
+  res.json({ authUrl, state, redirectUri });
+});
+
+app.post('/api/tiktok/auth/complete', async (req, res) => {
+  const { callbackUrl } = req.body;
+  if (!callbackUrl || typeof callbackUrl !== 'string') {
+    return res.status(400).json({ error: '`callbackUrl` is required' });
+  }
+
+  const clientKey = process.env.TIKTOK_CLIENT_KEY;
+  const clientSecret = process.env.TIKTOK_CLIENT_SECRET;
+  const redirectUri = process.env.TIKTOK_REDIRECT_URI || 'https://www.tiktok.com/';
+
+  if (!clientKey || !clientSecret) {
+    return res
+      .status(400)
+      .json({ error: 'TIKTOK_CLIENT_KEY and TIKTOK_CLIENT_SECRET required in .env' });
+  }
+
+  let parsed: { code: string; state: string | null };
+  try {
+    parsed = parseCallbackInput(callbackUrl);
+  } catch (err) {
+    return res.status(400).json({ error: err instanceof Error ? err.message : 'Invalid callback URL' });
+  }
+
+  if (!parsed.state) {
+    return res.status(400).json({ error: 'Callback URL has no `state` parameter' });
+  }
+
+  const pending = pendingAuthStates.get(parsed.state);
+  if (!pending) {
+    return res
+      .status(400)
+      .json({ error: 'Auth state expired or unknown — start a new re-authorization.' });
+  }
+  if (pending.expiresAt < Date.now()) {
+    pendingAuthStates.delete(parsed.state);
+    return res.status(400).json({ error: 'Auth state expired — start a new re-authorization.' });
+  }
+  pendingAuthStates.delete(parsed.state);
+
+  try {
+    const tokens = await exchangeCodeForTokens({
+      code: parsed.code,
+      codeVerifier: pending.codeVerifier,
+      clientKey,
+      clientSecret,
+      redirectUri,
+    });
+
+    const { error } = await supabase.from('tiktok_tokens').upsert({
+      id: 'default',
+      access_token: tokens.accessToken,
+      refresh_token: tokens.refreshToken,
+      expires_at: tokens.expiresAt.toISOString(),
+      scope: tokens.scope,
+      open_id: tokens.openId,
+      updated_at: new Date().toISOString(),
+    });
+    if (error) throw new Error(`Failed to store tokens: ${error.message}`);
+
+    res.json({
+      ok: true,
+      expiresAt: tokens.expiresAt.toISOString(),
+      scope: tokens.scope,
+      openId: tokens.openId,
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(400).json({ error: msg });
+  }
+});
+
 // ============================================================
 // Auto-post scheduler
 // ============================================================
@@ -680,6 +792,38 @@ function startScheduler() {
   });
 
   console.log(`Scheduler started: ${scheduleCron} (${schedulerEnabled ? 'enabled' : 'disabled'})`);
+}
+
+// ============================================================
+// TikTok token refresh cron (independent of the post scheduler)
+// ============================================================
+
+const tokenRefreshCron = process.env.TIKTOK_REFRESH_CRON || '0 3 * * *';
+let tokenRefreshTask: ReturnType<typeof cron.schedule> | null = null;
+
+function startTokenRefreshCron() {
+  if (tokenRefreshTask) tokenRefreshTask.stop();
+
+  if (!cron.validate(tokenRefreshCron)) {
+    console.error(`Invalid TIKTOK_REFRESH_CRON: "${tokenRefreshCron}"`);
+    return;
+  }
+
+  tokenRefreshTask = cron.schedule(tokenRefreshCron, async () => {
+    console.log(`[token-refresh] Cron fired at ${new Date().toLocaleString()}`);
+    try {
+      const client = new TikTokClient(supabase);
+      // Threshold > 24h so each daily tick refreshes; this rotates the
+      // refresh token regularly and prevents staleness from disuse.
+      await client.ensureFreshToken(25 * 60 * 60 * 1000);
+      console.log('[token-refresh] OK');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[token-refresh] FAILED: ${msg}`);
+    }
+  });
+
+  console.log(`Token refresh cron started: ${tokenRefreshCron}`);
 }
 
 function getNextRun(): string | null {
@@ -751,4 +895,5 @@ app.listen(PORT, async () => {
   console.log(`Dashboard running at http://localhost:${PORT}`);
   await reconcileOrphanedRuns();
   startScheduler();
+  startTokenRefreshCron();
 });
