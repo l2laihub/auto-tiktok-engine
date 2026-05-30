@@ -17,7 +17,7 @@
 
 import Anthropic from '@anthropic-ai/sdk';
 import { createClient } from '@supabase/supabase-js';
-import { generateImage } from '../src/utils/image-gen';
+import { generateImage, type GeneratedImage } from '../src/utils/image-gen';
 import { uploadImageBuffer } from '../src/utils/storage';
 import {
   buildBeforePrompt,
@@ -75,15 +75,47 @@ export interface GeneratedPair {
   after_url: string;
   era: string;
   label: string;
+  /** Visual subject description used to (re)generate the before image. */
+  subject?: string;
+  /** 1–2 sentence backstory (kept for script generation + re-rolls). */
+  story?: string;
+  /** Free-text damage steering applied to the before image, if any. */
+  damage_notes?: string;
+}
+
+/** Generate just the DAMAGED "before" image for a subject. */
+export async function generateBeforeImage(
+  subject: PhotoSubject,
+  damageNotes?: string
+): Promise<GeneratedImage> {
+  return generateImage({ prompt: buildBeforePrompt(subject, damageNotes), aspectRatio: '9:16' });
+}
+
+/** Restore a "before" image into its "after" (image-to-image edit, same subject). */
+export async function generateAfterFromBuffer(before: GeneratedImage): Promise<GeneratedImage> {
+  return generateImage({
+    prompt: buildRestoreEditPrompt(),
+    referenceImage: { buffer: before.imageBuffer, mimeType: before.mimeType },
+    aspectRatio: '9:16',
+  });
+}
+
+/** Download an already-uploaded image (e.g. a stored before_url) into a buffer. */
+export async function fetchImageAsGenerated(url: string): Promise<GeneratedImage> {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Failed to fetch image ${url}: HTTP ${res.status}`);
+  const mimeType = res.headers.get('content-type') || 'image/png';
+  const imageBuffer = Buffer.from(await res.arrayBuffer());
+  return { imageBuffer, mimeType };
 }
 
 /** Generate a single damaged→restored pair and upload both images. */
-export async function generatePair(subject: PhotoSubject): Promise<GeneratedPair> {
+export async function generatePair(subject: PhotoSubject, damageNotes?: string): Promise<GeneratedPair> {
   console.log(`  • ${subject.label} (${subject.era}) — ${subject.subject}`);
 
   // 1. Damaged "before"
   console.log('    generating damaged "before"...');
-  const before = await generateImage({ prompt: buildBeforePrompt(subject), aspectRatio: '9:16' });
+  const before = await generateBeforeImage(subject, damageNotes);
   const before_url = await uploadImageBuffer({
     buffer: before.imageBuffer,
     contentType: before.mimeType,
@@ -92,24 +124,29 @@ export async function generatePair(subject: PhotoSubject): Promise<GeneratedPair
 
   // 2. Restored "after" — edit the before so the subject stays identical
   console.log('    restoring → "after"...');
-  const after = await generateImage({
-    prompt: buildRestoreEditPrompt(),
-    referenceImage: { buffer: before.imageBuffer, mimeType: before.mimeType },
-    aspectRatio: '9:16',
-  });
+  const after = await generateAfterFromBuffer(before);
   const after_url = await uploadImageBuffer({
     buffer: after.imageBuffer,
     contentType: after.mimeType,
     pathPrefix: 'generated/reveal',
   });
 
-  return { before_url, after_url, era: subject.era, label: subject.label };
+  return {
+    before_url,
+    after_url,
+    era: subject.era,
+    label: subject.label,
+    subject: subject.subject,
+    story: subject.story,
+    damage_notes: damageNotes,
+  };
 }
 
 export interface GenerateRevealOptions {
   pairs?: number;
   hint?: string;
   subjects?: PhotoSubject[];
+  damageNotes?: string;
 }
 
 export interface GenerateRevealResult {
@@ -133,7 +170,7 @@ export async function generateRevealPhotos(opts: GenerateRevealOptions = {}): Pr
 
   const imagePairs: GeneratedPair[] = [];
   for (const subject of subjects) {
-    imagePairs.push(await generatePair(subject));
+    imagePairs.push(await generatePair(subject, opts.damageNotes));
   }
 
   const first = subjects[0];
@@ -165,6 +202,7 @@ async function main() {
 
   const pairs = parseInt(getFlag('pairs') || '1', 10);
   const hint = getFlag('hint');
+  const damageNotes = getFlag('damage');
   const subjectArg = getFlag('subject');
   const eraArg = getFlag('era');
 
@@ -181,7 +219,7 @@ async function main() {
   console.log('🖼️  Generating reveal photos...');
   console.log(`  pairs: ${pairs}${hint ? `, hint: "${hint}"` : ''}${subjectArg ? `, subject: "${subjectArg}"` : ''}\n`);
 
-  const result = await generateRevealPhotos({ pairs, hint, subjects });
+  const result = await generateRevealPhotos({ pairs, hint, subjects, damageNotes });
 
   console.log(`\n✅ Created reveal item ${result.contentId} with ${result.imagePairs.length} pair(s).`);
   result.imagePairs.forEach((p, i) => {
