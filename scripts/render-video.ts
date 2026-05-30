@@ -72,6 +72,15 @@ interface ContentRow {
   tip_image_url?: string;
   tip_images?: string[];
   tip_icon?: string;
+  // Multi-tip field (migration-v4). When present, the renderer uses the whole
+  // array; otherwise it falls back to the legacy single-tip columns above.
+  tips?: Array<{
+    tipTitle: string;
+    tipBody: string;
+    tipIcon?: string;
+    tipImageSrc?: string;
+    tipImages?: string[];
+  }>;
   // Script fields
   hook_text?: string;
   caption?: string;
@@ -225,12 +234,37 @@ async function ensureRevealPhotos(item: ContentRow): Promise<ContentRow> {
 // Idempotent: only generates when a tip item has no image yet.
 async function ensureTipImages(item: ContentRow): Promise<ContentRow> {
   if (item.content_type !== 'tip') return item;
-  if (item.tip_image_url) return item;
   if (!process.env.GOOGLE_API_KEY) {
     console.log('  No GOOGLE_API_KEY — skipping tip image generation.');
     return item;
   }
 
+  // Multi-tip path: ensure every tip in the array has a background image.
+  if (Array.isArray(item.tips) && item.tips.length > 0) {
+    if (!item.tips.some((t) => !t.tipImageSrc)) return item;
+
+    console.log('  Generating per-tip background imagery with AI...');
+    try {
+      const tips = [...item.tips];
+      for (let i = 0; i < tips.length; i++) {
+        if (tips[i].tipImageSrc) continue;
+        const { tipImageUrl, tipImages } = await generateTipImages(
+          tips[i].tipTitle || 'Photo restoration tip',
+          tips[i].tipBody || '',
+          0
+        );
+        tips[i] = { ...tips[i], tipImageSrc: tipImageUrl, tipImages };
+      }
+      await supabase.from('tiktok_content_pool').update({ tips }).eq('id', item.id);
+      return { ...item, tips };
+    } catch (err) {
+      console.warn(`  Tip image generation failed: ${err instanceof Error ? err.message : err}`);
+      return item;
+    }
+  }
+
+  // Legacy single-tip path (unchanged behavior).
+  if (item.tip_image_url) return item;
   console.log('  Generating tip background imagery with AI...');
   try {
     const { tipImageUrl, tipImages } = await generateTipImages(
@@ -275,7 +309,7 @@ async function generateAudio(item: ContentRow): Promise<ContentRow> {
     const timing = createRevealTiming(pairCount);
     durationMs = Math.ceil(timing.totalDuration / VIDEO.fps * 1000);
   } else {
-    const timing = createTipsTiming(1);
+    const timing = createTipsTiming(item.tips?.length || 1);
     durationMs = Math.ceil(timing.totalDuration / VIDEO.fps * 1000);
   }
 
@@ -452,16 +486,22 @@ async function renderVideo(item: ContentRow): Promise<string> {
   } else {
     inputProps = {
       hookText: item.hook_text || 'Did you know?',
-      tipTitle: item.tip_title || '',
-      tipBody: item.tip_body || '',
       takeaway: item.hook_text || '', // reuse hook as takeaway fallback
-      tipImageSrc: item.tip_image_url,
-      tipImages: item.tip_images,
-      tipIcon: item.tip_icon,
-      tipSource: item.tip_source,
       musicFile,
       audioVolume: item.audio_volume ?? 0.5,
       slogan: item.slogan,
+      // Multi-tip (migration-v4): pass the whole array when present, else fall
+      // back to the legacy single-tip props.
+      ...(item.tips && item.tips.length > 0
+        ? { tips: item.tips }
+        : {
+            tipTitle: item.tip_title || '',
+            tipBody: item.tip_body || '',
+            tipImageSrc: item.tip_image_url,
+            tipImages: item.tip_images,
+            tipIcon: item.tip_icon,
+            tipSource: item.tip_source,
+          }),
     };
   }
 
