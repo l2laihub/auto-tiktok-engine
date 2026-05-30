@@ -1962,6 +1962,32 @@
         return [{ before_url: '', after_url: '', era: '' }];
       };
       const [pairs, setPairs] = useState(initPairs);
+      const [regenBusy, setRegenBusy] = useState(''); // e.g. "0:pair", "1:after"
+
+      async function handleRegenImages(index, scope) {
+        const key = index + ':' + scope;
+        setRegenBusy(key);
+        try {
+          onToast('Regenerating ' + scope + ' for pair ' + (index + 1) + '…', 'info');
+          const updated = await api('/api/content/' + item.id + '/regenerate-images', {
+            method: 'POST',
+            body: { scope, pairIndex: index },
+          });
+          if (updated.image_pairs) {
+            setPairs(prev => updated.image_pairs.map((p, j) => ({
+              ...(prev[j] || {}),
+              before_url: p.before_url || '',
+              after_url: p.after_url || '',
+              era: p.era || (prev[j] && prev[j].era) || '',
+            })));
+          }
+          onToast('Regenerated ' + scope + ' for pair ' + (index + 1), 'success');
+        } catch (e) {
+          onToast('Regen failed: ' + e.message, 'error');
+        } finally {
+          setRegenBusy('');
+        }
+      }
 
       // Tip fields state
       const [tipTitle, setTipTitle] = useState(item.tip_title || '');
@@ -2055,6 +2081,20 @@
                       <option value="">Era...</option>
                       ${eras.map(e => html`<option key=${e} value=${e}>${e}</option>`)}
                     </select>
+                  </div>
+                  <div style=${{display: 'flex', gap: '0.4rem', marginTop: '0.5rem', flexWrap: 'wrap'}}>
+                    <button type="button" className="btn btn-secondary btn-sm" disabled=${!!regenBusy}
+                      onClick=${() => handleRegenImages(i, 'pair')}>
+                      ${regenBusy === i + ':pair' ? 'Regenerating…' : '🔄 Regen pair'}
+                    </button>
+                    <button type="button" className="btn btn-ghost btn-sm" disabled=${!!regenBusy}
+                      onClick=${() => handleRegenImages(i, 'before')}>
+                      ${regenBusy === i + ':before' ? '…' : 'before'}
+                    </button>
+                    <button type="button" className="btn btn-ghost btn-sm" disabled=${!!regenBusy || !pair.before_url}
+                      onClick=${() => handleRegenImages(i, 'after')}>
+                      ${regenBusy === i + ':after' ? '…' : 'after'}
+                    </button>
                   </div>
                 </div>
               `)}
