@@ -171,7 +171,7 @@ app.post('/api/content/:id/regenerate', async (req, res) => {
 app.post('/api/content/:id/regenerate-music', async (req, res) => {
   const { data: item, error: fetchErr } = await supabase
     .from('tiktok_content_pool')
-    .select('id, content_type, music_style, music_track, music_file_path, image_pairs')
+    .select('id, content_type, music_style, music_track, music_file_path, image_pairs, tips')
     .eq('id', req.params.id)
     .single();
 
@@ -187,7 +187,7 @@ app.post('/api/content/:id/regenerate-music', async (req, res) => {
     const timing = createRevealTiming(pairCount);
     durationMs = Math.ceil(timing.totalDuration / VIDEO.fps * 1000);
   } else {
-    const timing = createTipsTiming(1);
+    const timing = createTipsTiming((item.tips as any[])?.length || 1);
     durationMs = Math.ceil(timing.totalDuration / VIDEO.fps * 1000);
   }
 
@@ -538,8 +538,9 @@ app.post('/api/content/:id/regenerate-images', async (req, res) => {
       pairs[idx] = pair;
       const update: Record<string, unknown> = { image_pairs: pairs };
       if (idx === 0) {
-        update.before_image_url = pair.before_url; // keep legacy single-pair fields in sync
-        update.after_image_url = pair.after_url;
+        // Keep legacy single-pair fields in sync — only for URLs this scope changed.
+        if (scope === 'pair' || scope === 'before') update.before_image_url = pair.before_url;
+        if (scope === 'pair' || scope === 'after') update.after_image_url = pair.after_url;
       }
       const { data: updated, error: updErr } = await supabase
         .from('tiktok_content_pool').update(update).eq('id', item.id).select().single();

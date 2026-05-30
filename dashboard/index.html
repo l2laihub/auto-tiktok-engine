@@ -1974,11 +1974,13 @@
             body: { scope, pairIndex: index },
           });
           if (updated.image_pairs) {
-            setPairs(prev => updated.image_pairs.map((p, j) => ({
-              ...(prev[j] || {}),
+            // Spread the server's pair so persisted keys (subject/story/damage_notes)
+            // stay fresh for any subsequent re-roll from the UI.
+            setPairs(updated.image_pairs.map(p => ({
+              ...p,
               before_url: p.before_url || '',
               after_url: p.after_url || '',
-              era: p.era || (prev[j] && prev[j].era) || '',
+              era: p.era || '',
             })));
           }
           onToast('Regenerated ' + scope + ' for pair ' + (index + 1), 'success');
