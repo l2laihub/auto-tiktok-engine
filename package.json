@@ -10,6 +10,7 @@
     "generate-script": "node --env-file=.env --import tsx scripts/generate-script.ts",
     "generate:photos": "node --env-file=.env --import tsx scripts/generate-reveal-photos.ts",
     "generate:tip-images": "node --env-file=.env --import tsx scripts/generate-tip-images.ts",
+    "generate:tip-content": "node --env-file=.env --import tsx scripts/generate-tip-content.ts",
     "verify:image-gen": "node --env-file=.env --import tsx scripts/verify-image-gen.ts",
     "test": "node --import tsx --test scripts/lib/__tests__/*.test.ts",
     "pipeline": "node --env-file=.env --import tsx scripts/render-video.ts",
