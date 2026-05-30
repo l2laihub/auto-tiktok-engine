@@ -22,10 +22,15 @@ npm run render:tips
 npm run generate-script
 
 # AI image generation (Gemini nano-banana, needs GOOGLE_API_KEY)
-npm run generate:photos                       # self-source a reveal item (damaged->restored)
+npm run generate:photos                       # self-source a reveal item (heavily damaged->restored)
 npm run generate:photos -- --pairs 3 --hint "Vietnamese wedding photos"
+npm run generate:photos -- --damage "water-damaged 1960s Polaroid, mildew"  # steer the damage
 npm run generate:tip-images -- <content-id>   # add bg + b-roll imagery to a tip item
+npm run generate:tip-content -- --count 4 --hint "scanning old prints"  # self-source a multi-tip item
 npm run verify:image-gen                       # smoke test -> output/verify-before|after.png
+
+# Unit tests (node:test via tsx — pure functions only)
+npm test
 
 # Full pipeline: fetch -> script -> images -> music -> render -> upload -> post
 npm run pipeline                    # live
@@ -66,8 +71,10 @@ Background music via Google Lyria 3 (preferred, `GOOGLE_API_KEY`) or Suno AI (fa
 
 ### Image generation (src/utils/image-gen.ts, src/utils/storage.ts)
 Gemini `gemini-2.5-flash-image` (nano-banana) via the same `@google/genai` SDK + `GOOGLE_API_KEY`. `generateImage()` does text→image and image→image edits; `uploadImageBuffer()` saves results to the Supabase `photos` bucket (`generated/` prefix) and returns a public URL. Two uses:
-- **Self-sourced reveals** (`scripts/generate-reveal-photos.ts`): Claude invents a family-photo scenario → generate a damaged "before" → image-edit it into a restored "after" (same subject) → create a queued `reveal` item with `image_pairs`. No manual photo upload needed.
+- **Self-sourced reveals** (`scripts/generate-reveal-photos.ts`): Claude invents a family-photo scenario → generate a HEAVILY damaged "before" (deep tears, missing corners, water stains, mold, heavy fade — see `buildBeforePrompt`) → image-edit it into a restored "after" (same subject) → create a queued `reveal` item with `image_pairs`. Each pair persists its `subject`/`story`/`damage_notes` so it can be faithfully regenerated. Damage can be steered with `--damage "<notes>"` (CLI) or the dashboard "Damage notes" field. No manual photo upload needed.
 - **Tip imagery** (`scripts/generate-tip-images.ts`): generate a background + b-roll images per tip, stored in `tip_image_url` / `tip_images` (migration-v3). `tip_icon` emoji is chosen by Claude during scripting.
+- **Self-sourced tips** (`scripts/generate-tip-content.ts`): Claude invents 4–6 tips (text + emoji) → generate a background per tip → create a queued `tip` item with a `tips` JSONB array (migration-v4). The renderer feeds the whole array to `TipsEducational`; it falls back to the legacy single-tip columns when `tips` is null.
+- **Regenerating imagery while reviewing**: `POST /api/content/:id/regenerate-images` re-rolls images on an existing item without re-upload — scopes `pair` / `before` / `after` (reveal; `after` re-edits from the current before) and `tip-images` (tip, optionally per `tipIndex`). Surfaced as per-pair / per-tip "🔄 Regen" buttons in the dashboard editor.
 
 The pipeline calls idempotent `ensureRevealPhotos()` / `ensureTipImages()` steps (like `ensureScript()`) — they only generate when imagery is missing and `GOOGLE_API_KEY` is set, persisting URLs so re-renders reuse them. Prompt builders live in `scripts/lib/image-prompts.ts`.
 
