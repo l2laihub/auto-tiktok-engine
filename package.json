@@ -11,6 +11,7 @@
     "generate:photos": "node --env-file=.env --import tsx scripts/generate-reveal-photos.ts",
     "generate:tip-images": "node --env-file=.env --import tsx scripts/generate-tip-images.ts",
     "verify:image-gen": "node --env-file=.env --import tsx scripts/verify-image-gen.ts",
+    "test": "node --import tsx --test scripts/lib/__tests__/*.test.ts",
     "pipeline": "node --env-file=.env --import tsx scripts/render-video.ts",
     "pipeline:dry": "node --env-file=.env --import tsx scripts/render-video.ts --dry-run",
     "pipeline:post": "node --env-file=.env --import tsx scripts/render-video.ts --post-only",

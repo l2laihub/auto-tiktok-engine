@@ -16,17 +16,27 @@ export interface PhotoSubject {
 
 /**
  * Prompt for the DAMAGED "before" image (text-to-image).
- * Asks for an authentic, aged, vertical family photo.
+ * Defaults to DRAMATIC, unmistakable deterioration so the before→after
+ * reveal lands hard. `damageNotes` lets a caller steer specifics
+ * (e.g. "water-damaged 1960s Polaroid, mildew").
  */
-export function buildBeforePrompt(s: PhotoSubject): string {
-  return [
+export function buildBeforePrompt(s: PhotoSubject, damageNotes?: string): string {
+  const base = [
     `A vertical 9:16 portrait-orientation photograph of ${s.subject}, taken in the ${s.era}.`,
-    `Render it as a genuine OLD, DAMAGED vintage photo: faded and low-contrast, with yellowed sepia`,
-    `or aged black-and-white tones, visible scratches, creases, dust spots and water stains, torn or`,
-    `worn edges, and slight softness/blur. Use authentic period clothing, hairstyles, furniture and`,
-    `setting for the ${s.era}. It must look like a real scanned print from a family photo album — not a`,
-    `modern or AI-looking photo. Natural candid composition. No text, no captions, no watermarks, no borders.`,
+    `Render it as a SEVERELY aged and DAMAGED vintage family photograph with dramatic, unmistakable physical deterioration:`,
+    `deep tears and rips across the surface, one or more torn or completely missing corners,`,
+    `large water stains and moisture blooms, deep creases and fold lines with cracked and flaking emulsion along them,`,
+    `heavy fading and strong yellow/sepia discoloration, brittle silver-mirroring, foxing and brown mold spots,`,
+    `scattered dust, scratches and white emulsion loss, frayed and curling edges.`,
+    `The damage must be heavy and obvious — clearly a precious photo in urgent need of restoration —`,
+    `while keeping the underlying subjects, faces and composition still recognizable beneath the damage.`,
+    `Use authentic period clothing, hairstyles, furniture and setting for the ${s.era}.`,
+    `It must look like a real scanned print from an old family photo album — not a modern or AI-looking photo.`,
+    `Natural candid composition. No text, no captions, no watermarks, no borders.`,
   ].join(' ');
+  return damageNotes
+    ? `${base} Additional damage/style direction: ${damageNotes}.`
+    : base;
 }
 
 /**
