@@ -21,7 +21,13 @@ npm run render:tips
 # Generate AI script (demo mode, no Supabase needed)
 npm run generate-script
 
-# Full pipeline: fetch -> script -> music -> render -> upload -> post
+# AI image generation (Gemini nano-banana, needs GOOGLE_API_KEY)
+npm run generate:photos                       # self-source a reveal item (damaged->restored)
+npm run generate:photos -- --pairs 3 --hint "Vietnamese wedding photos"
+npm run generate:tip-images -- <content-id>   # add bg + b-roll imagery to a tip item
+npm run verify:image-gen                       # smoke test -> output/verify-before|after.png
+
+# Full pipeline: fetch -> script -> images -> music -> render -> upload -> post
 npm run pipeline                    # live
 npm run pipeline:dry                # render without posting
 npm run pipeline -- <content-id>    # specific item
@@ -58,6 +64,13 @@ Both compositions accept optional `musicFile` (relative path from `public/` for 
 ### Music generation (src/utils/lyria.ts, src/utils/suno.ts)
 Background music via Google Lyria 3 (preferred, `GOOGLE_API_KEY`) or Suno AI (fallback, `SUNO_API_URL`). Lyria 3 Clip generates 30-second instrumental MP3 clips via the Gemini API. Suno requires a self-hosted `gcui-art/suno-api` server with browser cookies. Both are trimmed to video duration with ffmpeg fade-out. Files saved to `public/music/` for Remotion's `staticFile()`.
 
+### Image generation (src/utils/image-gen.ts, src/utils/storage.ts)
+Gemini `gemini-2.5-flash-image` (nano-banana) via the same `@google/genai` SDK + `GOOGLE_API_KEY`. `generateImage()` does text→image and image→image edits; `uploadImageBuffer()` saves results to the Supabase `photos` bucket (`generated/` prefix) and returns a public URL. Two uses:
+- **Self-sourced reveals** (`scripts/generate-reveal-photos.ts`): Claude invents a family-photo scenario → generate a damaged "before" → image-edit it into a restored "after" (same subject) → create a queued `reveal` item with `image_pairs`. No manual photo upload needed.
+- **Tip imagery** (`scripts/generate-tip-images.ts`): generate a background + b-roll images per tip, stored in `tip_image_url` / `tip_images` (migration-v3). `tip_icon` emoji is chosen by Claude during scripting.
+
+The pipeline calls idempotent `ensureRevealPhotos()` / `ensureTipImages()` steps (like `ensureScript()`) — they only generate when imagery is missing and `GOOGLE_API_KEY` is set, persisting URLs so re-renders reuse them. Prompt builders live in `scripts/lib/image-prompts.ts`.
+
 ### Dashboard (dashboard/)
 Express server with HTML frontend for content management. Runs on port 3001. Provides CRUD for content pool, pipeline execution, and image upload via multer.
 
@@ -77,4 +90,4 @@ Defined in `src/config.ts` as `BRAND`: coral `#E85A71`, teal `#3D9CA8`, amber `#
 Required: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `ANTHROPIC_API_KEY`
 Optional: `TIKTOK_CLIENT_KEY`, `TIKTOK_CLIENT_SECRET`, `TIKTOK_REDIRECT_URI`, `TIKTOK_ACCESS_TOKEN`, `GOOGLE_API_KEY`, `SUNO_API_URL`, `SUNO_COOKIE`, `OUTPUT_DIR`
 
-See `.env.example` for details. Without TikTok tokens, pipeline saves videos for manual upload. Without `GOOGLE_API_KEY` or `SUNO_API_URL`, music generation is skipped. Lyria 3 is preferred over Suno when both are configured.
+See `.env.example` for details. Without TikTok tokens, pipeline saves videos for manual upload. Without `GOOGLE_API_KEY` or `SUNO_API_URL`, music generation is skipped. Without `GOOGLE_API_KEY`, AI image generation (reveal photos + tip imagery) is also skipped. Lyria 3 is preferred over Suno when both are configured.

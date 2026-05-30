@@ -18,6 +18,8 @@ export interface TipItem {
   tipTitle: string;
   tipBody: string;
   tipImageSrc?: string;
+  tipImages?: string[];
+  tipIcon?: string;
   tipSource?: string;
 }
 
@@ -28,6 +30,9 @@ export interface TipsProps {
   tipTitle?: string;
   tipBody?: string;
   tipImageSrc?: string;
+  tipImages?: string[];
+  tipIcon?: string;
+  tipSource?: string;
   // Multi-tip support
   tips?: TipItem[];
   // Audio
@@ -43,6 +48,9 @@ export const TipsEducational: React.FC<TipsProps> = ({
   tipTitle,
   tipBody,
   tipImageSrc,
+  tipImages,
+  tipIcon,
+  tipSource,
   tips: tipsProp,
   musicFile,
   audioVolume = 0.5,
@@ -57,6 +65,9 @@ export const TipsEducational: React.FC<TipsProps> = ({
         tipTitle: tipTitle || '',
         tipBody: tipBody || '',
         tipImageSrc,
+        tipImages,
+        tipIcon,
+        tipSource,
       }];
 
   const timing = createTipsTiming(tips.length);
@@ -196,6 +207,8 @@ export const TipsEducational: React.FC<TipsProps> = ({
           tipTitle={tip.tipTitle}
           tipBody={tip.tipBody}
           tipImageSrc={tip.tipImageSrc}
+          tipImages={tip.tipImages}
+          tipIcon={tip.tipIcon}
           tipSource={tip.tipSource}
           timing={timing.tips[i]}
           tipIndex={i}

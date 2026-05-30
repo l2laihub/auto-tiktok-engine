@@ -21,6 +21,9 @@ import { renderMedia, selectComposition } from '@remotion/renderer';
 import { generateScript } from './generate-script';
 import { generateMusicTrack as generateSunoTrack, downloadAndTrim } from '../src/utils/suno';
 import { generateMusicTrack as generateLyriaTrack, trimAudioFile } from '../src/utils/lyria';
+import { generatePair, inventSubjects } from './generate-reveal-photos';
+import { generateTipImages } from './generate-tip-images';
+import type { PhotoSubject } from './lib/image-prompts';
 import { createRevealTiming, createTipsTiming, VIDEO } from '../src/config';
 import {
   TikTokClient,
@@ -67,6 +70,8 @@ interface ContentRow {
   tip_body?: string;
   tip_source?: string;
   tip_image_url?: string;
+  tip_images?: string[];
+  tip_icon?: string;
   // Script fields
   hook_text?: string;
   caption?: string;
@@ -146,6 +151,7 @@ async function ensureScript(item: ContentRow): Promise<ContentRow> {
       music_style: script.music_style,
       music_track: script.music_mood, // keep legacy field populated
       slogan: script.slogan,
+      tip_icon: script.tip_icon,
       status: 'scripted',
     })
     .eq('id', item.id);
@@ -159,8 +165,89 @@ async function ensureScript(item: ContentRow): Promise<ContentRow> {
     hashtags: script.hashtags,
     music_style: script.music_style,
     slogan: script.slogan,
+    tip_icon: script.tip_icon ?? item.tip_icon,
     status: 'scripted',
   };
+}
+
+// --- Step 2b: Ensure reveal images exist (self-source via AI) ---
+// Idempotent: only generates when a reveal item has no images yet and
+// GOOGLE_API_KEY is configured. Fills the EXISTING row's image_pairs.
+async function ensureRevealPhotos(item: ContentRow): Promise<ContentRow> {
+  if (item.content_type !== 'reveal') return item;
+
+  const hasImages =
+    (item.image_pairs && item.image_pairs.length > 0) ||
+    !!item.before_image_url;
+  if (hasImages) return item;
+
+  if (!process.env.GOOGLE_API_KEY) {
+    console.log('  No images and no GOOGLE_API_KEY — cannot generate reveal photos.');
+    return item;
+  }
+
+  console.log('  Reveal item has no images — generating with AI...');
+
+  // Build a subject from the item's existing story/era, or invent one.
+  let subject: PhotoSubject;
+  if (item.photo_story) {
+    subject = {
+      subject: item.photo_story,
+      era: item.photo_era || '1960s',
+      story: item.photo_story,
+      label: (item.photo_era ? `${item.photo_era} memory` : 'Restored memory'),
+    };
+  } else {
+    [subject] = await inventSubjects(1);
+  }
+
+  const pair = await generatePair(subject);
+  const imagePairs = [pair];
+
+  await supabase
+    .from('tiktok_content_pool')
+    .update({
+      image_pairs: imagePairs,
+      photo_era: item.photo_era || subject.era,
+      photo_story: item.photo_story || subject.story,
+    })
+    .eq('id', item.id);
+
+  return {
+    ...item,
+    image_pairs: imagePairs,
+    photo_era: item.photo_era || subject.era,
+    photo_story: item.photo_story || subject.story,
+  };
+}
+
+// --- Step 2c: Ensure tip images exist (AI background + b-roll) ---
+// Idempotent: only generates when a tip item has no image yet.
+async function ensureTipImages(item: ContentRow): Promise<ContentRow> {
+  if (item.content_type !== 'tip') return item;
+  if (item.tip_image_url) return item;
+  if (!process.env.GOOGLE_API_KEY) {
+    console.log('  No GOOGLE_API_KEY — skipping tip image generation.');
+    return item;
+  }
+
+  console.log('  Generating tip background imagery with AI...');
+  try {
+    const { tipImageUrl, tipImages } = await generateTipImages(
+      item.tip_title || 'Photo restoration tip',
+      item.tip_body || ''
+    );
+
+    await supabase
+      .from('tiktok_content_pool')
+      .update({ tip_image_url: tipImageUrl, tip_images: tipImages })
+      .eq('id', item.id);
+
+    return { ...item, tip_image_url: tipImageUrl, tip_images: tipImages };
+  } catch (err) {
+    console.warn(`  Tip image generation failed: ${err instanceof Error ? err.message : err}`);
+    return item;
+  }
 }
 
 // --- Step 3: Generate background music via Lyria 3 / Suno AI ---
@@ -369,6 +456,9 @@ async function renderVideo(item: ContentRow): Promise<string> {
       tipBody: item.tip_body || '',
       takeaway: item.hook_text || '', // reuse hook as takeaway fallback
       tipImageSrc: item.tip_image_url,
+      tipImages: item.tip_images,
+      tipIcon: item.tip_icon,
+      tipSource: item.tip_source,
       musicFile,
       audioVolume: item.audio_volume ?? 0.5,
       slogan: item.slogan,
@@ -585,6 +675,12 @@ async function postToTikTok(item: ContentRow, videoUrl: string, videoPath?: stri
         })
         .eq('id', item.id);
       console.error(`  TikTok publishing failed: ${result.fail_reason}`);
+    } else if (result.status === 'SEND_TO_USER_INBOX') {
+      await supabase
+        .from('tiktok_content_pool')
+        .update({ publish_status: 'inbox' })
+        .eq('id', item.id);
+      console.log('  Video delivered to your TikTok inbox — open the app to review and post.');
     } else {
       await supabase
         .from('tiktok_content_pool')
@@ -665,9 +761,14 @@ async function main() {
   console.log('\nStep 2: Script generation...');
   const scripted = await ensureScript(item);
 
+  // Step 2b/2c: Ensure imagery exists (self-source reveal photos / tip backgrounds)
+  console.log('\nStep 2b: Ensuring imagery...');
+  const withReveal = await ensureRevealPhotos(scripted);
+  const withImages = await ensureTipImages(withReveal);
+
   // Step 3: Music
   console.log('\nStep 3: Music generation (Suno AI)...');
-  const withMusic = await generateAudio(scripted);
+  const withMusic = await generateAudio(withImages);
 
   // Step 4: Render
   console.log('\nStep 4: Video rendering...');

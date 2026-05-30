@@ -9,6 +9,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import cron from 'node-cron';
 import basicAuth from 'express-basic-auth';
 import { generateScript } from '../scripts/generate-script';
+import { generateRevealPhotos } from '../scripts/generate-reveal-photos';
 import { generateMusicTrack as generateLyriaTrack, trimAudioFile } from '../src/utils/lyria';
 import { generateMusicTrack as generateSunoTrack, downloadAndTrim } from '../src/utils/suno';
 import { createRevealTiming, createTipsTiming, VIDEO } from '../src/config';
@@ -415,6 +416,34 @@ Return ONLY valid JSON:
     const clean = text.replace(/```json\s*|```\s*/g, '').trim();
     const parsed = JSON.parse(clean);
     res.json(parsed);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: msg });
+  }
+});
+
+// Generate a reveal item with AI (damaged → restored photos)
+app.post('/api/generate-reveal-photos', async (req, res) => {
+  if (!process.env.GOOGLE_API_KEY) {
+    return res.status(400).json({ error: 'GOOGLE_API_KEY not set — image generation unavailable.' });
+  }
+  const { pairs = 1, hint, subject, era } = req.body || {};
+  try {
+    const subjects = subject
+      ? [{
+          subject,
+          era: era || '1960s',
+          story: `An old family photograph: ${subject}.`,
+          label: String(subject).split(' ').slice(0, 3).join(' '),
+        }]
+      : undefined;
+
+    const result = await generateRevealPhotos({
+      pairs: Math.max(1, Math.min(6, Number(pairs) || 1)),
+      hint,
+      subjects,
+    });
+    res.status(201).json(result);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     res.status(500).json({ error: msg });

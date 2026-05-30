@@ -2863,6 +2863,9 @@
       const [subTab, setSubTab] = useState('reveal');
       const [submitting, setSubmitting] = useState(false);
       const [analyzing, setAnalyzing] = useState(false);
+      const [generating, setGenerating] = useState(false);
+      const [genHint, setGenHint] = useState('');
+      const [genPairs, setGenPairs] = useState(1);
 
       function getNextSlot() {
         const d = new Date();
@@ -2929,6 +2932,23 @@
         }
       }
 
+      async function handleGenerate() {
+        setGenerating(true);
+        try {
+          onToast('Generating photos with AI — this can take a minute...', 'info');
+          const result = await api('/api/generate-reveal-photos', {
+            method: 'POST',
+            body: { pairs: genPairs, hint: genHint || undefined },
+          });
+          onToast('AI reveal created (' + result.imagePairs.length + ' pair' + (result.imagePairs.length !== 1 ? 's' : '') + ')!', 'success');
+          onSwitch('pool');
+        } catch (e) {
+          onToast('AI generation failed: ' + e.message, 'error');
+        } finally {
+          setGenerating(false);
+        }
+      }
+
       async function handleSubmit(e) {
         e.preventDefault();
         setSubmitting(true);
@@ -2976,6 +2996,27 @@
         <div className="panel" style=${{padding: '1.5rem'}}>
           <form onSubmit=${handleSubmit}>
             ${subTab === 'reveal' ? html`
+              <div className="panel" style=${{padding: '1rem', marginBottom: '1.25rem', background: 'rgba(232,90,113,0.06)', border: '1px solid rgba(232,90,113,0.25)'}}>
+                <div style=${{fontWeight: 600, marginBottom: '0.5rem'}}>✨ No photos? Generate a reveal with AI</div>
+                <div style=${{fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.75rem'}}>
+                  Invents an old family photo, ages it, then restores it — no upload needed. Creates a queued item.
+                </div>
+                <div style=${{display: 'flex', gap: '0.5rem', alignItems: 'flex-end', flexWrap: 'wrap'}}>
+                  <div className="form-group" style=${{flex: '1 1 260px', margin: 0}}>
+                    <label className="form-label">Theme / hint (optional)</label>
+                    <input className="form-input" placeholder="e.g. Vietnamese wedding photos, 1960s soldiers" value=${genHint} onInput=${e => setGenHint(e.target.value)} />
+                  </div>
+                  <div className="form-group" style=${{width: '90px', margin: 0}}>
+                    <label className="form-label">Pairs</label>
+                    <select className="form-select" value=${genPairs} onChange=${e => setGenPairs(Number(e.target.value))}>
+                      ${[1,2,3,4,5,6].map(n => html`<option key=${n} value=${n}>${n}</option>`)}
+                    </select>
+                  </div>
+                  <button type="button" className="btn btn-teal btn-sm" style=${{whiteSpace: 'nowrap'}} onClick=${handleGenerate} disabled=${generating}>
+                    ${generating ? 'Generating...' : '✨ Generate with AI'}
+                  </button>
+                </div>
+              </div>
               <div className="pair-list">
                 ${pairs.map((pair, i) => html`
                   <div className="pair-item" key=${i}>

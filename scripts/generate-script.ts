@@ -38,6 +38,7 @@ export interface GeneratedScript {
   slogan: string;         // 3-7 word emotional tagline for the CTA screen
   // Tip-specific extras
   takeaway?: string;      // one-liner key insight
+  tip_icon?: string;      // single emoji representing the tip (tip content only)
 }
 
 const SYSTEM_PROMPT = `You are a TikTok content writer for EternalFrame, an AI photo restoration and colorization iOS app. Your job is to generate short-form video scripts that are emotionally compelling and drive app downloads.
@@ -63,7 +64,8 @@ Respond ONLY with valid JSON matching this schema:
   "music_mood": "emotional | nostalgic | inspiring | upbeat",
   "music_style": "string (Suno AI prompt: describe instrumental background music — mood, instruments, tempo. Example: 'warm nostalgic piano with gentle strings, slow tempo, cinematic, emotional')",
   "slogan": "string (3-7 word emotional tagline for the end CTA screen. Should feel personal and warm. Examples: 'Honor them in every pixel.', 'Every photo tells their story.', 'Bring their smiles back to life.')",
-  "takeaway": "string (optional, for tip content only)"
+  "takeaway": "string (optional, for tip content only)",
+  "tip_icon": "string (optional, for tip content only — a single emoji that best represents the tip, e.g. 🖼️ 📸 ✨ 🔍 🎨)"
 }`;
 
 function buildUserPrompt(item: ContentItem): string {

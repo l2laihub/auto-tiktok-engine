@@ -76,11 +76,19 @@ export const RemotionRoot: React.FC = () => {
               tipTitle: 'Face preservation is the hardest part',
               tipBody:
                 'Most AI models distort facial features during restoration. After 100+ prompt iterations, we found that explicit identity anchoring reduces face drift by 73%.',
+              tipIcon: '🧬',
+              tipImageSrc: 'https://placehold.co/1080x1920/2a2440/9988bb?text=Tip+1+bg',
+              tipImages: [
+                'https://placehold.co/1080x1920/40242a/bb8899?text=Tip+1+broll+a',
+                'https://placehold.co/1080x1920/24402a/88bb99?text=Tip+1+broll+b',
+              ],
             },
             {
               tipTitle: 'Color accuracy matters more than resolution',
               tipBody:
                 'Upscaling a photo 4x means nothing if the skin tones are wrong. Start with color correction before any AI enhancement.',
+              tipIcon: '🎨',
+              tipImageSrc: 'https://placehold.co/1080x1920/402a24/bb9988?text=Tip+2+bg',
             },
           ],
           takeaway: 'Anchor the face first,\nrestore everything else second',
