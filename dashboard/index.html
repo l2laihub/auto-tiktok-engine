@@ -2866,6 +2866,7 @@
       const [generating, setGenerating] = useState(false);
       const [genHint, setGenHint] = useState('');
       const [genPairs, setGenPairs] = useState(1);
+      const [genDamage, setGenDamage] = useState('');
 
       function getNextSlot() {
         const d = new Date();
@@ -2938,7 +2939,7 @@
           onToast('Generating photos with AI — this can take a minute...', 'info');
           const result = await api('/api/generate-reveal-photos', {
             method: 'POST',
-            body: { pairs: genPairs, hint: genHint || undefined },
+            body: { pairs: genPairs, hint: genHint || undefined, damageNotes: genDamage || undefined },
           });
           onToast('AI reveal created (' + result.imagePairs.length + ' pair' + (result.imagePairs.length !== 1 ? 's' : '') + ')!', 'success');
           onSwitch('pool');
@@ -3005,6 +3006,10 @@
                   <div className="form-group" style=${{flex: '1 1 260px', margin: 0}}>
                     <label className="form-label">Theme / hint (optional)</label>
                     <input className="form-input" placeholder="e.g. Vietnamese wedding photos, 1960s soldiers" value=${genHint} onInput=${e => setGenHint(e.target.value)} />
+                  </div>
+                  <div className="form-group" style=${{flex: '1 1 220px', margin: 0}}>
+                    <label className="form-label">Damage notes (optional)</label>
+                    <input className="form-input" placeholder="e.g. heavy water damage, mildew, torn corners" value=${genDamage} onInput=${e => setGenDamage(e.target.value)} />
                   </div>
                   <div className="form-group" style=${{width: '90px', margin: 0}}>
                     <label className="form-label">Pairs</label>

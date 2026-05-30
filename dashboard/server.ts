@@ -427,7 +427,7 @@ app.post('/api/generate-reveal-photos', async (req, res) => {
   if (!process.env.GOOGLE_API_KEY) {
     return res.status(400).json({ error: 'GOOGLE_API_KEY not set — image generation unavailable.' });
   }
-  const { pairs = 1, hint, subject, era } = req.body || {};
+  const { pairs = 1, hint, subject, era, damageNotes } = req.body || {};
   try {
     const subjects = subject
       ? [{
@@ -442,6 +442,7 @@ app.post('/api/generate-reveal-photos', async (req, res) => {
       pairs: Math.max(1, Math.min(6, Number(pairs) || 1)),
       hint,
       subjects,
+      damageNotes,
     });
     res.status(201).json(result);
   } catch (err) {
