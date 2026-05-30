@@ -17,6 +17,7 @@ import {
   inventSubjects,
 } from '../scripts/generate-reveal-photos';
 import { generateTipContent } from '../scripts/generate-tip-content';
+import { generateTipImages } from '../scripts/generate-tip-images';
 import { uploadImageBuffer } from '../src/utils/storage';
 import type { PhotoSubject } from '../scripts/lib/image-prompts';
 import { generateMusicTrack as generateLyriaTrack, trimAudioFile } from '../src/utils/lyria';
