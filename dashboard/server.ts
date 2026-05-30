@@ -556,6 +556,9 @@ app.post('/api/content/:id/regenerate-images', async (req, res) => {
       if (Array.isArray(item.tips) && item.tips.length > 0) {
         const tips = [...item.tips];
         const tIdx = tipIndex === undefined ? null : Number(tipIndex);
+        if (tIdx !== null && !Number.isInteger(tIdx)) {
+          return res.status(400).json({ error: `Invalid tipIndex ${tipIndex}` });
+        }
         const indices = tIdx === null ? tips.map((_: unknown, i: number) => i) : [tIdx];
         for (const i of indices) {
           if (i < 0 || i >= tips.length) return res.status(400).json({ error: `Invalid tipIndex ${i}` });
