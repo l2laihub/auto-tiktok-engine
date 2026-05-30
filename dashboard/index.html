@@ -2133,6 +2133,30 @@
             </div>
             ${pairs.length < 6 ? html`<button type="button" className="add-pair-btn" style=${{marginTop: '0.5rem', marginBottom: '0'}} onClick=${addPair}>+ Add Pair (${pairs.length}/6)</button>` : null}
           </div>
+        ` : tips && tips.length > 0 ? html`
+          <div style=${{marginBottom: '1rem'}}>
+            <label className="form-label" style=${{marginBottom: '0.6rem', display: 'block'}}>Tips (${tips.length})</label>
+            ${tips.map((t, i) => html`
+              <div key=${i} className="pair-item" style=${{padding: '0.75rem', marginBottom: '0.5rem'}}>
+                <div className="pair-header" style=${{marginBottom: '0.5rem'}}>
+                  <span className="pair-number">${t.tipIcon || '💡'} Tip ${i + 1}</span>
+                </div>
+                <div className="form-group">
+                  <input className="form-input" value=${t.tipTitle || ''} onInput=${e => updateTip(i, 'tipTitle', e.target.value)} placeholder="Tip title" />
+                </div>
+                <div className="form-group" style=${{marginTop: '0.4rem'}}>
+                  <textarea className="form-textarea" rows="2" value=${t.tipBody || ''} onInput=${e => updateTip(i, 'tipBody', e.target.value)} placeholder="Tip body" />
+                </div>
+                ${t.tipImageSrc ? html`<img src=${t.tipImageSrc} style=${{width: '60px', height: '100px', objectFit: 'cover', borderRadius: '6px', marginTop: '0.4rem'}} />` : null}
+                <div style=${{marginTop: '0.4rem'}}>
+                  <button type="button" className="btn btn-secondary btn-sm" disabled=${!!regenBusy}
+                    onClick=${() => handleRegenTipImage(i)}>
+                    ${regenBusy === 'tip:' + i ? 'Regenerating…' : '🔄 Regen image'}
+                  </button>
+                </div>
+              </div>
+            `)}
+          </div>
         ` : html`
           <div style=${{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem'}}>
             <div className="form-group">
@@ -2142,6 +2166,12 @@
             <div className="form-group">
               <label className="form-label">Tip Body</label>
               <textarea className="form-textarea" rows="2" value=${tipBody} onInput=${e => setTipBody(e.target.value)} />
+            </div>
+            <div className="form-group" style=${{gridColumn: '1 / -1'}}>
+              <button type="button" className="btn btn-secondary btn-sm" disabled=${!!regenBusy}
+                onClick=${() => handleRegenTipImage(null)}>
+                ${regenBusy === 'tip:all' ? 'Regenerating…' : '🔄 Regen tip image'}
+              </button>
             </div>
           </div>
         `}
