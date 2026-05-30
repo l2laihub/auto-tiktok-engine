@@ -9,7 +9,15 @@ import Anthropic from '@anthropic-ai/sdk';
 import cron from 'node-cron';
 import basicAuth from 'express-basic-auth';
 import { generateScript } from '../scripts/generate-script';
-import { generateRevealPhotos } from '../scripts/generate-reveal-photos';
+import {
+  generateRevealPhotos,
+  generateBeforeImage,
+  generateAfterFromBuffer,
+  fetchImageAsGenerated,
+  inventSubjects,
+} from '../scripts/generate-reveal-photos';
+import { uploadImageBuffer } from '../src/utils/storage';
+import type { PhotoSubject } from '../scripts/lib/image-prompts';
 import { generateMusicTrack as generateLyriaTrack, trimAudioFile } from '../src/utils/lyria';
 import { generateMusicTrack as generateSunoTrack, downloadAndTrim } from '../src/utils/suno';
 import { createRevealTiming, createTipsTiming, VIDEO } from '../src/config';
@@ -445,6 +453,100 @@ app.post('/api/generate-reveal-photos', async (req, res) => {
       damageNotes,
     });
     res.status(201).json(result);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: msg });
+  }
+});
+
+// Regenerate IMAGES (not script) for an item — reveal pairs or tip imagery.
+// Runs in-process and returns the updated row.
+app.post('/api/content/:id/regenerate-images', async (req, res) => {
+  if (!process.env.GOOGLE_API_KEY) {
+    return res.status(400).json({ error: 'GOOGLE_API_KEY not set — image generation unavailable.' });
+  }
+
+  const { scope, pairIndex, tipIndex, damageNotes } = req.body || {};
+
+  const { data: item, error: fetchErr } = await supabase
+    .from('tiktok_content_pool')
+    .select('*')
+    .eq('id', req.params.id)
+    .single();
+  if (fetchErr || !item) return res.status(404).json({ error: 'Item not found' });
+
+  try {
+    if (scope === 'pair' || scope === 'before' || scope === 'after') {
+      if (item.content_type !== 'reveal') {
+        return res.status(400).json({ error: 'Pair regeneration is only valid for reveal items' });
+      }
+      const pairs = Array.isArray(item.image_pairs) ? [...item.image_pairs] : [];
+      const idx = Number(pairIndex);
+      if (!Number.isInteger(idx) || idx < 0 || idx >= pairs.length) {
+        return res.status(400).json({ error: `Invalid pairIndex ${pairIndex}` });
+      }
+      const pair = { ...pairs[idx] };
+
+      // Reconstruct a PhotoSubject for this pair (new pairs persist subject/story).
+      let subject: PhotoSubject;
+      if (pair.subject) {
+        subject = {
+          subject: pair.subject,
+          era: pair.era || item.photo_era || '1960s',
+          story: pair.story || item.photo_story || `An old family photograph: ${pair.subject}.`,
+          label: pair.label || 'Restored memory',
+        };
+      } else if (item.photo_story) {
+        subject = {
+          subject: item.photo_story,
+          era: pair.era || item.photo_era || '1960s',
+          story: item.photo_story,
+          label: pair.label || 'Restored memory',
+        };
+      } else {
+        [subject] = await inventSubjects(1);
+      }
+
+      const notes = damageNotes ?? pair.damage_notes;
+
+      if (scope === 'pair' || scope === 'before') {
+        const before = await generateBeforeImage(subject, notes);
+        pair.before_url = await uploadImageBuffer({
+          buffer: before.imageBuffer, contentType: before.mimeType, pathPrefix: 'generated/reveal',
+        });
+        pair.subject = subject.subject;
+        pair.story = subject.story;
+        pair.damage_notes = notes ?? null;
+        if (scope === 'pair') {
+          const after = await generateAfterFromBuffer(before);
+          pair.after_url = await uploadImageBuffer({
+            buffer: after.imageBuffer, contentType: after.mimeType, pathPrefix: 'generated/reveal',
+          });
+        }
+      } else {
+        // scope === 'after': re-edit from the CURRENT before so the subject stays matched.
+        if (!pair.before_url) return res.status(400).json({ error: 'Pair has no before image to restore from' });
+        const before = await fetchImageAsGenerated(pair.before_url);
+        const after = await generateAfterFromBuffer(before);
+        pair.after_url = await uploadImageBuffer({
+          buffer: after.imageBuffer, contentType: after.mimeType, pathPrefix: 'generated/reveal',
+        });
+      }
+
+      pairs[idx] = pair;
+      const update: Record<string, unknown> = { image_pairs: pairs };
+      if (idx === 0) {
+        update.before_image_url = pair.before_url; // keep legacy single-pair fields in sync
+        update.after_image_url = pair.after_url;
+      }
+      const { data: updated, error: updErr } = await supabase
+        .from('tiktok_content_pool').update(update).eq('id', item.id).select().single();
+      if (updErr) return res.status(500).json({ error: updErr.message });
+      return res.json(updated);
+    }
+
+    // tip-images scope is implemented in a later task.
+    return res.status(400).json({ error: `Unsupported scope: ${scope}` });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     res.status(500).json({ error: msg });
