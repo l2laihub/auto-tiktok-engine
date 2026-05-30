@@ -67,6 +67,7 @@ export type PublishStatus =
   | 'PROCESSING_UPLOAD'
   | 'PROCESSING_DOWNLOAD'
   | 'PUBLISH_COMPLETE'
+  | 'SEND_TO_USER_INBOX'
   | 'FAILED';
 
 export interface PublishStatusResult {
@@ -102,6 +103,29 @@ function isPermanentError(err: Error): boolean {
     if (err.httpStatus === 400 || err.httpStatus === 403) return true;
   }
   return false;
+}
+
+// --- Chunked upload sizing ---
+
+// TikTok FILE_UPLOAD chunk constraints: 5MB min, 64MB max per chunk.
+const TIKTOK_MAX_CHUNK_SIZE = 64_000_000;
+const TIKTOK_MULTI_CHUNK_SIZE = 10_000_000; // chunk size used only when splitting
+
+/**
+ * Compute chunk_size / total_chunk_count for the publish init + the upload loop.
+ * TikTok requires chunk_size === video_size when total_chunk_count is 1, so any
+ * video up to the 64MB max goes as a single chunk. Larger videos are split into
+ * 10MB chunks; the final chunk absorbs the remainder (kept well under 64MB).
+ */
+export function computeVideoChunking(videoSize: number): {
+  chunkSize: number;
+  totalChunkCount: number;
+} {
+  if (videoSize <= TIKTOK_MAX_CHUNK_SIZE) {
+    return { chunkSize: videoSize, totalChunkCount: 1 };
+  }
+  const chunkSize = TIKTOK_MULTI_CHUNK_SIZE;
+  return { chunkSize, totalChunkCount: Math.floor(videoSize / chunkSize) };
 }
 
 // --- TikTok Client ---
@@ -369,8 +393,7 @@ export class TikTokClient {
     videoSize: number,
     title: string
   ): Promise<FileUploadInitResponse> {
-    const chunkSize = Math.min(videoSize, 10_000_000);
-    const totalChunkCount = Math.floor(videoSize / chunkSize);
+    const { chunkSize, totalChunkCount } = computeVideoChunking(videoSize);
 
     return this.withRetry(async () => {
       const requestBody = {
@@ -426,8 +449,7 @@ export class TikTokClient {
   async initInboxUpload(
     videoSize: number
   ): Promise<FileUploadInitResponse> {
-    const chunkSize = Math.min(videoSize, 10_000_000); // 10MB max per chunk
-    const totalChunkCount = Math.floor(videoSize / chunkSize);
+    const { chunkSize, totalChunkCount } = computeVideoChunking(videoSize);
 
     return this.withRetry(async () => {
       const requestBody = {
@@ -475,8 +497,8 @@ export class TikTokClient {
   async uploadVideoFile(uploadUrl: string, filePath: string): Promise<void> {
     const fileBuffer = fs.readFileSync(filePath);
     const fileSize = fileBuffer.length;
-    const chunkSize = Math.min(fileSize, 10_000_000); // match init chunk_size
-    const totalChunks = Math.floor(fileSize / chunkSize); // match init total_chunk_count (last chunk gets remainder)
+    // Must match the init request exactly (last chunk absorbs the remainder).
+    const { chunkSize, totalChunkCount: totalChunks } = computeVideoChunking(fileSize);
 
     console.log(`  Uploading ${(fileSize / 1024 / 1024).toFixed(1)}MB to TikTok (${totalChunks} chunk${totalChunks > 1 ? 's' : ''})...`);
 
@@ -612,6 +634,15 @@ export class TikTokClient {
         if (status === 'PUBLISH_COMPLETE') {
           return {
             status: 'PUBLISH_COMPLETE',
+            publish_id: result.data?.publish_id || publishId,
+          };
+        }
+
+        // Inbox uploads terminate here — the video is in the user's inbox and
+        // never reaches PUBLISH_COMPLETE (they post it manually). Stop polling.
+        if (status === 'SEND_TO_USER_INBOX') {
+          return {
+            status: 'SEND_TO_USER_INBOX',
             publish_id: result.data?.publish_id || publishId,
           };
         }
