@@ -16,6 +16,7 @@ import {
   fetchImageAsGenerated,
   inventSubjects,
 } from '../scripts/generate-reveal-photos';
+import { generateTipContent } from '../scripts/generate-tip-content';
 import { uploadImageBuffer } from '../src/utils/storage';
 import type { PhotoSubject } from '../scripts/lib/image-prompts';
 import { generateMusicTrack as generateLyriaTrack, trimAudioFile } from '../src/utils/lyria';
@@ -547,6 +548,24 @@ app.post('/api/content/:id/regenerate-images', async (req, res) => {
 
     // tip-images scope is implemented in a later task.
     return res.status(400).json({ error: `Unsupported scope: ${scope}` });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: msg });
+  }
+});
+
+// Generate a multi-tip item with AI (Claude invents tips, Gemini makes backgrounds).
+app.post('/api/generate-tip-content', async (req, res) => {
+  if (!process.env.GOOGLE_API_KEY) {
+    return res.status(400).json({ error: 'GOOGLE_API_KEY not set — image generation unavailable.' });
+  }
+  const { count = 4, hint } = req.body || {};
+  try {
+    const result = await generateTipContent({
+      count: Math.max(1, Math.min(6, Number(count) || 4)),
+      hint,
+    });
+    res.status(201).json(result);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     res.status(500).json({ error: msg });

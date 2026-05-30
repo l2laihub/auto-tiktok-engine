@@ -2907,6 +2907,26 @@
       const [genHint, setGenHint] = useState('');
       const [genPairs, setGenPairs] = useState(1);
       const [genDamage, setGenDamage] = useState('');
+      const [genTipHint, setGenTipHint] = useState('');
+      const [genTipCount, setGenTipCount] = useState(4);
+      const [genTip, setGenTip] = useState(false);
+
+      async function handleGenerateTip() {
+        setGenTip(true);
+        try {
+          onToast('Generating tips with AI — this can take a minute…', 'info');
+          const result = await api('/api/generate-tip-content', {
+            method: 'POST',
+            body: { count: genTipCount, hint: genTipHint || undefined },
+          });
+          onToast('AI tip item created (' + result.tips.length + ' tips)!', 'success');
+          onSwitch('pool');
+        } catch (e) {
+          onToast('AI tip generation failed: ' + e.message, 'error');
+        } finally {
+          setGenTip(false);
+        }
+      }
 
       function getNextSlot() {
         const d = new Date();
