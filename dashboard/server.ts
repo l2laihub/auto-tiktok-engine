@@ -546,7 +546,41 @@ app.post('/api/content/:id/regenerate-images', async (req, res) => {
       return res.json(updated);
     }
 
-    // tip-images scope is implemented in a later task.
+    if (scope === 'tip-images') {
+      if (item.content_type !== 'tip') {
+        return res.status(400).json({ error: 'tip-images scope is only valid for tip items' });
+      }
+
+      // Multi-tip array path.
+      if (Array.isArray(item.tips) && item.tips.length > 0) {
+        const tips = [...item.tips];
+        const tIdx = tipIndex === undefined ? null : Number(tipIndex);
+        const indices = tIdx === null ? tips.map((_: unknown, i: number) => i) : [tIdx];
+        for (const i of indices) {
+          if (i < 0 || i >= tips.length) return res.status(400).json({ error: `Invalid tipIndex ${i}` });
+          const { tipImageUrl, tipImages } = await generateTipImages(
+            tips[i].tipTitle || 'Photo restoration tip', tips[i].tipBody || '', 0
+          );
+          tips[i] = { ...tips[i], tipImageSrc: tipImageUrl, tipImages };
+        }
+        const { data: updated, error: updErr } = await supabase
+          .from('tiktok_content_pool').update({ tips }).eq('id', item.id).select().single();
+        if (updErr) return res.status(500).json({ error: updErr.message });
+        return res.json(updated);
+      }
+
+      // Legacy single-tip path.
+      const { tipImageUrl, tipImages } = await generateTipImages(
+        item.tip_title || 'Photo restoration tip', item.tip_body || '', 0
+      );
+      const { data: updated, error: updErr } = await supabase
+        .from('tiktok_content_pool')
+        .update({ tip_image_url: tipImageUrl, tip_images: tipImages })
+        .eq('id', item.id).select().single();
+      if (updErr) return res.status(500).json({ error: updErr.message });
+      return res.json(updated);
+    }
+
     return res.status(400).json({ error: `Unsupported scope: ${scope}` });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);

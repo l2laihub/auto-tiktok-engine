@@ -1992,6 +1992,28 @@
       // Tip fields state
       const [tipTitle, setTipTitle] = useState(item.tip_title || '');
       const [tipBody, setTipBody] = useState(item.tip_body || '');
+      const [tips, setTips] = useState(Array.isArray(item.tips) ? item.tips : null);
+
+      function updateTip(i, field, value) {
+        setTips(prev => prev.map((t, j) => j === i ? { ...t, [field]: value } : t));
+      }
+
+      async function handleRegenTipImage(i) {
+        setRegenBusy('tip:' + (i === null ? 'all' : i));
+        try {
+          onToast('Regenerating tip image…', 'info');
+          const updated = await api('/api/content/' + item.id + '/regenerate-images', {
+            method: 'POST',
+            body: { scope: 'tip-images', tipIndex: i === null ? undefined : i },
+          });
+          if (Array.isArray(updated.tips)) setTips(updated.tips);
+          onToast('Tip image regenerated', 'success');
+        } catch (e) {
+          onToast('Regen failed: ' + e.message, 'error');
+        } finally {
+          setRegenBusy('');
+        }
+      }
 
       const eras = ['1940s', '1950s', '1960s', '1970s', '1980s', '1990s', '2000s', '2010s'];
 
@@ -2025,8 +2047,15 @@
               fields.photo_era = validPairs[0].era || null;
             }
           } else {
-            fields.tip_title = tipTitle;
-            fields.tip_body = tipBody;
+            if (tips && tips.length > 0) {
+              fields.tips = tips;
+              fields.tip_title = tips[0].tipTitle;   // keep legacy columns in sync
+              fields.tip_body = tips[0].tipBody;
+              fields.tip_icon = tips[0].tipIcon || null;
+            } else {
+              fields.tip_title = tipTitle;
+              fields.tip_body = tipBody;
+            }
           }
           await onSave(fields);
         } finally { setSaving(false); }
