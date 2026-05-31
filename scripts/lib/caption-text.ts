@@ -38,6 +38,7 @@ export function buildFactualLine(opts: { label?: string; location?: string; era?
   return label || place;
 }
 
+// NOTE: the "Max 40 characters" wording below must stay in sync with CAPTION_MAX.
 export const PAIR_CAPTION_SYSTEM_PROMPT = `You are a TikTok copywriter for EternalFrame, an AI photo restoration app. For each old family photo you write a TWO-BEAT caption that plays over a before→after reveal.
 
 Voice: warm, personal, nostalgic, emotionally direct. Never salesy, never clickbait — the words "you won't believe", "amazing", "shocking", "incredible" are banned.

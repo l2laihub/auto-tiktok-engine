@@ -64,3 +64,22 @@ test('parsePairCaptions pads missing entries with empty captions', () => {
 test('parsePairCaptions throws on non-JSON', () => {
   assert.throws(() => parsePairCaptions('not json', 1), /invalid JSON/);
 });
+
+test('clampCaption stays within max and ends with an ellipsis when cutting at a space', () => {
+  // 'ab cd ef gh ij kl mn op' — index 11 is a space, exercising the trimEnd path
+  const out = clampCaption('ab cd ef gh ij kl mn op', 12);
+  assert.ok(out.length <= 12);
+  assert.match(out, /…$/);
+});
+
+test('parsePairCaptions clamps an over-length caption from the model', () => {
+  const longBefore = 'x'.repeat(60);
+  const out = parsePairCaptions(JSON.stringify([{ before: longBefore, after: 'ok' }]), 1);
+  assert.ok(out[0].before.length <= 40);
+  assert.match(out[0].before, /…$/);
+  assert.equal(out[0].after, 'ok');
+});
+
+test('parsePairCaptions throws when the JSON root is not an array', () => {
+  assert.throws(() => parsePairCaptions('{"before":"A","after":"B"}', 1), /JSON array/);
+});
