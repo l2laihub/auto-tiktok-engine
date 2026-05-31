@@ -984,61 +984,41 @@ app.post('/api/tiktok/auth/complete', async (req, res) => {
 // Auto-post scheduler
 // ============================================================
 
-let scheduleCron = process.env.SCHEDULE_CRON || '0 6 * * *'; // Daily 6 AM
 let schedulerEnabled = process.env.SCHEDULE_ENABLED !== 'false';
 let schedulerTask: ReturnType<typeof cron.schedule> | null = null;
 
+// True if any item is due to post now (scheduled_for at or before this instant).
+// 'rendered' is included so a pre-rendered item that is now due still counts.
 async function hasScheduledItems(): Promise<boolean> {
-  const today = new Date();
-  const yyyy = today.getFullYear();
-  const mm = String(today.getMonth() + 1).padStart(2, '0');
-  const dd = String(today.getDate()).padStart(2, '0');
-  const todayStr = `${yyyy}-${mm}-${dd}`;
-
-  // 'rendered' is included so a pre-rendered item that is now due still counts
-  // as work to do — without it the scheduler skips items it has already built.
   const { count } = await supabase
     .from('tiktok_content_pool')
     .select('id', { count: 'exact', head: true })
     .in('status', ['queued', 'scripted', 'rendered'])
-    .lte('scheduled_for', todayStr);
+    .lte('scheduled_for', new Date().toISOString());
 
   return (count ?? 0) > 0;
 }
 
-// Shared by the cron tick and the startup catch-up: post the next due item if
+// Shared by the poller tick and the startup catch-up: post the next due item if
 // one exists and nothing is already running. `trigger` is only for logging.
 async function runScheduledPipeline(trigger: string): Promise<void> {
   if (!schedulerEnabled) return;
-  console.log(`[scheduler] ${trigger} at ${new Date().toLocaleString()}`);
-
-  if (pipelineRunning) {
-    console.log('[scheduler] Pipeline already running, skipping');
-    return;
-  }
+  if (pipelineRunning) return; // quiet: this runs every minute
 
   const hasItems = await hasScheduledItems();
-  if (!hasItems) {
-    console.log('[scheduler] No scheduled items due, skipping');
-    return;
-  }
+  if (!hasItems) return;
 
-  console.log('[scheduler] Starting pipeline for scheduled content...');
+  console.log(`[scheduler] ${trigger}: posting next due item at ${new Date().toLocaleString()}`);
   const runId = await runPipeline({ dryRun: false });
   console.log(`[scheduler] Pipeline started (runId: ${runId})`);
 }
 
 function startScheduler() {
   if (schedulerTask) schedulerTask.stop();
-
-  if (!cron.validate(scheduleCron)) {
-    console.error(`Invalid SCHEDULE_CRON: "${scheduleCron}"`);
-    return;
-  }
-
-  schedulerTask = cron.schedule(scheduleCron, () => runScheduledPipeline('Cron fired'));
-
-  console.log(`Scheduler started: ${scheduleCron} (${schedulerEnabled ? 'enabled' : 'disabled'})`);
+  // Poll every minute and post whatever is due. Per-item scheduled_for
+  // timestamps decide when something posts — there is no global post time.
+  schedulerTask = cron.schedule('* * * * *', () => runScheduledPipeline('Poll'));
+  console.log(`Scheduler started: per-minute poll (${schedulerEnabled ? 'enabled' : 'disabled'})`);
 }
 
 // ============================================================
@@ -1073,31 +1053,24 @@ function startTokenRefreshCron() {
   console.log(`Token refresh cron started: ${tokenRefreshCron}`);
 }
 
-function getNextRun(): string | null {
-  if (!schedulerEnabled || !schedulerTask) return null;
-  try {
-    const now = new Date();
-    const [min, hour, , , dow] = scheduleCron.split(' ');
-    // Check next 14 days for a match
-    for (let i = 1; i < 14 * 24 * 60; i++) {
-      const candidate = new Date(now.getTime() + i * 60_000);
-      const minMatch = min === '*' || min === String(candidate.getMinutes());
-      const hourMatch = hour === '*' || hour === String(candidate.getHours());
-      const dowParts = dow === '*' ? null : dow.split(',').map(Number);
-      const dowMatch = !dowParts || dowParts.includes(candidate.getDay());
-      if (minMatch && hourMatch && dowMatch && candidate > now) {
-        return candidate.toISOString();
-      }
-    }
-  } catch { /* ignore */ }
-  return null;
+// The next actual post: the soonest future scheduled_for among postable items.
+async function getNextRun(): Promise<string | null> {
+  if (!schedulerEnabled) return null;
+  const { data } = await supabase
+    .from('tiktok_content_pool')
+    .select('scheduled_for')
+    .in('status', ['queued', 'scripted', 'rendered'])
+    .gt('scheduled_for', new Date().toISOString())
+    .order('scheduled_for', { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  return data?.scheduled_for ?? null;
 }
 
-app.get('/api/scheduler/status', (_req, res) => {
+app.get('/api/scheduler/status', async (_req, res) => {
   res.json({
     enabled: schedulerEnabled,
-    cron: scheduleCron,
-    nextRun: getNextRun(),
+    nextRun: await getNextRun(),
     pipelineRunning,
   });
 });
@@ -1108,16 +1081,8 @@ app.post('/api/scheduler/toggle', (_req, res) => {
   res.json({ enabled: schedulerEnabled });
 });
 
-app.patch('/api/scheduler/settings', (req, res) => {
-  const { cronExpression, enabled } = req.body;
-
-  if (cronExpression !== undefined) {
-    if (!cron.validate(cronExpression)) {
-      return res.status(400).json({ error: `Invalid cron expression: "${cronExpression}"` });
-    }
-    scheduleCron = cronExpression;
-    console.log(`[scheduler] Cron updated to: ${scheduleCron}`);
-  }
+app.patch('/api/scheduler/settings', async (req, res) => {
+  const { enabled } = req.body;
 
   if (enabled !== undefined) {
     schedulerEnabled = Boolean(enabled);
@@ -1129,8 +1094,7 @@ app.patch('/api/scheduler/settings', (req, res) => {
 
   res.json({
     enabled: schedulerEnabled,
-    cron: scheduleCron,
-    nextRun: getNextRun(),
+    nextRun: await getNextRun(),
   });
 });
 
