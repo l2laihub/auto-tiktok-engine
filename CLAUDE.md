@@ -81,6 +81,9 @@ The pipeline calls idempotent `ensureRevealPhotos()` / `ensureTipImages()` steps
 ### Dashboard (dashboard/)
 Express server with HTML frontend for content management. Runs on port 3001. Provides CRUD for content pool, pipeline execution, and image upload via multer.
 
+### Auto-post scheduler (dashboard/server.ts)
+`scheduled_for` is a `TIMESTAMPTZ` (migration-v5) holding each item's exact post date+time, interpreted in the server's local timezone. A per-minute poll (`startScheduler`) posts any item whose `scheduled_for <= now()` and status is `queued`/`scripted`/`rendered` — there is no global post time, and `rendered` items post without re-rendering. A startup catch-up runs the same check once on boot so a post missed while the process was down still goes out. `SCHEDULE_ENABLED=false` (or the dashboard toggle) pauses it. Date↔ISO conversion lives in `public/schedule-time.js`, shared by the dashboard UI (served at `/static/schedule-time.js`) and `node:test`.
+
 ## Tech Stack
 
 - **Database**: Supabase PostgreSQL (schema in `supabase/migration.sql`)
