@@ -7,6 +7,7 @@ const subject: PhotoSubject = {
   era: '1960s',
   story: 'A cherished wedding portrait.',
   label: "Grandma's wedding",
+  location: 'Saigon',
 };
 
 test('buildBeforePrompt includes the subject and era', () => {

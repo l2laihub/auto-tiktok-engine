@@ -35,8 +35,9 @@ Guidance:
 - "subject" must be a concrete visual description of who is in the photo and what they're doing.
 - "story" is 1–2 warm sentences of context/emotion.
 - "label" is a short 2–4 word caption (e.g. "Grandma's wedding", "Dad in Saigon").
+- "location" is a concrete place the photo was taken (city/region/country), e.g. "Saigon", "rural Texas", "Hanoi".
 
-Respond ONLY with valid JSON: an array of objects, each {"subject","era","story","label"}.`;
+Respond ONLY with valid JSON: an array of objects, each {"subject","era","story","label","location"}.`;
 
 /** Invent N distinct photo scenarios via Claude. */
 export async function inventSubjects(count: number, hint?: string): Promise<PhotoSubject[]> {
@@ -75,6 +76,8 @@ export interface GeneratedPair {
   after_url: string;
   era: string;
   label: string;
+  /** Concrete place the photo was taken, used for the factual caption line. */
+  location?: string;
   /** Visual subject description used to (re)generate the before image. */
   subject?: string;
   /** 1–2 sentence backstory (kept for script generation + re-rolls). */
@@ -136,6 +139,7 @@ export async function generatePair(subject: PhotoSubject, damageNotes?: string):
     after_url,
     era: subject.era,
     label: subject.label,
+    location: subject.location,
     subject: subject.subject,
     story: subject.story,
     damage_notes: damageNotes,

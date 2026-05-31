@@ -12,6 +12,8 @@ export interface PhotoSubject {
   story: string;
   /** Short caption shown on the reveal, e.g. "Grandma's wedding". */
   label: string;
+  /** Concrete place the photo was taken, e.g. "Saigon". Used for the factual caption line. */
+  location?: string;
 }
 
 /**
