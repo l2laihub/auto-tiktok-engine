@@ -2681,7 +2681,7 @@
 
       function getItemsForDate(d) {
         const ds = dateStr(d);
-        return items.filter(i => i.scheduled_for === ds);
+        return items.filter(i => localDateKey(i.scheduled_for) === ds);
       }
 
       async function handleDrop(e, date) {
@@ -2689,7 +2689,9 @@
         e.currentTarget.classList.remove('drag-over');
         if (!dragItem) return;
         try {
-          await api('/api/content/' + dragItem, { method: 'PATCH', body: { scheduled_for: dateStr(date) } });
+          const dragged = items.find(i => i.id === dragItem);
+          const iso = dayKeyToISO(dateStr(date), dragged?.scheduled_for);
+          await api('/api/content/' + dragItem, { method: 'PATCH', body: { scheduled_for: iso } });
           onToast('Rescheduled', 'success');
           const updated = await api('/api/schedule');
           setItems(updated);
@@ -2742,15 +2744,15 @@
                       <${StatusBadge} status=${item.status} />
                       ${rescheduleId === item.id ? html`
                         <input
-                          type="date"
+                          type="datetime-local"
                           className="form-input"
-                          style=${{padding: '0.2rem 0.4rem', fontSize: '0.75rem', width: '100%', maxWidth: '140px'}}
-                          value=${selDay ? dateStr(selDay) : ''}
+                          style=${{padding: '0.2rem 0.4rem', fontSize: '0.75rem', width: '100%', maxWidth: '200px'}}
+                          value=${toLocalInput(item.scheduled_for)}
                           onChange=${async e => {
-                            const newDate = e.target.value;
-                            if (!newDate) return;
+                            const iso = fromLocalInput(e.target.value);
+                            if (!iso) return;
                             try {
-                              await api('/api/content/' + item.id, { method: 'PATCH', body: { scheduled_for: newDate } });
+                              await api('/api/content/' + item.id, { method: 'PATCH', body: { scheduled_for: iso } });
                               onToast('Rescheduled', 'success');
                               const updated = await api('/api/schedule');
                               setItems(updated);
