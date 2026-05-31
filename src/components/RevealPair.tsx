@@ -84,6 +84,11 @@ export const RevealPair: React.FC<RevealPairProps> = ({
       )
     : 0;
 
+  // INVARIANT: these caption windows assume each pair's before/after phase is
+  // longer than ~40 frames (~1.3s). createRevealTiming currently uses ~90-frame
+  // phases, so the interpolate ranges below stay strictly increasing. If those
+  // durations are ever shortened, revisit these offsets — interpolate() does not
+  // validate monotonic input ranges and would silently pick the wrong segment.
   // === Before caption ("setup" line): fades/slides in, out at the wipe ===
   const beforeCapOpacity = interpolate(
     frame,
