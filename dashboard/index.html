@@ -819,16 +819,6 @@
       box-shadow: 0 0 6px var(--teal);
     }
 
-    .cron-preview {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.7rem;
-      color: var(--amber);
-      background: rgba(255, 183, 77, 0.08);
-      padding: 0.3rem 0.6rem;
-      border-radius: 4px;
-      margin-left: auto;
-    }
-
     .week-label {
       grid-column: 1 / -1;
       font-family: 'Syne', sans-serif;
@@ -2483,77 +2473,23 @@
     // Schedule Tab
     // ============================================================
     const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    const DAY_CRON_MAP = [0, 1, 2, 3, 4, 5, 6]; // cron: 0=Sun, 1=Mon, ...
-
-    function parseCron(cronStr) {
-      // Parse "min hour * * dow" format
-      const parts = cronStr.split(' ');
-      const min = parseInt(parts[0]) || 0;
-      const hour = parseInt(parts[1]) || 10;
-      const dow = parts[4] || '1,3,5';
-      const days = dow === '*' ? [0,1,2,3,4,5,6] : dow.split(',').map(Number);
-      return { hour, min, days };
-    }
-
-    function buildCron(hour, min, days) {
-      if (days.length === 0) days = [1, 3, 5]; // default
-      const sorted = [...days].sort((a, b) => a - b);
-      return `${min} ${hour} * * ${sorted.join(',')}`;
-    }
-
-    function SchedulerSettings({ onToast, onSettingsChanged }) {
+    function SchedulerSettings({ onToast }) {
       const [status, setStatus] = useState(null);
       const [saving, setSaving] = useState(false);
-      const [days, setDays] = useState([1, 3, 5]);
-      const [hour, setHour] = useState(10);
-      const [min, setMin] = useState(0);
-      const [enabled, setEnabled] = useState(true);
-      const [dirty, setDirty] = useState(false);
 
       useEffect(() => {
-        api('/api/scheduler/status').then(data => {
-          setStatus(data);
-          setEnabled(data.enabled);
-          const parsed = parseCron(data.cron);
-          setDays(parsed.days);
-          setHour(parsed.hour);
-          setMin(parsed.min);
-          if (onSettingsChanged) onSettingsChanged(parsed.days);
-        }).catch(() => {});
+        api('/api/scheduler/status').then(setStatus).catch(() => {});
       }, []);
 
-      function toggleDay(d) {
-        setDays(prev => {
-          const next = prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d];
-          return next.length === 0 ? prev : next; // prevent empty
-        });
-        setDirty(true);
-      }
-
-      function handleTimeChange(e) {
-        const [h, m] = e.target.value.split(':').map(Number);
-        setHour(h);
-        setMin(m);
-        setDirty(true);
-      }
-
-      function handleToggle() {
-        setEnabled(prev => !prev);
-        setDirty(true);
-      }
-
-      async function handleSave() {
+      async function handleToggle() {
         setSaving(true);
         try {
-          const cronExpr = buildCron(hour, min, days);
           const res = await api('/api/scheduler/settings', {
             method: 'PATCH',
-            body: { cronExpression: cronExpr, enabled },
+            body: { enabled: !status.enabled },
           });
-          setStatus(res);
-          setDirty(false);
-          if (onSettingsChanged) onSettingsChanged([...days].sort((a, b) => a - b));
-          onToast('Schedule settings saved', 'success');
+          setStatus(s => ({ ...s, ...res }));
+          onToast(res.enabled ? 'Auto-posting enabled' : 'Auto-posting paused', 'success');
         } catch (e) {
           onToast(e.message, 'error');
         } finally {
@@ -2563,8 +2499,7 @@
 
       if (!status) return html`<div className="scheduler-settings"><div className="scheduler-settings-body" style=${{textAlign: 'center', padding: '2rem', color: 'var(--text-muted)'}}>Loading scheduler...</div></div>`;
 
-      const cronExpr = buildCron(hour, min, days);
-      const timeVal = `${String(hour).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
+      const enabled = status.enabled;
       const nextDate = status.nextRun ? new Date(status.nextRun) : null;
       const nextStr = nextDate
         ? nextDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
@@ -2579,60 +2514,32 @@
               boxShadow: enabled ? '0 0 8px var(--teal)' : 'none',
               transition: 'all 0.3s ease',
             }}></div>
-            Auto-Post Schedule
+            Auto-Posting
           </div>
-          <div style=${{display: 'flex', alignItems: 'center', gap: '0.75rem'}}>
-            ${dirty ? html`<button className="btn btn-teal btn-sm" onClick=${handleSave} disabled=${saving}>
-              ${saving ? 'Saving...' : 'Save Changes'}
-            </button>` : null}
-            <div className="cron-preview">${cronExpr}</div>
+          <div className="toggle-row">
+            <button className=${"toggle" + (enabled ? " on" : "")} onClick=${handleToggle} disabled=${saving} />
+            <span className="toggle-label">${enabled ? 'Active' : 'Paused'}</span>
           </div>
         </div>
 
         <div className="scheduler-settings-body">
-          <div className="scheduler-row">
-            <div className="scheduler-field">
-              <div className="scheduler-field-label">Posting Days</div>
-              <div className="day-picker">
-                ${DAY_NAMES.map((name, i) => html`
-                  <button
-                    key=${i}
-                    className=${"day-btn" + (days.includes(i) ? " active" : "")}
-                    onClick=${() => toggleDay(i)}
-                  >${name}</button>
-                `)}
-              </div>
-            </div>
-
-            <div className="scheduler-field">
-              <div className="scheduler-field-label">Post Time</div>
-              <input
-                type="time"
-                className="time-input"
-                value=${timeVal}
-                onChange=${handleTimeChange}
-              />
-            </div>
-
-            <div className="scheduler-field">
-              <div className="scheduler-field-label">Status</div>
-              <div className="toggle-row">
-                <button className=${"toggle" + (enabled ? " on" : "")} onClick=${handleToggle} />
-                <span className="toggle-label">${enabled ? 'Active' : 'Paused'}</span>
-              </div>
-            </div>
-          </div>
-
           ${enabled && nextStr ? html`
             <div className="scheduler-next">
               <div className="scheduler-next-dot"></div>
               Next post: ${nextStr}
             </div>
-          ` : !enabled ? html`
+          ` : enabled ? html`
             <div className="scheduler-next" style=${{color: 'var(--text-muted)', opacity: 0.6}}>
-              Scheduler is paused. Enable to resume auto-posting.
+              No upcoming posts scheduled.
             </div>
-          ` : null}
+          ` : html`
+            <div className="scheduler-next" style=${{color: 'var(--text-muted)', opacity: 0.6}}>
+              Auto-posting is paused. Enable to resume.
+            </div>
+          `}
+          <div className="scheduler-hint" style=${{marginTop: '0.5rem', fontSize: '0.75rem', color: 'var(--text-muted)'}}>
+            Each item posts at its own scheduled date &amp; time. Checked every minute.
+          </div>
         </div>
       </div>`;
     }
@@ -2640,7 +2547,6 @@
     function Schedule({ onToast }) {
       const [items, setItems] = useState([]);
       const [dragItem, setDragItem] = useState(null);
-      const [cronDays, setCronDays] = useState(null); // null = loading
       const [selectedDate, setSelectedDate] = useState(null);
       const [rescheduleId, setRescheduleId] = useState(null);
       const isMobile = useIsMobile();
@@ -2699,11 +2605,12 @@
         setDragItem(null);
       }
 
-      const activeDays = cronDays || [1, 3, 5]; // fallback while loading
+      // Every day is postable now (timing is per-item), so show the full week.
+      const activeDays = [0, 1, 2, 3, 4, 5, 6];
       const weeks = getWeeks(activeDays);
 
       return html`<div>
-        <${SchedulerSettings} onToast=${onToast} onSettingsChanged=${setCronDays} />
+        <${SchedulerSettings} onToast=${onToast} />
         ${isMobile ? html`<div className="schedule-mobile">
           ${(() => {
             const allDates = weeks.flat();
