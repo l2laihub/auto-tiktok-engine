@@ -115,11 +115,13 @@ async function fetchNextItem(specificId?: string): Promise<ContentRow | null> {
     return data;
   }
 
-  // Get next queued or scripted item
+  // Get the next due item. 'rendered' is included so items that were already
+  // rendered (video built + uploaded, awaiting post) still get picked up and
+  // posted — otherwise a pre-rendered scheduled item would never auto-post.
   const { data, error } = await supabase
     .from('tiktok_content_pool')
     .select('*')
-    .in('status', ['queued', 'scripted'])
+    .in('status', ['queued', 'scripted', 'rendered'])
     .or('scheduled_for.is.null,scheduled_for.lte.now()')
     .order('scheduled_for', { ascending: true, nullsFirst: false })
     .order('created_at', { ascending: true })
@@ -855,9 +857,15 @@ async function main() {
     `  Found: ${item.content_type} (${item.id.slice(0, 8)}...) — status: ${item.status}`
   );
 
-  // --post-only: skip rendering if video already exists
-  if (POST_ONLY && item.video_url) {
-    console.log('\n  --post-only: Skipping steps 2-5 (video already rendered)');
+  // Skip rendering when the video already exists. This covers two cases:
+  //   - explicit --post-only flag
+  //   - an item already in 'rendered' status (e.g. pre-rendered ahead of its
+  //     scheduled date) — the scheduler picks these up and they should post
+  //     without re-rendering or re-uploading.
+  const alreadyRendered = item.status === 'rendered' && !!item.video_url;
+  if ((POST_ONLY || alreadyRendered) && item.video_url) {
+    const reason = POST_ONLY ? '--post-only' : "already 'rendered'";
+    console.log(`\n  ${reason}: Skipping steps 2-5 (video already rendered)`);
     console.log(`  Video URL: ${item.video_url}`);
     console.log('\nStep 6: Posting to TikTok...');
     await postToTikTok(item, item.video_url); // videoPath resolved inside from OUTPUT_DIR or downloaded

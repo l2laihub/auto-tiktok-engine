@@ -984,7 +984,7 @@ app.post('/api/tiktok/auth/complete', async (req, res) => {
 // Auto-post scheduler
 // ============================================================
 
-let scheduleCron = process.env.SCHEDULE_CRON || '0 10 * * 1,3,5'; // Mon/Wed/Fri 10 AM
+let scheduleCron = process.env.SCHEDULE_CRON || '0 6 * * *'; // Daily 6 AM
 let schedulerEnabled = process.env.SCHEDULE_ENABLED !== 'false';
 let schedulerTask: ReturnType<typeof cron.schedule> | null = null;
 
@@ -995,13 +995,37 @@ async function hasScheduledItems(): Promise<boolean> {
   const dd = String(today.getDate()).padStart(2, '0');
   const todayStr = `${yyyy}-${mm}-${dd}`;
 
+  // 'rendered' is included so a pre-rendered item that is now due still counts
+  // as work to do — without it the scheduler skips items it has already built.
   const { count } = await supabase
     .from('tiktok_content_pool')
     .select('id', { count: 'exact', head: true })
-    .in('status', ['queued', 'scripted'])
+    .in('status', ['queued', 'scripted', 'rendered'])
     .lte('scheduled_for', todayStr);
 
   return (count ?? 0) > 0;
+}
+
+// Shared by the cron tick and the startup catch-up: post the next due item if
+// one exists and nothing is already running. `trigger` is only for logging.
+async function runScheduledPipeline(trigger: string): Promise<void> {
+  if (!schedulerEnabled) return;
+  console.log(`[scheduler] ${trigger} at ${new Date().toLocaleString()}`);
+
+  if (pipelineRunning) {
+    console.log('[scheduler] Pipeline already running, skipping');
+    return;
+  }
+
+  const hasItems = await hasScheduledItems();
+  if (!hasItems) {
+    console.log('[scheduler] No scheduled items due, skipping');
+    return;
+  }
+
+  console.log('[scheduler] Starting pipeline for scheduled content...');
+  const runId = await runPipeline({ dryRun: false });
+  console.log(`[scheduler] Pipeline started (runId: ${runId})`);
 }
 
 function startScheduler() {
@@ -1012,25 +1036,7 @@ function startScheduler() {
     return;
   }
 
-  schedulerTask = cron.schedule(scheduleCron, async () => {
-    if (!schedulerEnabled) return;
-    console.log(`[scheduler] Cron fired at ${new Date().toLocaleString()}`);
-
-    if (pipelineRunning) {
-      console.log('[scheduler] Pipeline already running, skipping');
-      return;
-    }
-
-    const hasItems = await hasScheduledItems();
-    if (!hasItems) {
-      console.log('[scheduler] No scheduled items due today, skipping');
-      return;
-    }
-
-    console.log('[scheduler] Starting pipeline for scheduled content...');
-    const runId = await runPipeline({ dryRun: false });
-    console.log(`[scheduler] Pipeline started (runId: ${runId})`);
-  });
+  schedulerTask = cron.schedule(scheduleCron, () => runScheduledPipeline('Cron fired'));
 
   console.log(`Scheduler started: ${scheduleCron} (${schedulerEnabled ? 'enabled' : 'disabled'})`);
 }
@@ -1137,4 +1143,9 @@ app.listen(PORT, async () => {
   await reconcileOrphanedRuns();
   startScheduler();
   startTokenRefreshCron();
+
+  // Catch-up: if the process was down at the scheduled cron time (e.g. laptop
+  // asleep at 6 AM), node-cron silently misses that tick. On boot, post any
+  // item that is already due so missed scheduled posts aren't lost.
+  await runScheduledPipeline('Startup catch-up');
 });
