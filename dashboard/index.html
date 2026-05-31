@@ -1862,6 +1862,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script type="module">
     import htm from 'https://unpkg.com/htm@3/dist/htm.module.js?module';
+    import { toLocalInput, fromLocalInput, localDateKey, formatDateTime, dayKeyToISO } from '/static/schedule-time.js';
     const html = htm.bind(React.createElement);
     const { useState, useEffect, useRef, useCallback } = React;
 
@@ -2335,14 +2336,12 @@
 
       function formatDate(d) {
         if (!d) return '\u2014';
-        // Parse YYYY-MM-DD as local date (not UTC) by splitting components
-        const [y, m, day] = d.split('-').map(Number);
-        return new Date(y, m - 1, day).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        return formatDateTime(d);
       }
 
-      async function handleDateChange(id, newDate) {
+      async function handleDateChange(id, newLocal) {
         try {
-          await api('/api/content/' + id, { method: 'PATCH', body: { scheduled_for: newDate || null } });
+          await api('/api/content/' + id, { method: 'PATCH', body: { scheduled_for: fromLocalInput(newLocal) } });
           onToast('Date updated', 'success');
           setEditingDateId(null);
           fetchItems();
@@ -2392,10 +2391,10 @@
                     <td className="date-cell" onClick=${e => { e.stopPropagation(); setEditingDateId(editingDateId === item.id ? null : item.id); }}>
                       ${editingDateId === item.id ? html`
                         <input
-                          type="date"
+                          type="datetime-local"
                           className="form-input"
-                          style=${{padding: '0.2rem 0.4rem', fontSize: '0.78rem', width: '140px'}}
-                          value=${item.scheduled_for || ''}
+                          style=${{padding: '0.2rem 0.4rem', fontSize: '0.78rem', width: '210px'}}
+                          value=${toLocalInput(item.scheduled_for)}
                           onChange=${e => handleDateChange(item.id, e.target.value)}
                           onClick=${e => e.stopPropagation()}
                           autoFocus
