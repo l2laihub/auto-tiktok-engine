@@ -1,11 +1,19 @@
 import React from 'react';
 import { AbsoluteFill, useCurrentFrame, Img } from 'remotion';
 import { BRAND, interpolate, type PairTiming } from '../config';
+import { loadFont as loadPlayfair } from '@remotion/google-fonts/PlayfairDisplay';
+import { buildFactualLine } from '../../scripts/lib/caption-text';
+
+const { fontFamily: playfair } = loadPlayfair();
 
 interface RevealPairProps {
   beforeImageSrc: string;
   afterImageSrc: string;
   photoEra?: string;
+  label?: string;
+  location?: string;
+  captionBefore?: string;
+  captionAfter?: string;
   pairTiming: PairTiming;
   pairIndex: number;
   totalPairs: number;
@@ -15,6 +23,10 @@ export const RevealPair: React.FC<RevealPairProps> = ({
   beforeImageSrc,
   afterImageSrc,
   photoEra,
+  label,
+  location,
+  captionBefore,
+  captionAfter,
   pairTiming: T,
   pairIndex,
   totalPairs,
@@ -71,6 +83,23 @@ export const RevealPair: React.FC<RevealPairProps> = ({
         [0, 0.7, 0.7, 0]
       )
     : 0;
+
+  // === Before caption ("setup" line): fades/slides in, out at the wipe ===
+  const beforeCapOpacity = interpolate(
+    frame,
+    [T.beforeStart + 22, T.beforeStart + 34, T.transitionStart - 4, T.transitionStart + 6],
+    [0, 1, 1, 0]
+  );
+  const beforeCapY = interpolate(frame, [T.beforeStart + 22, T.beforeStart + 34], [22, 0]);
+
+  // === After caption ("payoff" line) + factual line ===
+  const afterCapOpacity = interpolate(
+    frame,
+    [T.afterStart + 12, T.afterStart + 24, T.afterEnd - 16, T.afterEnd - 2],
+    [0, 1, 1, 0]
+  );
+  const afterCapY = interpolate(frame, [T.afterStart + 12, T.afterStart + 24], [22, 0]);
+  const factualLine = buildFactualLine({ label, location, era: photoEra });
 
   // Only render when this pair is active (with some padding)
   if (frame < T.beforeStart - 5 || frame > T.afterEnd + 10) return null;
@@ -174,6 +203,35 @@ export const RevealPair: React.FC<RevealPairProps> = ({
             </div>
           </div>
         )}
+
+        {/* Before caption — the emotional "setup" line */}
+        {captionBefore && (
+          <div
+            style={{
+              position: 'absolute',
+              bottom: 230,
+              left: 50,
+              right: 50,
+              textAlign: 'center',
+              opacity: beforeCapOpacity,
+              transform: `translateY(${beforeCapY}px)`,
+            }}
+          >
+            <span
+              style={{
+                fontFamily: playfair,
+                fontSize: 44,
+                fontWeight: 700,
+                fontStyle: 'italic',
+                color: BRAND.white,
+                lineHeight: 1.25,
+                textShadow: `0 3px 18px ${BRAND.dark}, 0 0 40px ${BRAND.dark}CC`,
+              }}
+            >
+              {captionBefore}
+            </span>
+          </div>
+        )}
       </AbsoluteFill>
 
       {/* === AFTER IMAGE LAYER === */}
@@ -232,6 +290,50 @@ export const RevealPair: React.FC<RevealPairProps> = ({
             </span>
           </div>
         </div>
+
+        {/* After caption — the emotional "payoff" line + factual line */}
+        {captionAfter && (
+          <div
+            style={{
+              position: 'absolute',
+              bottom: 220,
+              left: 50,
+              right: 50,
+              textAlign: 'center',
+              opacity: afterCapOpacity,
+              transform: `translateY(${afterCapY}px)`,
+            }}
+          >
+            <div
+              style={{
+                fontFamily: playfair,
+                fontSize: 46,
+                fontWeight: 700,
+                fontStyle: 'italic',
+                color: BRAND.white,
+                lineHeight: 1.25,
+                textShadow: `0 3px 18px ${BRAND.dark}, 0 0 40px ${BRAND.dark}CC`,
+              }}
+            >
+              {captionAfter}
+            </div>
+            {factualLine && (
+              <div
+                style={{
+                  marginTop: 14,
+                  fontFamily: 'Inter, system-ui, sans-serif',
+                  fontSize: 24,
+                  fontWeight: 600,
+                  color: BRAND.amber,
+                  letterSpacing: 1,
+                  textShadow: `0 2px 12px ${BRAND.dark}`,
+                }}
+              >
+                {factualLine}
+              </div>
+            )}
+          </div>
+        )}
       </AbsoluteFill>
 
       {/* === TRANSITION FLASH === */}

@@ -20,6 +20,9 @@ export interface ImagePair {
   afterImageSrc: string;
   photoEra?: string;
   label?: string;
+  location?: string;
+  captionBefore?: string;
+  captionAfter?: string;
 }
 
 // Props passed from the render script / content pool
@@ -177,6 +180,10 @@ export const BeforeAfterReveal: React.FC<RevealProps> = ({
           beforeImageSrc={pair.beforeImageSrc}
           afterImageSrc={pair.afterImageSrc}
           photoEra={pair.photoEra}
+          label={pair.label}
+          location={pair.location}
+          captionBefore={pair.captionBefore}
+          captionAfter={pair.captionAfter}
           pairTiming={timing.pairs[i]}
           pairIndex={i}
           totalPairs={pairs.length}
