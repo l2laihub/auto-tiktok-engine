@@ -9,8 +9,9 @@ import { GoogleGenAI } from '@google/genai';
 import { withRetry } from '../../scripts/lib/retry';
 
 // nano-banana. Image model naming has churned across previews; keep it a
-// single constant so it's trivial to bump (e.g. to gemini-3-pro-image-preview).
-const IMAGE_MODEL = 'gemini-2.5-flash-image';
+// single constant (env-overridable) so it's trivial to bump or A/B test.
+// Default: Nano Banana Pro (Gemini 3 Pro Image) for far better in-image text.
+const IMAGE_MODEL = process.env.IMAGE_MODEL || 'gemini-3-pro-image-preview';
 
 export type AspectRatio = '9:16' | '1:1' | '3:4' | '4:3' | '16:9';
 

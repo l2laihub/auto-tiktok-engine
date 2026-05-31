@@ -21,7 +21,7 @@ npm run render:tips
 # Generate AI script (demo mode, no Supabase needed)
 npm run generate-script
 
-# AI image generation (Gemini nano-banana, needs GOOGLE_API_KEY)
+# AI image generation (Gemini Nano Banana Pro, needs GOOGLE_API_KEY)
 npm run generate:photos                       # self-source a reveal item (heavily damaged->restored)
 npm run generate:photos -- --pairs 3 --hint "Vietnamese wedding photos"
 npm run generate:photos -- --damage "water-damaged 1960s Polaroid, mildew"  # steer the damage
@@ -70,7 +70,7 @@ Both compositions accept optional `musicFile` (relative path from `public/` for 
 Background music via Google Lyria 3 (preferred, `GOOGLE_API_KEY`) or Suno AI (fallback, `SUNO_API_URL`). Lyria 3 Clip generates 30-second instrumental MP3 clips via the Gemini API. Suno requires a self-hosted `gcui-art/suno-api` server with browser cookies. Both are trimmed to video duration with ffmpeg fade-out. Files saved to `public/music/` for Remotion's `staticFile()`.
 
 ### Image generation (src/utils/image-gen.ts, src/utils/storage.ts)
-Gemini `gemini-2.5-flash-image` (nano-banana) via the same `@google/genai` SDK + `GOOGLE_API_KEY`. `generateImage()` does text→image and image→image edits; `uploadImageBuffer()` saves results to the Supabase `photos` bucket (`generated/` prefix) and returns a public URL. Two uses:
+Gemini `gemini-3-pro-image-preview` (Nano Banana Pro) via the same `@google/genai` SDK + `GOOGLE_API_KEY`, set as the env-overridable `IMAGE_MODEL` constant in `src/utils/image-gen.ts` (set `IMAGE_MODEL=gemini-2.5-flash-image` to fall back to the cheaper/faster original Nano Banana). `generateImage()` does text→image and image→image edits; `uploadImageBuffer()` saves results to the Supabase `photos` bucket (`generated/` prefix) and returns a public URL. Two uses:
 - **Self-sourced reveals** (`scripts/generate-reveal-photos.ts`): Claude invents a family-photo scenario → generate a HEAVILY damaged "before" (deep tears, missing corners, water stains, mold, heavy fade — see `buildBeforePrompt`) → image-edit it into a restored "after" (same subject) → create a queued `reveal` item with `image_pairs`. Each pair persists its `subject`/`story`/`damage_notes` so it can be faithfully regenerated. Damage can be steered with `--damage "<notes>"` (CLI) or the dashboard "Damage notes" field. No manual photo upload needed.
 - **Tip imagery** (`scripts/generate-tip-images.ts`): generate a background + b-roll images per tip, stored in `tip_image_url` / `tip_images` (migration-v3). `tip_icon` emoji is chosen by Claude during scripting.
 - **Self-sourced tips** (`scripts/generate-tip-content.ts`): Claude invents 4–6 tips (text + emoji) → generate a background per tip → create a queued `tip` item with a `tips` JSONB array (migration-v4). The renderer feeds the whole array to `TipsEducational`; it falls back to the legacy single-tip columns when `tips` is null.
@@ -95,6 +95,6 @@ Defined in `src/config.ts` as `BRAND`: coral `#E85A71`, teal `#3D9CA8`, amber `#
 ## Environment Variables
 
 Required: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `ANTHROPIC_API_KEY`
-Optional: `TIKTOK_CLIENT_KEY`, `TIKTOK_CLIENT_SECRET`, `TIKTOK_REDIRECT_URI`, `TIKTOK_ACCESS_TOKEN`, `GOOGLE_API_KEY`, `SUNO_API_URL`, `SUNO_COOKIE`, `OUTPUT_DIR`
+Optional: `TIKTOK_CLIENT_KEY`, `TIKTOK_CLIENT_SECRET`, `TIKTOK_REDIRECT_URI`, `TIKTOK_ACCESS_TOKEN`, `GOOGLE_API_KEY`, `IMAGE_MODEL`, `SUNO_API_URL`, `SUNO_COOKIE`, `OUTPUT_DIR`
 
 See `.env.example` for details. Without TikTok tokens, pipeline saves videos for manual upload. Without `GOOGLE_API_KEY` or `SUNO_API_URL`, music generation is skipped. Without `GOOGLE_API_KEY`, AI image generation (reveal photos + tip imagery) is also skipped. Lyria 3 is preferred over Suno when both are configured.
