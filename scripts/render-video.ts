@@ -18,7 +18,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { bundle } from '@remotion/bundler';
 import { renderMedia, selectComposition } from '@remotion/renderer';
-import { generateScript } from './generate-script';
+import { generateScript, generatePairCaptions } from './generate-script';
 import { generateMusicTrack as generateSunoTrack, downloadAndTrim } from '../src/utils/suno';
 import { generateMusicTrack as generateLyriaTrack, trimAudioFile } from '../src/utils/lyria';
 import { generatePair, inventSubjects } from './generate-reveal-photos';
@@ -51,6 +51,11 @@ interface ImagePairRow {
   after_url: string;
   era?: string;
   label?: string;
+  location?: string;
+  story?: string;
+  damage_notes?: string;
+  caption_before?: string;
+  caption_after?: string;
 }
 
 interface ContentRow {
@@ -284,6 +289,70 @@ async function ensureTipImages(item: ContentRow): Promise<ContentRow> {
   }
 }
 
+// --- Step 2d: Ensure reveal pair captions exist (two-beat per-pair copy) ---
+// Idempotent: runs only for reveals whose pairs are missing caption copy, and
+// only when ANTHROPIC_API_KEY is set. Persists copy into image_pairs (no migration).
+// Captions are non-essential overlay copy — a failure here degrades gracefully
+// (logs a warning and renders without the new captions) rather than killing the run.
+async function ensureRevealCaptions(item: ContentRow): Promise<ContentRow> {
+  if (item.content_type !== 'reveal') return item;
+
+  const pairs = item.image_pairs;
+  if (!pairs || pairs.length === 0) return item;
+
+  const allHaveCaptions = pairs.every((p) => p.caption_before && p.caption_after);
+  if (allHaveCaptions) {
+    console.log('  Pair captions already exist, skipping generation');
+    return item;
+  }
+
+  if (!process.env.ANTHROPIC_API_KEY) {
+    console.log('  No ANTHROPIC_API_KEY — skipping pair caption generation');
+    return item;
+  }
+
+  try {
+    console.log('  Generating two-beat pair captions...');
+    const captions = await generatePairCaptions(
+      pairs.map((p) => ({
+        label: p.label,
+        era: p.era,
+        location: p.location,
+        story: p.story,
+        damage_notes: p.damage_notes,
+      }))
+    );
+
+    // Only fill blanks — never overwrite captions a user may have edited.
+    const updatedPairs = pairs.map((p, i) => ({
+      ...p,
+      caption_before: p.caption_before || captions[i]?.before || '',
+      caption_after: p.caption_after || captions[i]?.after || '',
+    }));
+
+    // If the model produced nothing usable, skip the write so we retry next run
+    // instead of persisting empty strings.
+    const gotCopy = updatedPairs.some((p) => p.caption_before || p.caption_after);
+    if (!gotCopy) {
+      console.warn('  Caption generation returned no usable copy — leaving pairs unchanged');
+      return item;
+    }
+
+    const { error } = await supabase
+      .from('tiktok_content_pool')
+      .update({ image_pairs: updatedPairs })
+      .eq('id', item.id);
+
+    if (error) throw new Error(`Failed to update pair captions: ${error.message}`);
+
+    return { ...item, image_pairs: updatedPairs };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn(`  Pair caption generation failed (${msg}) — rendering without new captions`);
+    return item;
+  }
+}
+
 // --- Step 3: Generate background music via Lyria 3 / Suno AI ---
 async function generateAudio(item: ContentRow): Promise<ContentRow> {
   // Skip if already has a music file
@@ -470,6 +539,9 @@ async function renderVideo(item: ContentRow): Promise<string> {
       afterImageSrc: p.after_url,
       photoEra: p.era,
       label: p.label,
+      location: p.location,
+      captionBefore: p.caption_before,
+      captionAfter: p.caption_after,
     })) || [{
       beforeImageSrc: item.before_image_url || '',
       afterImageSrc: item.after_image_url || '',
@@ -805,10 +877,11 @@ async function main() {
   console.log('\nStep 2b: Ensuring imagery...');
   const withReveal = await ensureRevealPhotos(scripted);
   const withImages = await ensureTipImages(withReveal);
+  const withCaptions = await ensureRevealCaptions(withImages);
 
   // Step 3: Music
   console.log('\nStep 3: Music generation (Suno AI)...');
-  const withMusic = await generateAudio(withImages);
+  const withMusic = await generateAudio(withCaptions);
 
   // Step 4: Render
   console.log('\nStep 4: Video rendering...');
