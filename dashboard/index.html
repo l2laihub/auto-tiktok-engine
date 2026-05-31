@@ -1991,6 +1991,22 @@
         }
       }
 
+      async function handleRegenCaptions() {
+        setRegenBusy('captions');
+        try {
+          onToast('Regenerating captions…', 'info');
+          const updated = await api('/api/content/' + item.id + '/regenerate-captions', { method: 'POST' });
+          if (updated.image_pairs) {
+            setPairs(updated.image_pairs.map(p => ({ ...p, before_url: p.before_url || '', after_url: p.after_url || '' })));
+          }
+          onToast('Captions regenerated', 'success');
+        } catch (e) {
+          onToast('Caption regen failed: ' + e.message, 'error');
+        } finally {
+          setRegenBusy('');
+        }
+      }
+
       // Tip fields state
       const [tipTitle, setTipTitle] = useState(item.tip_title || '');
       const [tipBody, setTipBody] = useState(item.tip_body || '');
@@ -2114,6 +2130,18 @@
                       ${eras.map(e => html`<option key=${e} value=${e}>${e}</option>`)}
                     </select>
                   </div>
+                  <div className="form-group" style=${{marginTop: '0.5rem'}}>
+                    <input className="form-input" style=${{fontSize: '0.8rem'}} value=${pair.location || ''}
+                      onInput=${e => updatePair(i, 'location', e.target.value)} placeholder="Location (e.g. Saigon)" />
+                  </div>
+                  <div className="form-group" style=${{marginTop: '0.4rem'}}>
+                    <input className="form-input" style=${{fontSize: '0.8rem'}} value=${pair.caption_before || ''}
+                      onInput=${e => updatePair(i, 'caption_before', e.target.value)} placeholder="Before line (setup) — e.g. Found water-damaged" />
+                  </div>
+                  <div className="form-group" style=${{marginTop: '0.4rem'}}>
+                    <input className="form-input" style=${{fontSize: '0.8rem'}} value=${pair.caption_after || ''}
+                      onInput=${e => updatePair(i, 'caption_after', e.target.value)} placeholder="After line (payoff) — e.g. Her smile, alive again" />
+                  </div>
                   <div style=${{display: 'flex', gap: '0.4rem', marginTop: '0.5rem', flexWrap: 'wrap'}}>
                     <button type="button" className="btn btn-secondary btn-sm" disabled=${!!regenBusy}
                       onClick=${() => handleRegenImages(i, 'pair')}>
@@ -2126,6 +2154,10 @@
                     <button type="button" className="btn btn-ghost btn-sm" disabled=${!!regenBusy || !pair.before_url}
                       onClick=${() => handleRegenImages(i, 'after')}>
                       ${regenBusy === i + ':after' ? '…' : 'after'}
+                    </button>
+                    <button type="button" className="btn btn-ghost btn-sm" disabled=${!!regenBusy}
+                      onClick=${() => handleRegenCaptions()}>
+                      ${regenBusy === 'captions' ? '…' : '✍️ Regen captions'}
                     </button>
                   </div>
                 </div>

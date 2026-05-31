@@ -8,7 +8,7 @@ import multer from 'multer';
 import Anthropic from '@anthropic-ai/sdk';
 import cron from 'node-cron';
 import basicAuth from 'express-basic-auth';
-import { generateScript } from '../scripts/generate-script';
+import { generateScript, generatePairCaptions } from '../scripts/generate-script';
 import {
   generateRevealPhotos,
   generateBeforeImage,
@@ -497,6 +497,7 @@ app.post('/api/content/:id/regenerate-images', async (req, res) => {
           era: pair.era || item.photo_era || '1960s',
           story: pair.story || item.photo_story || `An old family photograph: ${pair.subject}.`,
           label: pair.label || 'Restored memory',
+          location: pair.location,
         };
       } else if (item.photo_story) {
         subject = {
@@ -518,6 +519,7 @@ app.post('/api/content/:id/regenerate-images', async (req, res) => {
         });
         pair.subject = subject.subject;
         pair.story = subject.story;
+        pair.location = subject.location ?? pair.location ?? null;
         pair.damage_notes = notes ?? null;
         if (scope === 'pair') {
           const after = await generateAfterFromBuffer(before);
@@ -587,6 +589,55 @@ app.post('/api/content/:id/regenerate-images', async (req, res) => {
     }
 
     return res.status(400).json({ error: `Unsupported scope: ${scope}` });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: msg });
+  }
+});
+
+// Regenerate the two-beat captions for a reveal item (re-rolls copy only).
+app.post('/api/content/:id/regenerate-captions', async (req, res) => {
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return res.status(400).json({ error: 'ANTHROPIC_API_KEY not set — caption generation unavailable.' });
+  }
+
+  const { data: item, error: fetchErr } = await supabase
+    .from('tiktok_content_pool')
+    .select('id, content_type, photo_story, image_pairs')
+    .eq('id', req.params.id)
+    .single();
+  if (fetchErr || !item) return res.status(404).json({ error: 'Item not found' });
+  if (item.content_type !== 'reveal') {
+    return res.status(400).json({ error: 'Caption regeneration is only valid for reveal items' });
+  }
+
+  const pairs = Array.isArray(item.image_pairs) ? [...item.image_pairs] : [];
+  if (pairs.length === 0) return res.status(400).json({ error: 'Item has no pairs' });
+
+  try {
+    const captions = await generatePairCaptions(
+      pairs.map((p: any) => ({
+        label: p.label,
+        era: p.era,
+        location: p.location,
+        story: p.story || item.photo_story,
+        damage_notes: p.damage_notes,
+      }))
+    );
+    const updatedPairs = pairs.map((p: any, i: number) => ({
+      ...p,
+      caption_before: captions[i]?.before || '',
+      caption_after: captions[i]?.after || '',
+    }));
+
+    const { data: updated, error: updErr } = await supabase
+      .from('tiktok_content_pool')
+      .update({ image_pairs: updatedPairs })
+      .eq('id', item.id)
+      .select()
+      .single();
+    if (updErr) return res.status(500).json({ error: updErr.message });
+    return res.json(updated);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     res.status(500).json({ error: msg });
