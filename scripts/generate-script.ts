@@ -8,6 +8,13 @@
 
 import Anthropic from '@anthropic-ai/sdk';
 import { createClient } from '@supabase/supabase-js';
+import {
+  PAIR_CAPTION_SYSTEM_PROMPT,
+  buildPairCaptionPrompt,
+  parsePairCaptions,
+  type PairCaptionInput,
+  type PairCaption,
+} from './lib/caption-text';
 
 const anthropic = new Anthropic();
 
@@ -138,6 +145,29 @@ export async function generateScript(item: ContentItem): Promise<GeneratedScript
   }
 
   return parsed;
+}
+
+/**
+ * Generate two-beat captions (before "setup" + after "payoff") for each
+ * reveal pair, in order. Pure prompt-building/parsing lives in caption-text.ts;
+ * this just wires the Claude call. Returns one caption object per input pair.
+ */
+export async function generatePairCaptions(pairs: PairCaptionInput[]): Promise<PairCaption[]> {
+  if (pairs.length === 0) return [];
+
+  const response = await anthropic.messages.create({
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 400,
+    system: PAIR_CAPTION_SYSTEM_PROMPT,
+    messages: [{ role: 'user', content: buildPairCaptionPrompt(pairs) }],
+  });
+
+  const text = response.content
+    .filter((block): block is Anthropic.TextBlock => block.type === 'text')
+    .map((block) => block.text)
+    .join('');
+
+  return parsePairCaptions(text, pairs.length);
 }
 
 // CLI entry point
