@@ -483,7 +483,7 @@ app.post('/api/generate-reveal-photos', async (req, res) => {
   if (!process.env.GOOGLE_API_KEY) {
     return res.status(400).json({ error: 'GOOGLE_API_KEY not set — image generation unavailable.' });
   }
-  const { pairs = 1, hint, subject, era, damageNotes } = req.body || {};
+  const { pairs = 1, hint, subject, era, damageNotes, source } = req.body || {};
   try {
     const subjects = subject
       ? [{
@@ -499,6 +499,7 @@ app.post('/api/generate-reveal-photos', async (req, res) => {
       hint,
       subjects,
       damageNotes,
+      source,
     });
     res.status(201).json(result);
   } catch (err) {
@@ -695,11 +696,12 @@ app.post('/api/generate-tip-content', async (req, res) => {
   if (!process.env.GOOGLE_API_KEY) {
     return res.status(400).json({ error: 'GOOGLE_API_KEY not set — image generation unavailable.' });
   }
-  const { count = 4, hint } = req.body || {};
+  const { count = 4, hint, source } = req.body || {};
   try {
     const result = await generateTipContent({
       count: Math.max(1, Math.min(6, Number(count) || 4)),
       hint,
+      source,
     });
     res.status(201).json(result);
   } catch (err) {

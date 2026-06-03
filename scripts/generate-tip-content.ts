@@ -71,6 +71,7 @@ export async function inventTips(count: number, hint?: string): Promise<Generate
 export interface GenerateTipContentOptions {
   count?: number;
   hint?: string;
+  source?: 'curated' | 'ai' | 'manual';
 }
 
 export interface GenerateTipContentResult {
@@ -106,6 +107,11 @@ export async function generateTipContent(opts: GenerateTipContentOptions = {}): 
       tip_icon: first.tipIcon ?? null,
       tip_image_url: first.tipImageSrc ?? null,
       tip_images: first.tipImages ?? null,
+      generation_meta: {
+        hint: opts.hint ?? null,
+        damageNotes: null,
+        source: opts.source ?? null,
+      },
     })
     .select('id')
     .single();

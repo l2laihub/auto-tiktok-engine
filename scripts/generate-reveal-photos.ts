@@ -151,6 +151,7 @@ export interface GenerateRevealOptions {
   hint?: string;
   subjects?: PhotoSubject[];
   damageNotes?: string;
+  source?: 'curated' | 'ai' | 'manual';
 }
 
 export interface GenerateRevealResult {
@@ -187,6 +188,11 @@ export async function generateRevealPhotos(opts: GenerateRevealOptions = {}): Pr
       photo_era: first.era,
       photo_story: first.story,
       preset_used: 'full-enhancement',
+      generation_meta: {
+        hint: opts.hint ?? null,
+        damageNotes: opts.damageNotes ?? null,
+        source: opts.source ?? null,
+      },
     })
     .select('id')
     .single();
