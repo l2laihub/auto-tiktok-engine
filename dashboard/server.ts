@@ -432,6 +432,11 @@ Return ONLY valid JSON:
   }
 });
 
+// Coerce an untrusted request value into the generation_meta `source` union.
+function normalizeSource(v: unknown): 'curated' | 'ai' | 'manual' | undefined {
+  return v === 'curated' || v === 'ai' || v === 'manual' ? v : undefined;
+}
+
 // Suggest a fresh theme/hint (and damage notes for reveals) via Claude — the
 // "✨" button in the Generate panels. Cheap, low-token; the UI falls back to
 // curated suggestions if this fails or the key is missing.
@@ -499,7 +504,7 @@ app.post('/api/generate-reveal-photos', async (req, res) => {
       hint,
       subjects,
       damageNotes,
-      source,
+      source: normalizeSource(source),
     });
     res.status(201).json(result);
   } catch (err) {
@@ -701,7 +706,7 @@ app.post('/api/generate-tip-content', async (req, res) => {
     const result = await generateTipContent({
       count: Math.max(1, Math.min(6, Number(count) || 4)),
       hint,
-      source,
+      source: normalizeSource(source),
     });
     res.status(201).json(result);
   } catch (err) {
