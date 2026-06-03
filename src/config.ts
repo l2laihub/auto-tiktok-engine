@@ -21,6 +21,18 @@ export const VIDEO = {
   fps: 30,
 } as const;
 
+// === TikTok mobile UI safe zones (px, for a 1080x1920 frame) ===
+// On the TikTok feed, the platform overlays its own chrome on top of the video.
+// Keep titles, captions, and badges out of these regions so the username,
+// caption, "Get more views" CTA, action rail (like/comment/share/bookmark), and
+// the top status bar + header never cover our text.
+export const SAFE_ZONE = {
+  top: 230,    // status bar + For You/Following header
+  bottom: 500, // username, caption text, CTA button, progress + nav bar
+  rail: 150,   // right-side action rail (like/comment/bookmark/share/sound)
+  side: 56,    // default left/right breathing room
+} as const;
+
 // === Dynamic Reveal Timing (multi-pair support) ===
 
 export interface PairTiming {

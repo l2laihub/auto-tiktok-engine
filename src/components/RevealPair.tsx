@@ -1,6 +1,6 @@
 import React from 'react';
 import { AbsoluteFill, useCurrentFrame, Img } from 'remotion';
-import { BRAND, interpolate, type PairTiming } from '../config';
+import { BRAND, SAFE_ZONE, interpolate, type PairTiming } from '../config';
 import { loadFont as loadPlayfair } from '@remotion/google-fonts/PlayfairDisplay';
 import { buildFactualLine } from '../../scripts/lib/caption-text';
 
@@ -144,7 +144,7 @@ export const RevealPair: React.FC<RevealPairProps> = ({
         <div
           style={{
             position: 'absolute',
-            top: 80,
+            top: SAFE_ZONE.top,
             left: 60,
             opacity: beforeLabelOpacity,
           }}
@@ -180,7 +180,7 @@ export const RevealPair: React.FC<RevealPairProps> = ({
           <div
             style={{
               position: 'absolute',
-              top: 80,
+              top: SAFE_ZONE.top,
               right: 60,
               opacity: eraOpacity,
             }}
@@ -214,9 +214,9 @@ export const RevealPair: React.FC<RevealPairProps> = ({
           <div
             style={{
               position: 'absolute',
-              bottom: 230,
-              left: 50,
-              right: 50,
+              bottom: SAFE_ZONE.bottom,
+              left: SAFE_ZONE.side,
+              right: SAFE_ZONE.rail,
               textAlign: 'center',
               opacity: beforeCapOpacity,
               transform: `translateY(${beforeCapY}px)`,
@@ -266,7 +266,7 @@ export const RevealPair: React.FC<RevealPairProps> = ({
         <div
           style={{
             position: 'absolute',
-            top: 80,
+            top: SAFE_ZONE.top,
             left: 60,
             opacity: afterLabelOpacity,
           }}
@@ -301,9 +301,9 @@ export const RevealPair: React.FC<RevealPairProps> = ({
           <div
             style={{
               position: 'absolute',
-              bottom: 220,
-              left: 50,
-              right: 50,
+              bottom: SAFE_ZONE.bottom,
+              left: SAFE_ZONE.side,
+              right: SAFE_ZONE.rail,
               textAlign: 'center',
               opacity: afterCapOpacity,
               transform: `translateY(${afterCapY}px)`,
@@ -360,7 +360,7 @@ export const RevealPair: React.FC<RevealPairProps> = ({
         <div
           style={{
             position: 'absolute',
-            top: 80,
+            top: SAFE_ZONE.top,
             left: '50%',
             transform: 'translateX(-50%)',
             opacity: counterOpacity,

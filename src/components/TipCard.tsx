@@ -1,6 +1,6 @@
 import React from 'react';
 import { AbsoluteFill, useCurrentFrame, Img } from 'remotion';
-import { BRAND, interpolate, type TipTiming } from '../config';
+import { BRAND, SAFE_ZONE, interpolate, type TipTiming } from '../config';
 
 export interface TipCardProps {
   tipTitle: string;
@@ -98,9 +98,9 @@ export const TipCard: React.FC<TipCardProps> = ({
       <div
         style={{
           position: 'absolute',
-          left: 48,
-          right: 48,
-          ...(hasBg ? { bottom: 280 } : { top: '18%' }),
+          left: SAFE_ZONE.side,
+          right: SAFE_ZONE.rail,
+          ...(hasBg ? { bottom: SAFE_ZONE.bottom } : { top: '18%' }),
           opacity: visible,
           transform: `translateY(${cardSlide}px)`,
         }}
