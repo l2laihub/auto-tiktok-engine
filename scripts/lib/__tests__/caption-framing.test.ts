@@ -47,3 +47,33 @@ test('framingInstruction third_person voice instructs third-person and bans owne
   assert.match(instruction, /third person/i);
   assert.match(instruction, /never as your own/i);
 });
+
+import { buildUserPrompt, type ContentItem } from '../../generate-script';
+
+test('buildUserPrompt injects the framing instruction for reveal items', () => {
+  const item: ContentItem = {
+    id: 'x',
+    content_type: 'reveal',
+    photo_era: '1960s',
+    photo_story: 'A wedding photo found water-damaged.',
+  };
+  const prompt = buildUserPrompt(item, 'capability');
+  assert.match(prompt, /APP CAPABILITY DEMO/);
+});
+
+test('buildUserPrompt for a tip item contains no framing instruction', () => {
+  const item: ContentItem = {
+    id: 'y',
+    content_type: 'tip',
+    tip_title: 'Scan at 600 DPI',
+    tip_body: 'Higher DPI preserves detail for restoration.',
+  };
+  const prompt = buildUserPrompt(item);
+  assert.doesNotMatch(prompt, /APP CAPABILITY DEMO|THIRD-PERSON STORY|VIEWER INVITATION/);
+});
+
+test('buildUserPrompt omits framing when none is passed for a reveal', () => {
+  const item: ContentItem = { id: 'z', content_type: 'reveal', photo_era: '1940s' };
+  const prompt = buildUserPrompt(item);
+  assert.doesNotMatch(prompt, /Framing:/);
+});
