@@ -24,6 +24,7 @@ import {
   buildRestoreEditPrompt,
   type PhotoSubject,
 } from './lib/image-prompts';
+import { generateScript } from './generate-script';
 
 const anthropic = new Anthropic();
 
@@ -179,21 +180,56 @@ export async function generateRevealPhotos(opts: GenerateRevealOptions = {}): Pr
   }
 
   const first = subjects[0];
-  const { data, error } = await supabase
-    .from('tiktok_content_pool')
-    .insert({
+
+  // Base row: an unscripted queued item (the original behavior, kept as the
+  // fallback if script generation fails below).
+  const insertRow: Record<string, unknown> = {
+    content_type: 'reveal',
+    status: 'queued',
+    image_pairs: imagePairs,
+    photo_era: first.era,
+    photo_story: first.story,
+    preset_used: 'full-enhancement',
+    generation_meta: {
+      hint: opts.hint ?? null,
+      damageNotes: opts.damageNotes ?? null,
+      source: opts.source ?? null,
+    },
+  };
+
+  // Generate the script now so the item lands in the dashboard already
+  // scripted (hook/caption reviewable before render). Same ContentItem shape
+  // that render-video.ts ensureScript() uses, so "Regen Script" reproduces it.
+  // On failure we keep the queued row — ensureScript() backfills at render.
+  try {
+    console.log('  Generating AI script...');
+    const script = await generateScript({
+      id: 'pending',
       content_type: 'reveal',
-      status: 'queued',
-      image_pairs: imagePairs,
       photo_era: first.era,
       photo_story: first.story,
       preset_used: 'full-enhancement',
-      generation_meta: {
-        hint: opts.hint ?? null,
-        damageNotes: opts.damageNotes ?? null,
-        source: opts.source ?? null,
-      },
-    })
+      pair_count: imagePairs.length,
+      photo_stories: imagePairs.map((p, i) => `Pair ${i + 1}: ${p.era || 'unknown era'}`),
+    });
+    Object.assign(insertRow, {
+      hook_text: script.hook_text,
+      caption: script.caption,
+      hashtags: script.hashtags,
+      music_track: script.music_mood,
+      music_style: script.music_style,
+      slogan: script.slogan,
+      status: 'scripted',
+    });
+  } catch (err) {
+    console.warn(
+      `  ⚠️  Script generation failed, leaving item queued: ${err instanceof Error ? err.message : String(err)}`
+    );
+  }
+
+  const { data, error } = await supabase
+    .from('tiktok_content_pool')
+    .insert(insertRow)
     .select('id')
     .single();
 
