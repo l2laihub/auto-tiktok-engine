@@ -3,6 +3,8 @@
 **Date:** 2026-06-03
 **Status:** Approved (design)
 **Scope:** `scripts/generate-script.ts` + new `scripts/lib/caption-framing.ts`
++ creation-time scripting in `scripts/generate-reveal-photos.ts` and
+`scripts/generate-tip-content.ts`
 
 ## Problem
 
@@ -19,14 +21,28 @@ photo, restored after 60 years." This is untrue and the user wants it fixed.
 A secondary goal: the feed currently feels same-y because every caption uses the
 same emotional first-person register. We want genuine variety across videos.
 
+A third, related gap (surfaced during review): self-sourced items are inserted as
+`status='queued'` with **empty `hook_text`/`caption`** (`generate-reveal-photos.ts:182`,
+`generate-tip-content.ts:98`). The script is only filled later — by the dashboard
+"Regen Script" button or lazily at render via `ensureScript()`
+(`render-video.ts:137`). So the dashboard editor shows `0/60` and `0/150-300` for
+fresh items, and the new truthful caption can't be reviewed/edited until after a
+render. Note: a dedicated "Regen Hook + Caption" button is intentionally NOT added —
+hook and caption come from a single `generateScript` call alongside
+hashtags/music/slogan, so the existing "Regen Script" button already covers it; a
+hook-only button would make the identical call and discard the rest.
+
 ## Goals
 
 1. **Truthful** — captions/hooks never claim the poster personally owns or found the
    photo. No fabricated "my grandmother" / "I found this in my attic" anecdotes.
 2. **Varied** — reveal captions rotate across distinct truthful framings so the feed
    doesn't feel repetitive.
-3. **Focused** — change only the post caption + hook generation. No schema, DB, API,
-   or dashboard changes.
+3. **Review-ready at creation** — self-sourced items land already-scripted, so the
+   hook/caption are populated (and reviewable/editable) in the dashboard before any
+   render.
+4. **Focused** — no schema, DB, or dashboard-UI changes. Only prompt text, framing
+   selection, and moving script generation earlier in the creation scripts.
 
 ## Non-Goals / Out of Scope
 
@@ -37,6 +53,8 @@ same emotional first-person register. We want genuine variety across videos.
   family-ownership claims today.)
 - Any dashboard UI for selecting/overriding framing (considered as approach "C",
   deferred; can be added later if desired).
+- A dedicated "Regen Hook + Caption" button — redundant with the existing "Regen
+  Script" (both come from one `generateScript` call). Not added.
 
 ## Why this approach (B: code-selected framing)
 
@@ -99,6 +117,30 @@ Weights live as a single source of truth (e.g. an ordered array of
    - `console.log` the chosen framing so the rotation is observable in pipeline logs.
    - Return shape (`GeneratedScript`) is unchanged.
 
+### Creation-time scripting
+
+`scripts/generate-reveal-photos.ts` and `scripts/generate-tip-content.ts` currently
+insert items as `status='queued'` with no script. Change both to generate the script
+at creation so items land `status='scripted'` with `hook_text`/`caption`/`hashtags`/
+`music_style`/`music_track`/`slogan` (and `tip_icon` for tips) populated.
+
+- Build the same `ContentItem` shape these scripts already assemble for the insert
+  (reveal: `photo_era`/`photo_story`/`preset_used` + `pair_count`/`photo_stories`
+  derived from `imagePairs`; tip: `tip_title`/`tip_body`/`tip_source`), call
+  `generateScript(item)`, and include the returned fields in the insert payload with
+  `status: 'scripted'`.
+- **Resilience:** wrap the `generateScript` call in try/catch. On failure, log a
+  warning and fall back to the **current** behavior — insert as `status='queued'`
+  with no script. The render-time `ensureScript()` still backfills it later, so a
+  transient Claude error never blocks item creation.
+- Reveal items automatically get framing rotation because `generateScript` selects it
+  internally; no extra wiring needed.
+
+Because `ensureScript()` is idempotent (`render-video.ts:137`: skips when status is
+not `queued` or `hook_text` already set), pre-scripted items are simply skipped at
+render — no double generation. The dashboard "Regen Script" button still works to
+re-roll the script (and re-roll the framing) at any time.
+
 ### Data flow (unchanged except prompt text)
 
 `generateScript(item)` → (reveal) `pickFraming()` → `buildUserPrompt(item, framing)`
@@ -123,7 +165,18 @@ New `npm test` cases (pure functions, no network):
 - `buildUserPrompt` for a reveal item contains the injected framing instruction;
   for a tip item it does not.
 
+The creation-time scripting in `generate-reveal-photos.ts` /
+`generate-tip-content.ts` involves a live Claude call, so per repo convention
+(`CLAUDE.md`: unit tests cover pure functions only) it is **not** unit-tested. It is
+verified manually: run `npm run generate:photos` / `npm run generate:tip-content` and
+confirm the created row is `status='scripted'` with populated `hook_text`/`caption`,
+and that the dashboard editor shows them filled. The try/catch fallback path is the
+existing, already-working `queued` behavior.
+
 ## Risks
 
-- Low. The only behavioral change is prompt wording and which framing snippet is
-  selected. Worst case is caption tone differs from before — which is the intent.
+- Low. The framing change is prompt wording + which snippet is selected — worst case
+  is caption tone differs from before, which is the intent.
+- Creation-time scripting adds one Claude call (~2-3s) and cost per created item. The
+  try/catch fallback ensures a Claude error never blocks creation. `ensureScript()`
+  idempotency prevents double generation at render.
