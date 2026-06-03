@@ -219,6 +219,7 @@ export async function generateRevealPhotos(opts: GenerateRevealOptions = {}): Pr
       music_track: script.music_mood,
       music_style: script.music_style,
       slogan: script.slogan,
+      tip_icon: script.tip_icon ?? null, // always null for reveals; keeps field-set in sync with the render/tip paths
       status: 'scripted',
     });
   } catch (err) {
