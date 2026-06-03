@@ -15,6 +15,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { createClient } from '@supabase/supabase-js';
 import { generateTipImages } from './generate-tip-images';
+import { generateScript } from './generate-script';
 
 const anthropic = new Anthropic();
 
@@ -95,24 +96,55 @@ export async function generateTipContent(opts: GenerateTipContentOptions = {}): 
   }
 
   const first = tips[0];
-  const { data, error } = await supabase
-    .from('tiktok_content_pool')
-    .insert({
+
+  // Base row: an unscripted queued item (original behavior, kept as fallback).
+  const insertRow: Record<string, unknown> = {
+    content_type: 'tip',
+    status: 'queued',
+    tips,
+    // Mirror the first tip into legacy columns for back-compat.
+    tip_title: first.tipTitle,
+    tip_body: first.tipBody,
+    tip_icon: first.tipIcon ?? null,
+    tip_image_url: first.tipImageSrc ?? null,
+    tip_images: first.tipImages ?? null,
+    generation_meta: {
+      hint: opts.hint ?? null,
+      damageNotes: null,
+      source: opts.source ?? null,
+    },
+  };
+
+  // Script the item at creation so hook/caption are reviewable before render.
+  // Tips keep their educational voice (no framing). On failure we keep the
+  // queued row — ensureScript() backfills at render time.
+  try {
+    console.log('  Generating AI script...');
+    const script = await generateScript({
+      id: 'pending',
       content_type: 'tip',
-      status: 'queued',
-      tips,
-      // Mirror the first tip into legacy columns for back-compat.
       tip_title: first.tipTitle,
       tip_body: first.tipBody,
-      tip_icon: first.tipIcon ?? null,
-      tip_image_url: first.tipImageSrc ?? null,
-      tip_images: first.tipImages ?? null,
-      generation_meta: {
-        hint: opts.hint ?? null,
-        damageNotes: null,
-        source: opts.source ?? null,
-      },
-    })
+    });
+    Object.assign(insertRow, {
+      hook_text: script.hook_text,
+      caption: script.caption,
+      hashtags: script.hashtags,
+      music_track: script.music_mood,
+      music_style: script.music_style,
+      slogan: script.slogan,
+      tip_icon: script.tip_icon ?? first.tipIcon ?? null,
+      status: 'scripted',
+    });
+  } catch (err) {
+    console.warn(
+      `  ⚠️  Script generation failed, leaving item queued: ${err instanceof Error ? err.message : String(err)}`
+    );
+  }
+
+  const { data, error } = await supabase
+    .from('tiktok_content_pool')
+    .insert(insertRow)
     .select('id')
     .single();
 

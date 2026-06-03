@@ -15,6 +15,7 @@ import {
   type PairCaptionInput,
   type PairCaption,
 } from './lib/caption-text';
+import { pickFraming, framingInstruction, type CaptionFraming } from './lib/caption-framing';
 
 const anthropic = new Anthropic();
 
@@ -50,7 +51,7 @@ export interface GeneratedScript {
 
 const SYSTEM_PROMPT = `You are a TikTok content writer for EternalFrame, an AI photo restoration and colorization iOS app. Your job is to generate short-form video scripts that are emotionally compelling and drive app downloads.
 
-Brand voice: Warm, nostalgic, personal. Never salesy. The emotion is in the transformation — old, faded, damaged photos becoming vivid family memories.
+Brand voice: Warm, nostalgic, emotionally honest. Never salesy. The emotion is in the transformation — old, faded, damaged photos restored to vivid clarity.
 
 Target audience: Adults 30-65 who have old family photos. Vietnamese-American community is a key segment.
 
@@ -59,7 +60,8 @@ Rules:
 - Caption: 150-300 characters. Tell a micro-story. End with a soft CTA or question to drive comments.
 - Hashtags: 5-8 relevant ones. Mix broad (#photorestoration) with niche (#familymemories #oldphotos).
 - Never use generic phrases like "you won't believe" or "amazing results".
-- Reference specific decades, family relationships, cultural moments when possible.
+- Reference specific decades and cultural moments when possible.
+- TRUTHFULNESS (critical): These are demonstration photos showcasing the app — NOT the poster's own family. NEVER write in first person claiming personal ownership (no "my grandmother", no "I found this in my attic"). Never fabricate that the poster personally found or owns the photo. Tell the story honestly in the framing you are given.
 
 For videos with multiple before/after pairs, the hook should set up anticipation for a series of transformations (e.g. "3 forgotten photos, 3 incredible transformations").
 
@@ -75,7 +77,7 @@ Respond ONLY with valid JSON matching this schema:
   "tip_icon": "string (optional, for tip content only — a single emoji that best represents the tip, e.g. 🖼️ 📸 ✨ 🔍 🎨)"
 }`;
 
-function buildUserPrompt(item: ContentItem): string {
+export function buildUserPrompt(item: ContentItem, framing?: CaptionFraming): string {
   if (item.content_type === 'reveal') {
     const pairCount = item.pair_count || 1;
     const pairDetails = item.photo_stories?.length
@@ -92,7 +94,7 @@ ${pairDetails}
 
 ${pairCount > 1
   ? 'The video shows multiple damaged/faded photos being revealed as AI-restored versions in sequence. Build anticipation across the series — each reveal should feel like an emotional payoff.'
-  : 'The video shows the damaged/faded original photo, then dramatically reveals the AI-restored version. The transformation should feel emotional and personal.'}`;
+  : 'The video shows the damaged/faded original photo, then dramatically reveals the AI-restored version. The transformation should feel emotional.'}${framing ? `\n\n${framingInstruction(framing)}` : ''}`;
   }
 
   return `Generate a TikTok script for an EDUCATIONAL/TIPS video.
@@ -106,13 +108,18 @@ The video presents a useful insight about photo restoration or AI image processi
 }
 
 export async function generateScript(item: ContentItem): Promise<GeneratedScript> {
+  // Reveal captions rotate across truthful framings; tips keep their
+  // educational voice and are not framed.
+  const framing = item.content_type === 'reveal' ? pickFraming() : undefined;
+  if (framing) console.log(`  Caption framing: ${framing}`);
+
   const response = await anthropic.messages.create({
     model: 'claude-sonnet-4-20250514',
     max_tokens: 500,
     messages: [
       {
         role: 'user',
-        content: buildUserPrompt(item),
+        content: buildUserPrompt(item, framing),
       },
     ],
     system: SYSTEM_PROMPT,
