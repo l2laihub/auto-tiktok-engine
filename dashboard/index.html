@@ -1853,6 +1853,7 @@
   <script type="module">
     import htm from 'https://unpkg.com/htm@3/dist/htm.module.js?module';
     import { toLocalInput, fromLocalInput, localDateKey, formatDateTime, dayKeyToISO } from '/static/schedule-time.js';
+    import { suggestRevealInputs, suggestTipInputs } from '/static/ai-suggestions.js';
     const html = htm.bind(React.createElement);
     const { useState, useEffect, useRef, useCallback } = React;
 
@@ -1933,7 +1934,7 @@
     // ============================================================
     // ScriptEditor
     // ============================================================
-    function ScriptEditor({ item, onSave, onRegenerate, onRegenerateMusic, onReRender, onClose, onToast }) {
+    function ScriptEditor({ item, onSave, onRegenerate, onRegenerateMusic, onReRender, onClose, onToast, onGenerateSimilar }) {
       const [hookText, setHookText] = useState(item.hook_text || '');
       const [caption, setCaption] = useState(item.caption || '');
       const [hashtags, setHashtags] = useState(item.hashtags || []);
@@ -2089,6 +2090,17 @@
       const hasMusic = !!item.music_file_path;
 
       return html`<div className="script-editor" style=${{display: 'block'}}>
+        ${item.generation_meta && (item.generation_meta.hint || item.generation_meta.damageNotes) ? html`
+          <div className="panel" style=${{padding: '0.6rem 0.8rem', marginBottom: '1rem', fontSize: '0.8rem', background: 'rgba(255,255,255,0.03)'}}>
+            <div style=${{fontWeight: 600, marginBottom: '0.25rem'}}>Generated from</div>
+            ${item.generation_meta.hint ? html`<div>Theme: ${item.generation_meta.hint}</div>` : null}
+            ${item.generation_meta.damageNotes ? html`<div>Damage: ${item.generation_meta.damageNotes}</div>` : null}
+            <div style=${{display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.4rem'}}>
+              ${item.generation_meta.source ? html`<span className="status-badge" style=${{fontSize: '0.7rem'}}>${item.generation_meta.source}</span>` : null}
+              ${onGenerateSimilar ? html`<button type="button" className="btn btn-secondary btn-sm" onClick=${() => { onGenerateSimilar({ type: item.content_type, hint: item.generation_meta.hint, damageNotes: item.generation_meta.damageNotes }); onClose(); }}>♻️ Generate similar</button>` : null}
+            </div>
+          </div>
+        ` : null}
         ${item.content_type === 'reveal' ? html`
           <div style=${{marginBottom: '1rem'}}>
             <label className="form-label" style=${{marginBottom: '0.6rem', display: 'block'}}>Photo Pairs</label>
@@ -2253,7 +2265,7 @@
     // ============================================================
     // ContentPool Tab
     // ============================================================
-    function ContentPool({ onToast }) {
+    function ContentPool({ onToast, onGenerateSimilar }) {
       const [items, setItems] = useState([]);
       const [loading, setLoading] = useState(true);
       const [expandedId, setExpandedId] = useState(null);
@@ -2408,6 +2420,7 @@
                         onRegenerateMusic=${(musicStyle) => handleRegenerateMusic(item.id, musicStyle)}
                         onReRender=${() => handleReRender(item.id)}
                         onClose=${() => setExpandedId(null)}
+                        onGenerateSimilar=${onGenerateSimilar}
                         onToast=${onToast}
                       />
                     </td></tr>
@@ -2459,6 +2472,7 @@
                 onRegenerateMusic=${(musicStyle) => handleRegenerateMusic(expandedId, musicStyle)}
                 onReRender=${() => handleReRender(expandedId)}
                 onClose=${() => setExpandedId(null)}
+                onGenerateSimilar=${onGenerateSimilar}
                 onToast=${onToast}
               />
             </div>
@@ -2901,7 +2915,7 @@
     // ============================================================
     // AddContent Tab (multi-pair support)
     // ============================================================
-    function AddContent({ onToast, onSwitch }) {
+    function AddContent({ onToast, onSwitch, seed, onSeedConsumed }) {
       const [subTab, setSubTab] = useState('reveal');
       const [submitting, setSubmitting] = useState(false);
       const [analyzing, setAnalyzing] = useState(false);
@@ -2912,6 +2926,59 @@
       const [genTipHint, setGenTipHint] = useState('');
       const [genTipCount, setGenTipCount] = useState(4);
       const [genTip, setGenTip] = useState(false);
+      const [genSource, setGenSource] = useState('curated');
+      const [suggesting, setSuggesting] = useState(false);
+
+      // Seed from "Generate similar", else auto-fill the active sub-tab's
+      // suggestion fields from the curated pool when they're still empty.
+      useEffect(() => {
+        if (seed) {
+          setSubTab(seed.type === 'tip' ? 'tip' : 'reveal');
+          if (seed.type === 'tip') {
+            setGenTipHint(seed.hint || '');
+          } else {
+            setGenHint(seed.hint || '');
+            setGenDamage(seed.damageNotes || '');
+          }
+          setGenSource('manual');
+          onSeedConsumed && onSeedConsumed();
+          return;
+        }
+        if (subTab === 'reveal' && !genHint && !genDamage) {
+          const s = suggestRevealInputs();
+          setGenHint(s.hint); setGenDamage(s.damageNotes); setGenSource('curated');
+        } else if (subTab === 'tip' && !genTipHint) {
+          const s = suggestTipInputs();
+          setGenTipHint(s.hint); setGenSource('curated');
+        }
+        // eslint-disable-next-line
+      }, [subTab, seed]);
+
+      function shuffleReveal() {
+        const s = suggestRevealInputs({ hint: genHint, damageNotes: genDamage });
+        setGenHint(s.hint); setGenDamage(s.damageNotes); setGenSource('curated');
+      }
+      function shuffleTip() {
+        const s = suggestTipInputs({ hint: genTipHint });
+        setGenTipHint(s.hint); setGenSource('curated');
+      }
+      async function aiSuggest(type) {
+        setSuggesting(true);
+        try {
+          const r = await api('/api/suggest-generation-inputs', { method: 'POST', body: { type } });
+          if (type === 'tip') {
+            setGenTipHint(r.hint || '');
+          } else {
+            setGenHint(r.hint || ''); setGenDamage(r.damageNotes || '');
+          }
+          setGenSource('ai');
+        } catch (e) {
+          if (type === 'tip') shuffleTip(); else shuffleReveal();
+          onToast('AI busy — used a curated suggestion', 'info');
+        } finally {
+          setSuggesting(false);
+        }
+      }
 
       async function handleGenerateTip() {
         setGenTip(true);
@@ -2919,7 +2986,7 @@
           onToast('Generating tips with AI — this can take a minute…', 'info');
           const result = await api('/api/generate-tip-content', {
             method: 'POST',
-            body: { count: genTipCount, hint: genTipHint || undefined },
+            body: { count: genTipCount, hint: genTipHint || undefined, source: genSource },
           });
           onToast('AI tip item created (' + result.tips.length + ' tips)!', 'success');
           onSwitch('pool');
@@ -2993,7 +3060,7 @@
           onToast('Generating photos with AI — this can take a minute...', 'info');
           const result = await api('/api/generate-reveal-photos', {
             method: 'POST',
-            body: { pairs: genPairs, hint: genHint || undefined, damageNotes: genDamage || undefined },
+            body: { pairs: genPairs, hint: genHint || undefined, damageNotes: genDamage || undefined, source: genSource },
           });
           onToast('AI reveal created (' + result.imagePairs.length + ' pair' + (result.imagePairs.length !== 1 ? 's' : '') + ')!', 'success');
           onSwitch('pool');
@@ -3059,11 +3126,11 @@
                 <div style=${{display: 'flex', gap: '0.5rem', alignItems: 'flex-end', flexWrap: 'wrap'}}>
                   <div className="form-group" style=${{flex: '1 1 260px', margin: 0}}>
                     <label className="form-label">Theme / hint (optional)</label>
-                    <input className="form-input" placeholder="e.g. Vietnamese wedding photos, 1960s soldiers" value=${genHint} onInput=${e => setGenHint(e.target.value)} />
+                    <input className="form-input" placeholder="e.g. Vietnamese wedding photos, 1960s soldiers" value=${genHint} onInput=${e => { setGenHint(e.target.value); setGenSource('manual'); }} />
                   </div>
                   <div className="form-group" style=${{flex: '1 1 220px', margin: 0}}>
                     <label className="form-label">Damage notes (optional)</label>
-                    <input className="form-input" placeholder="e.g. heavy water damage, mildew, torn corners" value=${genDamage} onInput=${e => setGenDamage(e.target.value)} />
+                    <input className="form-input" placeholder="e.g. heavy water damage, mildew, torn corners" value=${genDamage} onInput=${e => { setGenDamage(e.target.value); setGenSource('manual'); }} />
                   </div>
                   <div className="form-group" style=${{width: '90px', margin: 0}}>
                     <label className="form-label">Pairs</label>
@@ -3071,6 +3138,8 @@
                       ${[1,2,3,4,5,6].map(n => html`<option key=${n} value=${n}>${n}</option>`)}
                     </select>
                   </div>
+                  <button type="button" className="btn btn-secondary btn-sm" title="Shuffle a curated suggestion" onClick=${shuffleReveal}>🎲</button>
+                  <button type="button" className="btn btn-secondary btn-sm" title="Get a fresh AI suggestion" onClick=${() => aiSuggest('reveal')} disabled=${suggesting}>${suggesting ? '…' : '✨'}</button>
                   <button type="button" className="btn btn-teal btn-sm" style=${{whiteSpace: 'nowrap'}} onClick=${handleGenerate} disabled=${generating}>
                     ${generating ? 'Generating...' : '✨ Generate with AI'}
                   </button>
@@ -3145,7 +3214,7 @@
                 <div style=${{display: 'flex', gap: '0.5rem', alignItems: 'flex-end', flexWrap: 'wrap'}}>
                   <div className="form-group" style=${{flex: '1 1 260px', margin: 0}}>
                     <label className="form-label">Topic / hint (optional)</label>
-                    <input className="form-input" placeholder="e.g. scanning old prints, organizing photos" value=${genTipHint} onInput=${e => setGenTipHint(e.target.value)} />
+                    <input className="form-input" placeholder="e.g. scanning old prints, organizing photos" value=${genTipHint} onInput=${e => { setGenTipHint(e.target.value); setGenSource('manual'); }} />
                   </div>
                   <div className="form-group" style=${{width: '90px', margin: 0}}>
                     <label className="form-label">Tips</label>
@@ -3153,6 +3222,8 @@
                       ${[3,4,5,6].map(n => html`<option key=${n} value=${n}>${n}</option>`)}
                     </select>
                   </div>
+                  <button type="button" className="btn btn-secondary btn-sm" title="Shuffle a curated suggestion" onClick=${shuffleTip}>🎲</button>
+                  <button type="button" className="btn btn-secondary btn-sm" title="Get a fresh AI suggestion" onClick=${() => aiSuggest('tip')} disabled=${suggesting}>${suggesting ? '…' : '✨'}</button>
                   <button type="button" className="btn btn-teal btn-sm" style=${{whiteSpace: 'nowrap'}} onClick=${handleGenerateTip} disabled=${genTip}>
                     ${genTip ? 'Generating…' : '✨ Generate Tip with AI'}
                   </button>
@@ -3554,6 +3625,7 @@
     // ============================================================
     function App() {
       const [tab, setTab] = useState('pool');
+      const [genSeed, setGenSeed] = useState(null);
       const [toasts, setToasts] = useState([]);
       const [contentCount, setContentCount] = useState(0);
 
@@ -3602,9 +3674,9 @@
           </div>
 
           <div className="tab-content">
-            ${tab === 'pool' ? html`<${ContentPool} onToast=${addToast} />` : null}
+            ${tab === 'pool' ? html`<${ContentPool} onToast=${addToast} onGenerateSimilar=${(s) => { setGenSeed(s); setTab('add'); }} />` : null}
             ${tab === 'schedule' ? html`<${Schedule} onToast=${addToast} />` : null}
-            ${tab === 'add' ? html`<${AddContent} onToast=${addToast} onSwitch=${setTab} />` : null}
+            ${tab === 'add' ? html`<${AddContent} onToast=${addToast} onSwitch=${setTab} seed=${genSeed} onSeedConsumed=${() => setGenSeed(null)} />` : null}
             ${tab === 'pipeline' ? html`<${Pipeline} onToast=${addToast} />` : null}
           </div>
         </div>

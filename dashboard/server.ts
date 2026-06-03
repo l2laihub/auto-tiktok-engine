@@ -432,12 +432,63 @@ Return ONLY valid JSON:
   }
 });
 
+// Coerce an untrusted request value into the generation_meta `source` union.
+function normalizeSource(v: unknown): 'curated' | 'ai' | 'manual' | undefined {
+  return v === 'curated' || v === 'ai' || v === 'manual' ? v : undefined;
+}
+
+// Suggest a fresh theme/hint (and damage notes for reveals) via Claude — the
+// "✨" button in the Generate panels. Cheap, low-token; the UI falls back to
+// curated suggestions if this fails or the key is missing.
+app.post('/api/suggest-generation-inputs', async (req, res) => {
+  const { type } = req.body || {};
+  if (type !== 'reveal' && type !== 'tip') {
+    return res.status(400).json({ error: "type must be 'reveal' or 'tip'" });
+  }
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return res.status(400).json({ error: 'ANTHROPIC_API_KEY not set — AI suggestions unavailable.' });
+  }
+
+  const prompt = type === 'reveal'
+    ? `Invent ONE fresh, specific idea for an old family-photo restoration video for EternalFrame. Return ONLY valid JSON:
+{
+  "hint": "a concrete photo scenario, e.g. '1960s Saigon wedding portrait' (max ~60 chars)",
+  "damageNotes": "a short vivid description of the photo's damage, e.g. 'deep water stains, one torn corner' (max ~70 chars)"
+}`
+    : `Invent ONE fresh, specific topic for a photo-restoration / memory-keeping tips video for EternalFrame. Return ONLY valid JSON:
+{
+  "hint": "a concrete tip topic, e.g. 'scanning old prints with your phone' (max ~60 chars)"
+}`;
+
+  try {
+    const response = await anthropic.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 200,
+      system: 'You invent fresh, specific content ideas for EternalFrame, an AI photo restoration app. Respond ONLY with valid JSON. Avoid repeating common defaults — be varied and concrete.',
+      messages: [{ role: 'user', content: prompt }],
+    });
+
+    const text = response.content
+      .filter((b): b is Anthropic.TextBlock => b.type === 'text')
+      .map(b => b.text)
+      .join('');
+    const clean = text.replace(/```json\s*|```\s*/g, '').trim();
+    const parsed = JSON.parse(clean);
+    res.json(type === 'reveal'
+      ? { hint: parsed.hint ?? null, damageNotes: parsed.damageNotes ?? null }
+      : { hint: parsed.hint ?? null });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: msg });
+  }
+});
+
 // Generate a reveal item with AI (damaged → restored photos)
 app.post('/api/generate-reveal-photos', async (req, res) => {
   if (!process.env.GOOGLE_API_KEY) {
     return res.status(400).json({ error: 'GOOGLE_API_KEY not set — image generation unavailable.' });
   }
-  const { pairs = 1, hint, subject, era, damageNotes } = req.body || {};
+  const { pairs = 1, hint, subject, era, damageNotes, source } = req.body || {};
   try {
     const subjects = subject
       ? [{
@@ -453,6 +504,7 @@ app.post('/api/generate-reveal-photos', async (req, res) => {
       hint,
       subjects,
       damageNotes,
+      source: normalizeSource(source),
     });
     res.status(201).json(result);
   } catch (err) {
@@ -649,11 +701,12 @@ app.post('/api/generate-tip-content', async (req, res) => {
   if (!process.env.GOOGLE_API_KEY) {
     return res.status(400).json({ error: 'GOOGLE_API_KEY not set — image generation unavailable.' });
   }
-  const { count = 4, hint } = req.body || {};
+  const { count = 4, hint, source } = req.body || {};
   try {
     const result = await generateTipContent({
       count: Math.max(1, Math.min(6, Number(count) || 4)),
       hint,
+      source: normalizeSource(source),
     });
     res.status(201).json(result);
   } catch (err) {
