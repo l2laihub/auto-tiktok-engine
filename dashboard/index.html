@@ -1853,6 +1853,7 @@
   <script type="module">
     import htm from 'https://unpkg.com/htm@3/dist/htm.module.js?module';
     import { toLocalInput, fromLocalInput, localDateKey, formatDateTime, dayKeyToISO } from '/static/schedule-time.js';
+    import { suggestRevealInputs, suggestTipInputs } from '/static/ai-suggestions.js';
     const html = htm.bind(React.createElement);
     const { useState, useEffect, useRef, useCallback } = React;
 
@@ -2901,7 +2902,7 @@
     // ============================================================
     // AddContent Tab (multi-pair support)
     // ============================================================
-    function AddContent({ onToast, onSwitch }) {
+    function AddContent({ onToast, onSwitch, seed, onSeedConsumed }) {
       const [subTab, setSubTab] = useState('reveal');
       const [submitting, setSubmitting] = useState(false);
       const [analyzing, setAnalyzing] = useState(false);
@@ -2912,6 +2913,59 @@
       const [genTipHint, setGenTipHint] = useState('');
       const [genTipCount, setGenTipCount] = useState(4);
       const [genTip, setGenTip] = useState(false);
+      const [genSource, setGenSource] = useState('curated');
+      const [suggesting, setSuggesting] = useState(false);
+
+      // Seed from "Generate similar", else auto-fill the active sub-tab's
+      // suggestion fields from the curated pool when they're still empty.
+      useEffect(() => {
+        if (seed) {
+          setSubTab(seed.type === 'tip' ? 'tip' : 'reveal');
+          if (seed.type === 'tip') {
+            setGenTipHint(seed.hint || '');
+          } else {
+            setGenHint(seed.hint || '');
+            setGenDamage(seed.damageNotes || '');
+          }
+          setGenSource('manual');
+          onSeedConsumed && onSeedConsumed();
+          return;
+        }
+        if (subTab === 'reveal' && !genHint && !genDamage) {
+          const s = suggestRevealInputs();
+          setGenHint(s.hint); setGenDamage(s.damageNotes); setGenSource('curated');
+        } else if (subTab === 'tip' && !genTipHint) {
+          const s = suggestTipInputs();
+          setGenTipHint(s.hint); setGenSource('curated');
+        }
+        // eslint-disable-next-line
+      }, [subTab, seed]);
+
+      function shuffleReveal() {
+        const s = suggestRevealInputs({ hint: genHint, damageNotes: genDamage });
+        setGenHint(s.hint); setGenDamage(s.damageNotes); setGenSource('curated');
+      }
+      function shuffleTip() {
+        const s = suggestTipInputs({ hint: genTipHint });
+        setGenTipHint(s.hint); setGenSource('curated');
+      }
+      async function aiSuggest(type) {
+        setSuggesting(true);
+        try {
+          const r = await api('/api/suggest-generation-inputs', { method: 'POST', body: { type } });
+          if (type === 'tip') {
+            setGenTipHint(r.hint || '');
+          } else {
+            setGenHint(r.hint || ''); setGenDamage(r.damageNotes || '');
+          }
+          setGenSource('ai');
+        } catch (e) {
+          if (type === 'tip') shuffleTip(); else shuffleReveal();
+          onToast('AI busy — used a curated suggestion', 'info');
+        } finally {
+          setSuggesting(false);
+        }
+      }
 
       async function handleGenerateTip() {
         setGenTip(true);
@@ -2919,7 +2973,7 @@
           onToast('Generating tips with AI — this can take a minute…', 'info');
           const result = await api('/api/generate-tip-content', {
             method: 'POST',
-            body: { count: genTipCount, hint: genTipHint || undefined },
+            body: { count: genTipCount, hint: genTipHint || undefined, source: genSource },
           });
           onToast('AI tip item created (' + result.tips.length + ' tips)!', 'success');
           onSwitch('pool');
@@ -2993,7 +3047,7 @@
           onToast('Generating photos with AI — this can take a minute...', 'info');
           const result = await api('/api/generate-reveal-photos', {
             method: 'POST',
-            body: { pairs: genPairs, hint: genHint || undefined, damageNotes: genDamage || undefined },
+            body: { pairs: genPairs, hint: genHint || undefined, damageNotes: genDamage || undefined, source: genSource },
           });
           onToast('AI reveal created (' + result.imagePairs.length + ' pair' + (result.imagePairs.length !== 1 ? 's' : '') + ')!', 'success');
           onSwitch('pool');
@@ -3059,11 +3113,11 @@
                 <div style=${{display: 'flex', gap: '0.5rem', alignItems: 'flex-end', flexWrap: 'wrap'}}>
                   <div className="form-group" style=${{flex: '1 1 260px', margin: 0}}>
                     <label className="form-label">Theme / hint (optional)</label>
-                    <input className="form-input" placeholder="e.g. Vietnamese wedding photos, 1960s soldiers" value=${genHint} onInput=${e => setGenHint(e.target.value)} />
+                    <input className="form-input" placeholder="e.g. Vietnamese wedding photos, 1960s soldiers" value=${genHint} onInput=${e => { setGenHint(e.target.value); setGenSource('manual'); }} />
                   </div>
                   <div className="form-group" style=${{flex: '1 1 220px', margin: 0}}>
                     <label className="form-label">Damage notes (optional)</label>
-                    <input className="form-input" placeholder="e.g. heavy water damage, mildew, torn corners" value=${genDamage} onInput=${e => setGenDamage(e.target.value)} />
+                    <input className="form-input" placeholder="e.g. heavy water damage, mildew, torn corners" value=${genDamage} onInput=${e => { setGenDamage(e.target.value); setGenSource('manual'); }} />
                   </div>
                   <div className="form-group" style=${{width: '90px', margin: 0}}>
                     <label className="form-label">Pairs</label>
@@ -3071,6 +3125,8 @@
                       ${[1,2,3,4,5,6].map(n => html`<option key=${n} value=${n}>${n}</option>`)}
                     </select>
                   </div>
+                  <button type="button" className="btn btn-secondary btn-sm" title="Shuffle a curated suggestion" onClick=${shuffleReveal}>🎲</button>
+                  <button type="button" className="btn btn-secondary btn-sm" title="Get a fresh AI suggestion" onClick=${() => aiSuggest('reveal')} disabled=${suggesting}>${suggesting ? '…' : '✨'}</button>
                   <button type="button" className="btn btn-teal btn-sm" style=${{whiteSpace: 'nowrap'}} onClick=${handleGenerate} disabled=${generating}>
                     ${generating ? 'Generating...' : '✨ Generate with AI'}
                   </button>
@@ -3145,7 +3201,7 @@
                 <div style=${{display: 'flex', gap: '0.5rem', alignItems: 'flex-end', flexWrap: 'wrap'}}>
                   <div className="form-group" style=${{flex: '1 1 260px', margin: 0}}>
                     <label className="form-label">Topic / hint (optional)</label>
-                    <input className="form-input" placeholder="e.g. scanning old prints, organizing photos" value=${genTipHint} onInput=${e => setGenTipHint(e.target.value)} />
+                    <input className="form-input" placeholder="e.g. scanning old prints, organizing photos" value=${genTipHint} onInput=${e => { setGenTipHint(e.target.value); setGenSource('manual'); }} />
                   </div>
                   <div className="form-group" style=${{width: '90px', margin: 0}}>
                     <label className="form-label">Tips</label>
@@ -3153,6 +3209,8 @@
                       ${[3,4,5,6].map(n => html`<option key=${n} value=${n}>${n}</option>`)}
                     </select>
                   </div>
+                  <button type="button" className="btn btn-secondary btn-sm" title="Shuffle a curated suggestion" onClick=${shuffleTip}>🎲</button>
+                  <button type="button" className="btn btn-secondary btn-sm" title="Get a fresh AI suggestion" onClick=${() => aiSuggest('tip')} disabled=${suggesting}>${suggesting ? '…' : '✨'}</button>
                   <button type="button" className="btn btn-teal btn-sm" style=${{whiteSpace: 'nowrap'}} onClick=${handleGenerateTip} disabled=${genTip}>
                     ${genTip ? 'Generating…' : '✨ Generate Tip with AI'}
                   </button>
