@@ -20,6 +20,10 @@ test('pickFraming returns invitation for rng at/above 0.75', () => {
   assert.equal(pickFraming(() => 0.999), 'invitation');
 });
 
+test('pickFraming falls back to invitation for rng === 1.0 (float drift)', () => {
+  assert.equal(pickFraming(() => 1.0), 'invitation');
+});
+
 test('pickFraming never returns an out-of-enum value across the range', () => {
   const valid = new Set<CaptionFraming>(['third_person', 'capability', 'invitation']);
   for (let i = 0; i < 100; i++) {
@@ -38,6 +42,8 @@ test('framingInstruction returns distinct, non-empty text per framing', () => {
   assert.notEqual(a, c);
 });
 
-test('framingInstruction forbids first-person ownership in the third_person voice', () => {
-  assert.match(framingInstruction('third_person'), /third person/i);
+test('framingInstruction third_person voice instructs third-person and bans ownership', () => {
+  const instruction = framingInstruction('third_person');
+  assert.match(instruction, /third person/i);
+  assert.match(instruction, /never as your own/i);
 });
