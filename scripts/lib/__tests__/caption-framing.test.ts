@@ -1,0 +1,43 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { pickFraming, framingInstruction, type CaptionFraming } from '../caption-framing';
+
+// Weights are third_person 0.40, capability 0.35, invitation 0.25
+// → cumulative boundaries at 0.40 and 0.75.
+
+test('pickFraming returns third_person for rng below 0.40', () => {
+  assert.equal(pickFraming(() => 0.0), 'third_person');
+  assert.equal(pickFraming(() => 0.39), 'third_person');
+});
+
+test('pickFraming returns capability for rng in [0.40, 0.75)', () => {
+  assert.equal(pickFraming(() => 0.40), 'capability');
+  assert.equal(pickFraming(() => 0.74), 'capability');
+});
+
+test('pickFraming returns invitation for rng at/above 0.75', () => {
+  assert.equal(pickFraming(() => 0.75), 'invitation');
+  assert.equal(pickFraming(() => 0.999), 'invitation');
+});
+
+test('pickFraming never returns an out-of-enum value across the range', () => {
+  const valid = new Set<CaptionFraming>(['third_person', 'capability', 'invitation']);
+  for (let i = 0; i < 100; i++) {
+    const r = i / 100;
+    assert.ok(valid.has(pickFraming(() => r)), `rng=${r} produced an invalid framing`);
+  }
+});
+
+test('framingInstruction returns distinct, non-empty text per framing', () => {
+  const a = framingInstruction('third_person');
+  const b = framingInstruction('capability');
+  const c = framingInstruction('invitation');
+  assert.ok(a.length > 0 && b.length > 0 && c.length > 0);
+  assert.notEqual(a, b);
+  assert.notEqual(b, c);
+  assert.notEqual(a, c);
+});
+
+test('framingInstruction forbids first-person ownership in the third_person voice', () => {
+  assert.match(framingInstruction('third_person'), /third person/i);
+});
