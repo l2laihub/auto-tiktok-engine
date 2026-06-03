@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { pickFraming, framingInstruction, type CaptionFraming } from '../caption-framing';
+import { buildUserPrompt, type ContentItem } from '../../generate-script';
 
 // Weights are third_person 0.40, capability 0.35, invitation 0.25
 // → cumulative boundaries at 0.40 and 0.75.
@@ -48,8 +49,6 @@ test('framingInstruction third_person voice instructs third-person and bans owne
   assert.match(instruction, /never as your own/i);
 });
 
-import { buildUserPrompt, type ContentItem } from '../../generate-script';
-
 test('buildUserPrompt injects the framing instruction for reveal items', () => {
   const item: ContentItem = {
     id: 'x',
@@ -75,5 +74,5 @@ test('buildUserPrompt for a tip item contains no framing instruction', () => {
 test('buildUserPrompt omits framing when none is passed for a reveal', () => {
   const item: ContentItem = { id: 'z', content_type: 'reveal', photo_era: '1940s' };
   const prompt = buildUserPrompt(item);
-  assert.doesNotMatch(prompt, /Framing:/);
+  assert.doesNotMatch(prompt, /APP CAPABILITY DEMO|THIRD-PERSON STORY|VIEWER INVITATION/);
 });
