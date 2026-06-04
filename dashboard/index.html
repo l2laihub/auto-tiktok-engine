@@ -2271,6 +2271,7 @@
       const [expandedId, setExpandedId] = useState(null);
       const [videoUrl, setVideoUrl] = useState(null);
       const [editingDateId, setEditingDateId] = useState(null);
+      const [editingDateValue, setEditingDateValue] = useState('');
       const hasActive = items.some(i => i.status === 'rendering' || i.status === 'scripted');
 
       const fetchItems = useCallback(async () => {
@@ -2341,7 +2342,9 @@
         return formatDateTime(d);
       }
 
-      async function handleDateChange(id, newLocal) {
+      async function handleDateChange(id, newLocal, original) {
+        // Commit only on an actual change; otherwise just close the editor.
+        if (!newLocal || newLocal === original) { setEditingDateId(null); return; }
         try {
           await api('/api/content/' + id, { method: 'PATCH', body: { scheduled_for: fromLocalInput(newLocal) } });
           onToast('Date updated', 'success');
@@ -2390,17 +2393,25 @@
                         : item.music_style ? html`<span style=${{color: 'var(--amber)'}} title=${item.music_style}>\u266b pending</span>`
                         : html`<span style=${{color: 'var(--text-muted)'}}>\u2014</span>`}
                     </td>
-                    <td className="date-cell" onClick=${e => { e.stopPropagation(); setEditingDateId(editingDateId === item.id ? null : item.id); }}>
+                    <td className="date-cell" onClick=${e => {
+                        e.stopPropagation();
+                        if (editingDateId === item.id) { setEditingDateId(null); }
+                        else { setEditingDateValue(toLocalInput(item.scheduled_for)); setEditingDateId(item.id); }
+                      }}>
                       ${editingDateId === item.id ? html`
                         <input
                           type="datetime-local"
                           className="form-input"
                           style=${{padding: '0.2rem 0.4rem', fontSize: '0.78rem', width: '210px'}}
-                          value=${toLocalInput(item.scheduled_for)}
-                          onChange=${e => handleDateChange(item.id, e.target.value)}
+                          value=${editingDateValue}
+                          onInput=${e => setEditingDateValue(e.target.value)}
                           onClick=${e => e.stopPropagation()}
+                          onKeyDown=${e => {
+                            if (e.key === 'Enter') { e.preventDefault(); handleDateChange(item.id, editingDateValue, toLocalInput(item.scheduled_for)); }
+                            else if (e.key === 'Escape') { setEditingDateId(null); }
+                          }}
                           autoFocus
-                          onBlur=${() => setEditingDateId(null)}
+                          onBlur=${() => handleDateChange(item.id, editingDateValue, toLocalInput(item.scheduled_for))}
                         />
                       ` : html`<span style=${{cursor: 'pointer', borderBottom: '1px dashed var(--dark-border)'}}>${formatDate(item.scheduled_for)}</span>`}
                     </td>
@@ -2563,11 +2574,27 @@
       const [dragItem, setDragItem] = useState(null);
       const [selectedDate, setSelectedDate] = useState(null);
       const [rescheduleId, setRescheduleId] = useState(null);
+      const [rescheduleValue, setRescheduleValue] = useState('');
       const isMobile = useIsMobile();
 
       useEffect(() => {
         api('/api/schedule').then(setItems).catch(console.error);
       }, []);
+
+      async function commitReschedule(item) {
+        // Commit only on an actual change; otherwise just close the editor.
+        const original = toLocalInput(item.scheduled_for);
+        if (!rescheduleValue || rescheduleValue === original) { setRescheduleId(null); return; }
+        const iso = fromLocalInput(rescheduleValue);
+        if (!iso) { setRescheduleId(null); return; }
+        try {
+          await api('/api/content/' + item.id, { method: 'PATCH', body: { scheduled_for: iso } });
+          onToast('Rescheduled', 'success');
+          const updated = await api('/api/schedule');
+          setItems(updated);
+          setRescheduleId(null);
+        } catch (err) { onToast(err.message, 'error'); }
+      }
 
       function getWeeks(activeDays) {
         const weeks = [];
@@ -2668,23 +2695,17 @@
                           type="datetime-local"
                           className="form-input"
                           style=${{padding: '0.2rem 0.4rem', fontSize: '0.75rem', width: '100%', maxWidth: '200px'}}
-                          value=${toLocalInput(item.scheduled_for)}
-                          onChange=${async e => {
-                            const iso = fromLocalInput(e.target.value);
-                            if (!iso) return;
-                            try {
-                              await api('/api/content/' + item.id, { method: 'PATCH', body: { scheduled_for: iso } });
-                              onToast('Rescheduled', 'success');
-                              const updated = await api('/api/schedule');
-                              setItems(updated);
-                              setRescheduleId(null);
-                            } catch (err) { onToast(err.message, 'error'); }
+                          value=${rescheduleValue}
+                          onInput=${e => setRescheduleValue(e.target.value)}
+                          onKeyDown=${e => {
+                            if (e.key === 'Enter') { e.preventDefault(); commitReschedule(item); }
+                            else if (e.key === 'Escape') { setRescheduleId(null); }
                           }}
-                          onBlur=${() => setRescheduleId(null)}
+                          onBlur=${() => commitReschedule(item)}
                           autoFocus
                         />
                       ` : html`
-                        <button className="schedule-mobile-card-reschedule" onClick=${() => setRescheduleId(item.id)}>
+                        <button className="schedule-mobile-card-reschedule" onClick=${() => { setRescheduleValue(toLocalInput(item.scheduled_for)); setRescheduleId(item.id); }}>
                           Reschedule
                         </button>
                       `}
