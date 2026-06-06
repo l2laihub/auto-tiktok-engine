@@ -2289,6 +2289,19 @@
         return () => clearInterval(interval);
       }, [hasActive]);
 
+      // Deep link from the Telegram notification: #item-<shortId> expands and
+      // scrolls to that item once the list has loaded.
+      useEffect(() => {
+        if (!items.length) return;
+        const m = (window.location.hash || '').match(/^#item-([0-9a-f]{8})/i);
+        if (!m) return;
+        const target = items.find(i => i.id.slice(0, 8) === m[1].toLowerCase());
+        if (!target) return;
+        setExpandedId(target.id);
+        const el = document.getElementById('item-' + m[1].toLowerCase());
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, [items]);
+
       async function handleSave(id, fields) {
         try {
           await api('/api/content/' + id, { method: 'PATCH', body: fields });
@@ -2382,7 +2395,7 @@
               ` : null}
               ${items.map(item => html`
                 <${React.Fragment} key=${item.id}>
-                  <tr className=${expandedId === item.id ? 'expanded' : ''} style=${{cursor: 'pointer'}} onClick=${() => setExpandedId(expandedId === item.id ? null : item.id)}>
+                  <tr id=${'item-' + item.id.slice(0, 8)} className=${expandedId === item.id ? 'expanded' : ''} style=${{cursor: 'pointer'}} onClick=${() => setExpandedId(expandedId === item.id ? null : item.id)}>
                     <td className="id-cell">${item.id.slice(0, 8)}</td>
                     <td><${TypeBadge} type=${item.content_type} /></td>
                     <td><${StatusBadge} status=${item.status} /></td>
