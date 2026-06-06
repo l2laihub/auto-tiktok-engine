@@ -24,6 +24,7 @@ import { generateMusicTrack as generateLyriaTrack, trimAudioFile } from '../src/
 import { generatePair, inventSubjects } from './generate-reveal-photos';
 import { generateTipImages } from './generate-tip-images';
 import type { PhotoSubject } from './lib/image-prompts';
+import { notifyInboxVideo, resolveThumbnail, buildDashboardUrl } from './lib/telegram';
 import { createRevealTiming, createTipsTiming, VIDEO } from '../src/config';
 import {
   TikTokClient,
@@ -100,6 +101,8 @@ interface ContentRow {
   video_url?: string;
   // CTA
   slogan?: string;
+  // Scheduling (TIMESTAMPTZ) — used for the Telegram inbox notification.
+  scheduled_for?: string | null;
 }
 
 // --- Step 1: Fetch next content item ---
@@ -767,6 +770,14 @@ async function postToTikTok(item: ContentRow, videoUrl: string, videoPath?: stri
       console.log('  Video sent to your TikTok inbox!');
       console.log('  Open TikTok app → check inbox → review and post the video.');
       console.log(`  Caption to use: ${title}`);
+      await notifyInboxVideo({
+        caption: title,
+        contentId: item.id,
+        contentType: item.content_type,
+        scheduledFor: item.scheduled_for ?? null,
+        thumbnailUrl: resolveThumbnail(item),
+        dashboardUrl: buildDashboardUrl(item.id, process.env.DASHBOARD_BASE_URL),
+      });
     }
 
     // Poll for completion (both direct and inbox uploads)
