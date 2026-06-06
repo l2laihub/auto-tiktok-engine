@@ -66,6 +66,9 @@ Both compositions accept optional `musicFile` (relative path from `public/` for 
 ### TikTok posting (scripts/lib/tiktok-api.ts)
 `TikTokClient` class handles OAuth token lifecycle (stored in Supabase `tiktok_tokens` table), FILE_UPLOAD flow, and publish status polling. Tries Direct Post first, falls back to Inbox Upload if scope is insufficient. Custom error classes: `TokenExpiredError`, `ScopeError`, `RateLimitError`, `VideoProcessingError`.
 
+### Inbox caption notifier (scripts/lib/telegram.ts)
+Because Direct Post requires the `video.publish` scope, posts fall back to **Inbox Upload**, which can't carry a caption — it must be typed by hand when finishing the draft in the TikTok app. When a video lands in the inbox (the `mode === 'inbox'` branch of `render-video.ts`), `notifyInboxVideo()` pushes a Telegram message with the copy-paste-ready caption + hashtags, content id/type, scheduled time, a thumbnail (reused public image URL), and a `#item-<shortId>` dashboard deep link. Pure builders (`buildInboxMessage`, `resolveThumbnail`, `buildDashboardUrl`) are unit-tested; the `fetch` send wrapper never throws so a notifier failure can't fail a post. Requires `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` (and optional `DASHBOARD_BASE_URL` for the link); absent → silently skipped, like the music/image steps.
+
 ### Music generation (src/utils/lyria.ts, src/utils/suno.ts)
 Background music via Google Lyria 3 (preferred, `GOOGLE_API_KEY`) or Suno AI (fallback, `SUNO_API_URL`). Lyria 3 Clip generates 30-second instrumental MP3 clips via the Gemini API. Suno requires a self-hosted `gcui-art/suno-api` server with browser cookies. Both are trimmed to video duration with ffmpeg fade-out. Files saved to `public/music/` for Remotion's `staticFile()`.
 
@@ -98,6 +101,6 @@ Defined in `src/config.ts` as `BRAND`: coral `#E85A71`, teal `#3D9CA8`, amber `#
 ## Environment Variables
 
 Required: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `ANTHROPIC_API_KEY`
-Optional: `TIKTOK_CLIENT_KEY`, `TIKTOK_CLIENT_SECRET`, `TIKTOK_REDIRECT_URI`, `TIKTOK_ACCESS_TOKEN`, `GOOGLE_API_KEY`, `IMAGE_MODEL`, `SUNO_API_URL`, `SUNO_COOKIE`, `OUTPUT_DIR`
+Optional: `TIKTOK_CLIENT_KEY`, `TIKTOK_CLIENT_SECRET`, `TIKTOK_REDIRECT_URI`, `TIKTOK_ACCESS_TOKEN`, `GOOGLE_API_KEY`, `IMAGE_MODEL`, `SUNO_API_URL`, `SUNO_COOKIE`, `OUTPUT_DIR`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `DASHBOARD_BASE_URL`
 
 See `.env.example` for details. Without TikTok tokens, pipeline saves videos for manual upload. Without `GOOGLE_API_KEY` or `SUNO_API_URL`, music generation is skipped. Without `GOOGLE_API_KEY`, AI image generation (reveal photos + tip imagery) is also skipped. Lyria 3 is preferred over Suno when both are configured.
