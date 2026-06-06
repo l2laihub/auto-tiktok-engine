@@ -94,3 +94,55 @@ export function buildDashboardUrl(contentId: string, baseUrl?: string): string |
 export function isTelegramConfigured(): boolean {
   return Boolean(process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID);
 }
+
+const TELEGRAM_API = 'https://api.telegram.org';
+
+/** POST a Telegram Bot API method as JSON; throw on transport or API error. */
+async function postTelegram(token: string, method: string, body: Record<string, unknown>): Promise<void> {
+  const res = await fetch(`${TELEGRAM_API}/bot${token}/${method}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const json: any = await res.json().catch(() => ({}));
+  if (!res.ok || json?.ok === false) {
+    throw new Error(`Telegram ${method} failed: HTTP ${res.status} ${json?.description || ''}`.trim());
+  }
+}
+
+/**
+ * Notify the operator that a video is in their TikTok inbox awaiting a manual
+ * post. Sends a photo (with the message as its caption) when a thumbnail is
+ * available, otherwise a text message. NEVER throws — a notifier failure must
+ * not fail the post. Skips silently when Telegram is not configured.
+ */
+export async function notifyInboxVideo(payload: InboxMessagePayload): Promise<void> {
+  if (!isTelegramConfigured()) {
+    console.log('  Telegram not configured — skipping inbox notification');
+    return;
+  }
+  const token = process.env.TELEGRAM_BOT_TOKEN!;
+  const chatId = process.env.TELEGRAM_CHAT_ID!;
+  const { text, photoUrl } = buildInboxMessage(payload);
+
+  try {
+    if (photoUrl) {
+      await postTelegram(token, 'sendPhoto', {
+        chat_id: chatId,
+        photo: photoUrl,
+        caption: text,
+        parse_mode: 'HTML',
+      });
+    } else {
+      await postTelegram(token, 'sendMessage', {
+        chat_id: chatId,
+        text,
+        parse_mode: 'HTML',
+        disable_web_page_preview: true,
+      });
+    }
+    console.log('  Telegram inbox notification sent');
+  } catch (err) {
+    console.warn(`  Telegram notification failed (non-fatal): ${err instanceof Error ? err.message : err}`);
+  }
+}
