@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildInboxMessage } from '../telegram';
+import { buildInboxMessage, resolveThumbnail, buildDashboardUrl, isTelegramConfigured } from '../telegram';
 
 const base = {
   caption: 'Grandma looked SO happy here 🥹 #photorestoration #familyhistory',
@@ -46,4 +46,70 @@ test('buildInboxMessage returns photoUrl when a thumbnailUrl is provided', () =>
 test('buildInboxMessage returns undefined photoUrl when no thumbnail', () => {
   const { photoUrl } = buildInboxMessage(base);
   assert.equal(photoUrl, undefined);
+});
+
+test('resolveThumbnail picks the first reveal pair after_url', () => {
+  const item = { id: 'x', content_type: 'reveal' as const, image_pairs: [{ after_url: 'https://x.test/a.png' }] };
+  assert.equal(resolveThumbnail(item), 'https://x.test/a.png');
+});
+
+test('resolveThumbnail falls back to legacy after_image_url for reveals', () => {
+  const item = { id: 'x', content_type: 'reveal' as const, after_image_url: 'https://x.test/legacy.png' };
+  assert.equal(resolveThumbnail(item), 'https://x.test/legacy.png');
+});
+
+test('resolveThumbnail prefers tip_image_url for tips', () => {
+  const item = { id: 'x', content_type: 'tip' as const, tip_image_url: 'https://x.test/tip.png', tip_images: ['https://x.test/other.png'] };
+  assert.equal(resolveThumbnail(item), 'https://x.test/tip.png');
+});
+
+test('resolveThumbnail falls back to tip_images[0] then tips[0].tipImageSrc', () => {
+  assert.equal(
+    resolveThumbnail({ id: 'x', content_type: 'tip' as const, tip_images: ['https://x.test/i0.png'] }),
+    'https://x.test/i0.png'
+  );
+  assert.equal(
+    resolveThumbnail({ id: 'x', content_type: 'tip' as const, tips: [{ tipImageSrc: 'https://x.test/t0.png' }] }),
+    'https://x.test/t0.png'
+  );
+});
+
+test('resolveThumbnail returns undefined when nothing is available', () => {
+  assert.equal(resolveThumbnail({ id: 'x', content_type: 'reveal' as const }), undefined);
+});
+
+test('buildDashboardUrl builds an #item-<shortId> deep link from a base url', () => {
+  assert.equal(
+    buildDashboardUrl('a1b2c3d4e5f6', 'http://192.168.1.50:3001'),
+    'http://192.168.1.50:3001/#item-a1b2c3d4'
+  );
+});
+
+test('buildDashboardUrl strips a trailing slash on the base url', () => {
+  assert.equal(
+    buildDashboardUrl('a1b2c3d4e5f6', 'http://192.168.1.50:3001/'),
+    'http://192.168.1.50:3001/#item-a1b2c3d4'
+  );
+});
+
+test('buildDashboardUrl returns undefined without a base url', () => {
+  assert.equal(buildDashboardUrl('a1b2c3d4e5f6', undefined), undefined);
+  assert.equal(buildDashboardUrl('a1b2c3d4e5f6', ''), undefined);
+});
+
+test('isTelegramConfigured reflects both env vars being present', () => {
+  const origToken = process.env.TELEGRAM_BOT_TOKEN;
+  const origChat = process.env.TELEGRAM_CHAT_ID;
+  try {
+    delete process.env.TELEGRAM_BOT_TOKEN;
+    delete process.env.TELEGRAM_CHAT_ID;
+    assert.equal(isTelegramConfigured(), false);
+    process.env.TELEGRAM_BOT_TOKEN = 'tok';
+    assert.equal(isTelegramConfigured(), false);
+    process.env.TELEGRAM_CHAT_ID = '123';
+    assert.equal(isTelegramConfigured(), true);
+  } finally {
+    if (origToken === undefined) delete process.env.TELEGRAM_BOT_TOKEN; else process.env.TELEGRAM_BOT_TOKEN = origToken;
+    if (origChat === undefined) delete process.env.TELEGRAM_CHAT_ID; else process.env.TELEGRAM_CHAT_ID = origChat;
+  }
 });

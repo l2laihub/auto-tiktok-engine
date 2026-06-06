@@ -53,3 +53,44 @@ export function buildInboxMessage(p: InboxMessagePayload): { text: string; photo
   }
   return { text: lines.join('\n'), photoUrl: p.thumbnailUrl };
 }
+
+/** Minimal structural view of a content item — the fields the notifier reads. */
+export interface NotifiableItem {
+  id: string;
+  content_type: 'reveal' | 'tip';
+  scheduled_for?: string | null;
+  image_pairs?: Array<{ after_url?: string }>;
+  after_image_url?: string;
+  tip_image_url?: string;
+  tip_images?: string[];
+  tips?: Array<{ tipImageSrc?: string; tipImages?: string[] }>;
+}
+
+/**
+ * Resolve a representative public image URL for the item's thumbnail.
+ * Reuses already-generated imagery — no frame extraction. Returns undefined
+ * when nothing usable exists (caller then sends a text-only message).
+ */
+export function resolveThumbnail(item: NotifiableItem): string | undefined {
+  if (item.content_type === 'reveal') {
+    return item.image_pairs?.[0]?.after_url || item.after_image_url || undefined;
+  }
+  return (
+    item.tip_image_url ||
+    item.tip_images?.[0] ||
+    item.tips?.[0]?.tipImageSrc ||
+    item.tips?.[0]?.tipImages?.[0] ||
+    undefined
+  );
+}
+
+/** Build the dashboard deep link, or undefined when no base url is configured. */
+export function buildDashboardUrl(contentId: string, baseUrl?: string): string | undefined {
+  if (!baseUrl) return undefined;
+  return `${baseUrl.replace(/\/+$/, '')}/#item-${contentId.slice(0, 8)}`;
+}
+
+/** True when both Telegram env vars are present. */
+export function isTelegramConfigured(): boolean {
+  return Boolean(process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID);
+}
