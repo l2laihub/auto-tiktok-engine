@@ -389,7 +389,7 @@ app.post('/api/analyze-photos', async (req, res) => {
 
   try {
     const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6',
       max_tokens: 500,
       system: 'You are a photo restoration expert analyzing before/after photo pairs for the EternalFrame app. Respond ONLY with valid JSON.',
       messages: [{
@@ -462,7 +462,7 @@ app.post('/api/suggest-generation-inputs', async (req, res) => {
 
   try {
     const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6',
       max_tokens: 200,
       system: 'You invent fresh, specific content ideas for EternalFrame, an AI photo restoration app. Respond ONLY with valid JSON. Avoid repeating common defaults — be varied and concrete.',
       messages: [{ role: 'user', content: prompt }],

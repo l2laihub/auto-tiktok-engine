@@ -114,7 +114,7 @@ export async function generateScript(item: ContentItem): Promise<GeneratedScript
   if (framing) console.log(`  Caption framing: ${framing}`);
 
   const response = await anthropic.messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: 'claude-sonnet-4-6',
     max_tokens: 500,
     messages: [
       {
@@ -163,7 +163,7 @@ export async function generatePairCaptions(pairs: PairCaptionInput[]): Promise<P
   if (pairs.length === 0) return [];
 
   const response = await anthropic.messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: 'claude-sonnet-4-6',
     max_tokens: 400,
     system: PAIR_CAPTION_SYSTEM_PROMPT,
     messages: [{ role: 'user', content: buildPairCaptionPrompt(pairs) }],
