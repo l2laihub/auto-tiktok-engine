@@ -2,7 +2,8 @@ import React from 'react';
 import { useCurrentFrame, Img, staticFile } from 'remotion';
 import { loadFont as loadPlayfair } from '@remotion/google-fonts/PlayfairDisplay';
 import { loadFont as loadInter } from '@remotion/google-fonts/Inter';
-import { BRAND, interpolate } from '../config';
+import { interpolate } from '../config';
+import { useBrand } from '../brand';
 
 const { fontFamily: playfair } = loadPlayfair();
 const { fontFamily: inter } = loadInter();
@@ -21,6 +22,7 @@ export const EternalFrameCTA: React.FC<CTAProps> = ({
   slogan = DEFAULT_SLOGAN,
 }) => {
   const frame = useCurrentFrame();
+  const { colors: BRAND, name, logoSrc, cta, website } = useBrand();
   const f = frame - startFrame; // frames since CTA started
 
   if (frame < startFrame || frame > endFrame) return null;
@@ -79,27 +81,29 @@ export const EternalFrameCTA: React.FC<CTAProps> = ({
         }}
       >
         {/* App icon */}
-        <div
-          style={{
-            width: 120,
-            height: 120,
-            borderRadius: 28,
-            overflow: 'hidden',
-            marginBottom: 28,
-            boxShadow: `0 12px 48px rgba(0,0,0,0.5), 0 0 60px ${BRAND.coral}25`,
-            opacity: logoOpacity,
-            transform: `scale(${logoScale})`,
-          }}
-        >
-          <Img
-            src={staticFile('eternalframe-logo.jpg')}
+        {logoSrc && (
+          <div
             style={{
-              width: '100%',
-              height: '100%',
-              objectFit: 'cover',
+              width: 120,
+              height: 120,
+              borderRadius: 28,
+              overflow: 'hidden',
+              marginBottom: 28,
+              boxShadow: `0 12px 48px rgba(0,0,0,0.5), 0 0 60px ${BRAND.coral}25`,
+              opacity: logoOpacity,
+              transform: `scale(${logoScale})`,
             }}
-          />
-        </div>
+          >
+            <Img
+              src={logoSrc.startsWith('http') ? logoSrc : staticFile(logoSrc)}
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+              }}
+            />
+          </div>
+        )}
 
         {/* App name */}
         <div
@@ -114,7 +118,7 @@ export const EternalFrameCTA: React.FC<CTAProps> = ({
             transform: `translateY(${nameSlide}px)`,
           }}
         >
-          EternalFrame
+          {name}
         </div>
 
         {/* AI-generated slogan */}
@@ -136,13 +140,35 @@ export const EternalFrameCTA: React.FC<CTAProps> = ({
           {slogan}
         </div>
 
-        {/* App Store badge */}
+        {/* CTA pill (client brand) or App Store badge (default) */}
         <div
           style={{
             opacity: badgeOpacity,
             transform: `translateY(${badgeSlide}px) scale(${badgePulse})`,
           }}
         >
+          {cta ? (
+            <div
+              style={{
+                fontFamily: inter,
+                fontSize: 30,
+                fontWeight: 600,
+                color: BRAND.white,
+                background: BRAND.coral,
+                borderRadius: 48,
+                paddingLeft: 40,
+                paddingRight: 40,
+                paddingTop: 20,
+                paddingBottom: 20,
+                boxShadow: `0 4px 24px rgba(0,0,0,0.4), 0 0 40px ${BRAND.coral}40`,
+                letterSpacing: 0.3,
+                textAlign: 'center',
+                maxWidth: 860,
+              }}
+            >
+              {cta}
+            </div>
+          ) : (
           <div
             style={{
               display: 'flex',
@@ -196,7 +222,26 @@ export const EternalFrameCTA: React.FC<CTAProps> = ({
               </span>
             </div>
           </div>
+          )}
         </div>
+
+        {/* Website line under the pill */}
+        {website && (
+          <div
+            style={{
+              marginTop: 32,
+              fontFamily: inter,
+              fontSize: 28,
+              fontWeight: 500,
+              color: BRAND.textLight,
+              letterSpacing: 2.5,
+              opacity: interpolate(frame, [startFrame + 26, startFrame + 36], [0, 1]),
+              textShadow: `0 2px 16px ${BRAND.dark}`,
+            }}
+          >
+            {website}
+          </div>
+        )}
       </div>
     </div>
   );

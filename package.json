@@ -17,7 +17,8 @@
     "pipeline:dry": "node --env-file=.env --import tsx scripts/render-video.ts --dry-run",
     "pipeline:post": "node --env-file=.env --import tsx scripts/render-video.ts --post-only",
     "tiktok:setup": "node --env-file=.env --import tsx scripts/tiktok-oauth-setup.ts",
-    "dashboard": "node --env-file=.env --import tsx dashboard/server.ts"
+    "dashboard": "node --env-file=.env --import tsx dashboard/server.ts",
+    "render:showcase": "remotion render ShowcaseGallery --output output/showcase-preview.mp4"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",

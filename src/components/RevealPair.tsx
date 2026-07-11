@@ -1,6 +1,7 @@
 import React from 'react';
 import { AbsoluteFill, useCurrentFrame, Img } from 'remotion';
-import { BRAND, SAFE_ZONE, interpolate, type PairTiming } from '../config';
+import { SAFE_ZONE, interpolate, type PairTiming } from '../config';
+import { useBrand } from '../brand';
 import { loadFont as loadPlayfair } from '@remotion/google-fonts/PlayfairDisplay';
 import { buildFactualLine } from '../../scripts/lib/caption-text';
 
@@ -32,6 +33,7 @@ export const RevealPair: React.FC<RevealPairProps> = ({
   totalPairs,
 }) => {
   const frame = useCurrentFrame();
+  const { colors: BRAND, afterLabel } = useBrand();
 
   // Alternate swipe direction: even pairs left-to-right, odd right-to-left
   const swipeReversed = pairIndex % 2 === 1;
@@ -291,7 +293,7 @@ export const RevealPair: React.FC<RevealPairProps> = ({
                 textTransform: 'uppercase',
               }}
             >
-              Restored ✦
+              {afterLabel}
             </span>
           </div>
         </div>

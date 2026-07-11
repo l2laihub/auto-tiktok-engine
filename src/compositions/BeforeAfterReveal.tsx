@@ -6,7 +6,8 @@ import {
   staticFile,
   Audio,
 } from 'remotion';
-import { BRAND, VIDEO, createRevealTiming, interpolate } from '../config';
+import { VIDEO, createRevealTiming, interpolate } from '../config';
+import { resolveBrand, BrandProvider, type BrandProps } from '../brand';
 import { loadFont as loadPlayfair } from '@remotion/google-fonts/PlayfairDisplay';
 import { HookText } from '../components/HookText';
 import { EternalFrameCTA } from '../components/EternalFrameCTA';
@@ -39,6 +40,8 @@ export interface RevealProps {
   audioVolume?: number;
   // CTA
   slogan?: string;
+  // Per-client branding (defaults to EternalFrame)
+  brand?: BrandProps;
 }
 
 export const BeforeAfterReveal: React.FC<RevealProps> = ({
@@ -50,8 +53,11 @@ export const BeforeAfterReveal: React.FC<RevealProps> = ({
   musicFile,
   audioVolume = 0.6,
   slogan,
+  brand: brandProp,
 }) => {
   const frame = useCurrentFrame();
+  const brand = resolveBrand(brandProp);
+  const BRAND = brand.colors;
 
   // Normalize: use imagePairs if provided, else build from legacy props
   const pairs: ImagePair[] = imagePairsProp && imagePairsProp.length > 0
@@ -93,6 +99,7 @@ export const BeforeAfterReveal: React.FC<RevealProps> = ({
   );
 
   return (
+    <BrandProvider value={brand}>
     <AbsoluteFill style={{ backgroundColor: BRAND.dark }}>
       {/* Background music */}
       {audioSrc && <Audio src={audioSrc} volume={audioVolume} />}
@@ -233,7 +240,7 @@ export const BeforeAfterReveal: React.FC<RevealProps> = ({
               textShadow: `0 2px 20px ${BRAND.dark}`,
             }}
           >
-            EternalFrame
+            {brand.name}
           </div>
         </div>
       )}
@@ -263,5 +270,6 @@ export const BeforeAfterReveal: React.FC<RevealProps> = ({
         }}
       />
     </AbsoluteFill>
+    </BrandProvider>
   );
 };

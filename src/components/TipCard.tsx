@@ -1,6 +1,7 @@
 import React from 'react';
 import { AbsoluteFill, useCurrentFrame, Img } from 'remotion';
-import { BRAND, SAFE_ZONE, interpolate, type TipTiming } from '../config';
+import { SAFE_ZONE, interpolate, type TipTiming } from '../config';
+import { useBrand } from '../brand';
 
 export interface TipCardProps {
   tipTitle: string;
@@ -28,6 +29,7 @@ export const TipCard: React.FC<TipCardProps> = ({
   totalTips,
 }) => {
   const frame = useCurrentFrame();
+  const { colors: BRAND } = useBrand();
 
   // Only render when this tip is active
   if (frame < T.tipStart - 5 || frame > T.tipEnd + 5) return null;

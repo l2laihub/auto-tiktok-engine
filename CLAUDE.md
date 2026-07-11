@@ -96,7 +96,9 @@ Express server with HTML frontend for content management. Runs on port 3001. Pro
 
 ## Brand Constants
 
-Defined in `src/config.ts` as `BRAND`: coral `#E85A71`, teal `#3D9CA8`, amber `#FFB74D`, dark `#1A1A2E`. All Remotion components reference these.
+Defined in `src/config.ts` as `BRAND`: coral `#E85A71`, teal `#3D9CA8`, amber `#FFB74D`, dark `#1A1A2E`. All Remotion components read them via `useBrand()` (`src/brand.tsx`), which defaults to EternalFrame.
+
+Both compositions accept an optional `brand` input prop (`BrandProps`) to render for another client with no code change: partial `colors` (keys are roles: coral = primary accent, teal = secondary, amber = highlight, dark/darkSurface = backgrounds), `name` (watermark + CTA), `logoSrc` (URL or `public/` path; `""` hides it), `cta` (pill text replacing the App Store badge, e.g. a phone number), `afterLabel` (reveal badge, default "Restored ✦"). Used by studio-ops's `video-post` skill to render client videos: `npx remotion render BeforeAfterReveal --props=<file>.json --output out.mp4`.
 
 ## Environment Variables
 

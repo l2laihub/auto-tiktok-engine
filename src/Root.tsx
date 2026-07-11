@@ -1,7 +1,8 @@
 import { Composition } from 'remotion';
 import { BeforeAfterReveal, type RevealProps } from './compositions/BeforeAfterReveal';
 import { TipsEducational, type TipsProps } from './compositions/TipsEducational';
-import { VIDEO, createRevealTiming, createTipsTiming } from './config';
+import { ShowcaseGallery, type ShowcaseProps } from './compositions/ShowcaseGallery';
+import { VIDEO, createRevealTiming, createTipsTiming, createShowcaseTiming } from './config';
 
 export const RemotionRoot: React.FC = () => {
   return (
@@ -96,6 +97,39 @@ export const RemotionRoot: React.FC = () => {
           audioVolume: 0.5,
           slogan: 'Every photo tells their story.',
         } satisfies TipsProps}
+      />
+
+      {/* Template C: Showcase Gallery (finished work, no before shots) */}
+      <Composition
+        id="ShowcaseGallery"
+        component={ShowcaseGallery as React.FC}
+        calculateMetadata={({ props }) => {
+          const typedProps = props as unknown as ShowcaseProps;
+          const imageCount = typedProps.images?.length || 1;
+          const timing = createShowcaseTiming(imageCount);
+          return {
+            durationInFrames: timing.totalDuration,
+            fps: VIDEO.fps,
+            width: VIDEO.width,
+            height: VIDEO.height,
+          };
+        }}
+        durationInFrames={createShowcaseTiming(4).totalDuration}
+        fps={VIDEO.fps}
+        width={VIDEO.width}
+        height={VIDEO.height}
+        defaultProps={{
+          hookText: 'This week\nat the studio...',
+          images: [
+            { src: 'https://placehold.co/1080x1920/333/966?text=Set+1', label: 'Set 1' },
+            { src: 'https://placehold.co/1080x1920/444/977?text=Set+2', label: 'Set 2' },
+            { src: 'https://placehold.co/1080x1920/555/988?text=Set+3' },
+            { src: 'https://placehold.co/1080x1920/666/999?text=Set+4', label: 'Set 4' },
+          ],
+          musicFile: undefined,
+          audioVolume: 0.6,
+          slogan: 'Fresh work, straight from the chair.',
+        } satisfies ShowcaseProps}
       />
     </>
   );

@@ -5,7 +5,8 @@ import {
   staticFile,
   Audio,
 } from 'remotion';
-import { BRAND, VIDEO, createTipsTiming, interpolate } from '../config';
+import { VIDEO, createTipsTiming, interpolate } from '../config';
+import { resolveBrand, BrandProvider, type BrandProps } from '../brand';
 import { loadFont as loadPlayfair } from '@remotion/google-fonts/PlayfairDisplay';
 import { HookText } from '../components/HookText';
 import { EternalFrameCTA } from '../components/EternalFrameCTA';
@@ -40,6 +41,8 @@ export interface TipsProps {
   audioVolume?: number;
   // CTA
   slogan?: string;
+  // Per-client branding (defaults to EternalFrame)
+  brand?: BrandProps;
 }
 
 export const TipsEducational: React.FC<TipsProps> = ({
@@ -55,8 +58,11 @@ export const TipsEducational: React.FC<TipsProps> = ({
   musicFile,
   audioVolume = 0.5,
   slogan,
+  brand: brandProp,
 }) => {
   const frame = useCurrentFrame();
+  const brand = resolveBrand(brandProp);
+  const BRAND = brand.colors;
 
   // Normalize: use tips array if provided, else build from legacy props
   const tips: TipItem[] = tipsProp && tipsProp.length > 0
@@ -119,6 +125,7 @@ export const TipsEducational: React.FC<TipsProps> = ({
     : undefined;
 
   return (
+    <BrandProvider value={brand}>
     <AbsoluteFill
       style={{
         background: `linear-gradient(${gradientAngle}deg, ${BRAND.dark} 0%, ${BRAND.darkSurface} 40%, #0F3460 75%, #1A4A5A 100%)`,
@@ -186,7 +193,7 @@ export const TipsEducational: React.FC<TipsProps> = ({
               textShadow: `0 2px 20px ${BRAND.dark}`,
             }}
           >
-            EternalFrame
+            {brand.name}
           </div>
         </div>
       )}
@@ -278,5 +285,6 @@ export const TipsEducational: React.FC<TipsProps> = ({
         }}
       />
     </AbsoluteFill>
+    </BrandProvider>
   );
 };

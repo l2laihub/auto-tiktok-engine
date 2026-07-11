@@ -2,7 +2,8 @@ import React from 'react';
 import { useCurrentFrame } from 'remotion';
 import { loadFont as loadPlayfair } from '@remotion/google-fonts/PlayfairDisplay';
 import { loadFont as loadInter } from '@remotion/google-fonts/Inter';
-import { BRAND, interpolate } from '../config';
+import { interpolate } from '../config';
+import { useBrand } from '../brand';
 
 // Load fonts for rendering
 const { fontFamily: playfair } = loadPlayfair();
@@ -14,6 +15,8 @@ interface HookTextProps {
   endFrame: number;
   fontSize?: number;
   position?: 'center' | 'top' | 'bottom';
+  /** Uppercase teaser line under the hook card. */
+  teaser?: string;
 }
 
 export const HookText: React.FC<HookTextProps> = ({
@@ -22,8 +25,10 @@ export const HookText: React.FC<HookTextProps> = ({
   endFrame,
   fontSize = 56,
   position = 'center',
+  teaser = 'watch the transformation',
 }) => {
   const frame = useCurrentFrame();
+  const { colors: BRAND } = useBrand();
   const f = frame - startFrame;
 
   if (frame < startFrame || frame > endFrame) return null;
@@ -195,7 +200,7 @@ export const HookText: React.FC<HookTextProps> = ({
           }}
         >
           <span style={{ color: BRAND.amber, fontSize: 14 }}>&#9660;</span>
-          watch the transformation
+          {teaser}
           <span style={{ color: BRAND.amber, fontSize: 14 }}>&#9660;</span>
         </div>
       </div>

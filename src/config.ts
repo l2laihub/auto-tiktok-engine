@@ -152,6 +152,52 @@ export function createTipsTiming(tipCount: number): DynamicTipsTiming {
 // Backwards-compatible alias (single tip = original ~15s timing)
 export const TIPS_TIMING = createTipsTiming(1);
 
+// === Dynamic Showcase Timing (gallery of finished work, no before shots) ===
+
+export interface ShowcaseImageTiming {
+  start: number;
+  end: number;
+}
+
+export interface DynamicShowcaseTiming {
+  totalDuration: number;
+  hookStart: number;
+  hookEnd: number;
+  images: ShowcaseImageTiming[];
+  ctaStart: number;
+  ctaEnd: number;
+}
+
+export function createShowcaseTiming(imageCount: number): DynamicShowcaseTiming {
+  const fps = VIDEO.fps;
+  const hookDuration = 3 * fps;                    // 3s
+  const imageDuration = Math.floor(2.8 * fps);     // 2.8s per photo
+  const crossfade = Math.floor(0.6 * fps);         // 0.6s overlap between photos
+  const ctaDuration = Math.floor(3.5 * fps);       // 3.5s
+
+  const images: ShowcaseImageTiming[] = [];
+  // First photo sharpens in under the hook fade-out
+  let cursor = hookDuration - Math.floor(0.5 * fps);
+  for (let i = 0; i < Math.max(imageCount, 1); i++) {
+    const start = cursor;
+    const end = start + imageDuration;
+    images.push({ start, end });
+    cursor = end - crossfade;
+  }
+
+  const ctaStart = images[images.length - 1].end - Math.floor(0.5 * fps);
+  const ctaEnd = ctaStart + ctaDuration;
+
+  return {
+    totalDuration: ctaEnd,
+    hookStart: 0,
+    hookEnd: hookDuration,
+    images,
+    ctaStart,
+    ctaEnd,
+  };
+}
+
 // Easing helpers
 export function easeOutCubic(t: number): number {
   return 1 - Math.pow(1 - t, 3);
