@@ -2,6 +2,7 @@ import React from 'react';
 import { AbsoluteFill, useCurrentFrame, Img } from 'remotion';
 import { SAFE_ZONE, interpolate, type TipTiming } from '../config';
 import { useBrand } from '../brand';
+import { TipVisual, type TipVisualSpec } from './TipVisual';
 
 export interface TipCardProps {
   tipTitle: string;
@@ -11,6 +12,8 @@ export interface TipCardProps {
   tipImages?: string[];
   /** Emoji accent shown in the card header. */
   tipIcon?: string;
+  /** Animated vignette in the empty area below a text-only card. */
+  tipVisual?: TipVisualSpec;
   tipSource?: string;
   timing: TipTiming;
   tipIndex: number;
@@ -23,6 +26,7 @@ export const TipCard: React.FC<TipCardProps> = ({
   tipImageSrc,
   tipImages,
   tipIcon,
+  tipVisual,
   tipSource,
   timing: T,
   tipIndex,
@@ -95,6 +99,9 @@ export const TipCard: React.FC<TipCardProps> = ({
           />
         </AbsoluteFill>
       )}
+
+      {/* === Animated vignette below the card (text-only tips) === */}
+      {tipVisual && !hasBg && <TipVisual spec={tipVisual} timing={T} visible={visible} />}
 
       {/* === Tip content === */}
       <div

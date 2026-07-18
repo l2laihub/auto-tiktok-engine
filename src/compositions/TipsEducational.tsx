@@ -4,6 +4,7 @@ import {
   useCurrentFrame,
   staticFile,
   Audio,
+  Img,
 } from 'remotion';
 import { VIDEO, createTipsTiming, interpolate } from '../config';
 import { resolveBrand, BrandProvider, type BrandProps } from '../brand';
@@ -11,6 +12,7 @@ import { loadFont as loadPlayfair } from '@remotion/google-fonts/PlayfairDisplay
 import { HookText } from '../components/HookText';
 import { EternalFrameCTA } from '../components/EternalFrameCTA';
 import { TipCard } from '../components/TipCard';
+import { PhoneSearchHook, type PhoneSearchProps } from '../components/PhoneSearchHook';
 
 const { fontFamily: playfair } = loadPlayfair();
 
@@ -21,6 +23,8 @@ export interface TipItem {
   tipImageSrc?: string;
   tipImages?: string[];
   tipIcon?: string;
+  /** Animated vignette below a text-only card: 'search' | 'oneTap' | 'nextDoor'. */
+  tipVisual?: import('../components/TipVisual').TipVisualSpec;
   tipSource?: string;
 }
 
@@ -41,9 +45,17 @@ export interface TipsProps {
   audioVolume?: number;
   // CTA
   slogan?: string;
+  // Optional animated phone-search sequence during the hook (extends the hook to 6.5s)
+  phoneSearch?: PhoneSearchProps;
+  /** Teaser line under the hook text (defaults to HookText's own). */
+  hookTeaser?: string;
   // Per-client branding (defaults to EternalFrame)
   brand?: BrandProps;
 }
+
+/** Hook length depends on whether a phone-search sequence plays. Used by Root's calculateMetadata too. */
+export const hookSecondsFor = (props: Pick<TipsProps, 'phoneSearch'>) =>
+  props.phoneSearch ? 6.5 : 3;
 
 export const TipsEducational: React.FC<TipsProps> = ({
   hookText,
@@ -58,6 +70,8 @@ export const TipsEducational: React.FC<TipsProps> = ({
   musicFile,
   audioVolume = 0.5,
   slogan,
+  phoneSearch,
+  hookTeaser,
   brand: brandProp,
 }) => {
   const frame = useCurrentFrame();
@@ -76,7 +90,7 @@ export const TipsEducational: React.FC<TipsProps> = ({
         tipSource,
       }];
 
-  const timing = createTipsTiming(tips.length);
+  const timing = createTipsTiming(tips.length, hookSecondsFor({ phoneSearch }));
 
   // === Slogan intro: visible at frame 0 for thumbnail ===
   const sloganIntroDuration = Math.floor(1.5 * VIDEO.fps); // 1.5s
@@ -128,7 +142,7 @@ export const TipsEducational: React.FC<TipsProps> = ({
     <BrandProvider value={brand}>
     <AbsoluteFill
       style={{
-        background: `linear-gradient(${gradientAngle}deg, ${BRAND.dark} 0%, ${BRAND.darkSurface} 40%, #0F3460 75%, #1A4A5A 100%)`,
+        background: `linear-gradient(${gradientAngle}deg, ${BRAND.dark} 0%, ${BRAND.darkSurface} 40%, color-mix(in srgb, ${BRAND.teal} 30%, ${BRAND.dark}) 75%, color-mix(in srgb, ${BRAND.teal} 45%, ${BRAND.dark}) 100%)`,
       }}
     >
       {audioSrc && <Audio src={audioSrc} volume={audioVolume} />}
@@ -165,6 +179,18 @@ export const TipsEducational: React.FC<TipsProps> = ({
             transform: `scale(${sloganScale})`,
           }}
         >
+          {brand.logoSrc && (
+            <Img
+              src={brand.logoSrc.startsWith('http') ? brand.logoSrc : staticFile(brand.logoSrc)}
+              style={{
+                width: 120,
+                height: 120,
+                borderRadius: 28,
+                marginBottom: 28,
+                boxShadow: `0 12px 50px ${BRAND.dark}`,
+              }}
+            />
+          )}
           <div
             style={{
               fontFamily: playfair,
@@ -198,14 +224,24 @@ export const TipsEducational: React.FC<TipsProps> = ({
         </div>
       )}
 
-      {/* === HOOK TEXT (delayed to start after slogan) === */}
+      {/* === HOOK TEXT (delayed to start after slogan; moves to top when the phone plays below) === */}
       <HookText
         text={hookText}
         startFrame={sloganIntroDuration - 10}
         endFrame={timing.hookEnd}
         fontSize={52}
-        position="center"
+        position={phoneSearch ? 'top' : 'center'}
+        {...(hookTeaser !== undefined ? { teaser: hookTeaser } : {})}
       />
+
+      {/* === PHONE SEARCH SEQUENCE (optional hook visual) === */}
+      {phoneSearch && (
+        <PhoneSearchHook
+          {...phoneSearch}
+          startFrame={sloganIntroDuration - 5}
+          endFrame={timing.hookEnd}
+        />
+      )}
 
       {/* === TIP CARDS === */}
       {tips.map((tip, i) => (
@@ -216,6 +252,7 @@ export const TipsEducational: React.FC<TipsProps> = ({
           tipImageSrc={tip.tipImageSrc}
           tipImages={tip.tipImages}
           tipIcon={tip.tipIcon}
+          tipVisual={tip.tipVisual}
           tipSource={tip.tipSource}
           timing={timing.tips[i]}
           tipIndex={i}
@@ -266,6 +303,39 @@ export const TipsEducational: React.FC<TipsProps> = ({
           >
             {takeaway}
           </div>
+
+          {/* Recap: tip icons pop back in with checkmarks */}
+          {tips.length > 1 && (
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 28, marginTop: 36 }}>
+              {tips.map((tip, i) => {
+                const popStart = timing.takeawayStart + 18 + i * 8;
+                const pop = interpolate(frame, [popStart, popStart + 6, popStart + 12], [0, 1.15, 1]);
+                const on = interpolate(frame, [popStart, popStart + 6], [0, 1]);
+                return (
+                  <div
+                    key={i}
+                    style={{
+                      position: 'relative',
+                      width: 96,
+                      height: 96,
+                      borderRadius: 26,
+                      background: `${BRAND.amber}22`,
+                      border: `2px solid ${BRAND.amber}66`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: 46,
+                      opacity: on,
+                      transform: `scale(${pop})`,
+                    }}
+                  >
+                    {tip.tipIcon || '💡'}
+                    <span style={{ position: 'absolute', bottom: -12, right: -12, fontSize: 34 }}>✅</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
 
