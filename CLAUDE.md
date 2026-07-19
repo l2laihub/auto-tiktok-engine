@@ -40,6 +40,7 @@ npm run pipeline -- <id> --post-only # skip render, post existing video
 
 # TikTok OAuth setup
 npm run tiktok:setup
+npm run tiktok:setup -- --account nk-nails   # authorize a client account (log into their TikTok first)
 
 # Dashboard (Express server on port 3001)
 npm run dashboard
@@ -64,7 +65,7 @@ Compositions use `calculateMetadata` in Root.tsx to set `durationInFrames` based
 Both compositions accept optional `musicFile` (relative path from `public/` for `staticFile()`, or HTTP URL) and `audioVolume`.
 
 ### TikTok posting (scripts/lib/tiktok-api.ts)
-`TikTokClient` class handles OAuth token lifecycle (stored in Supabase `tiktok_tokens` table), FILE_UPLOAD flow, and publish status polling. Tries Direct Post first, falls back to Inbox Upload if scope is insufficient. Custom error classes: `TokenExpiredError`, `ScopeError`, `RateLimitError`, `VideoProcessingError`.
+`TikTokClient` class handles OAuth token lifecycle (stored in Supabase `tiktok_tokens` table, one row per account — `id` is the account key, `'default'` = @huybuilds), FILE_UPLOAD flow, and publish status polling. The constructor takes an optional account name; client accounts are authorized with `npm run tiktok:setup -- --account <name>` (the account must be a target user of the TikTok developer app, and consent is granted while logged into that account). Tries Direct Post first, falls back to Inbox Upload if scope is insufficient. Custom error classes: `TokenExpiredError`, `ScopeError`, `RateLimitError`, `VideoProcessingError`.
 
 ### Inbox caption notifier (scripts/lib/telegram.ts)
 Because Direct Post requires the `video.publish` scope, posts fall back to **Inbox Upload**, which can't carry a caption — it must be typed by hand when finishing the draft in the TikTok app. When a video lands in the inbox (the `mode === 'inbox'` branch of `render-video.ts`), `notifyInboxVideo()` pushes a Telegram message with the copy-paste-ready caption + hashtags, content id/type, scheduled time, a thumbnail (reused public image URL), and a `#item-<shortId>` dashboard deep link. Pure builders (`buildInboxMessage`, `resolveThumbnail`, `buildDashboardUrl`) are unit-tested; the `fetch` send wrapper never throws so a notifier failure can't fail a post. Requires `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` (and optional `DASHBOARD_BASE_URL` for the link); absent → silently skipped, like the music/image steps.
@@ -83,6 +84,9 @@ The pipeline calls idempotent `ensureRevealPhotos()` / `ensureTipImages()` steps
 
 ### Dashboard (dashboard/)
 Express server with HTML frontend for content management. Runs on port 3001. Provides CRUD for content pool, pipeline execution, and image upload via multer.
+
+### External videos (migration-v6)
+Pre-rendered MP4s (e.g. studio-ops `video-post` output in `output/`) are scheduled from the dashboard's Add Content → 🎬 Video sub-tab: `POST /api/external-video` uploads the file to the `videos` bucket (shared TUS helper in `scripts/lib/video-upload.ts`) and inserts a `content_type='external'` item that is *born rendered* (`status='rendered'` + `video_url` + `caption`/`hashtags` + `scheduled_for` + `tiktok_account`). The existing scheduler and the pipeline's post-only short-circuit then post it at its time to the chosen account (`tiktok_account` NULL = default @huybuilds) — externals never go through scripting/music/render. `GET /api/tiktok/accounts` lists token-row ids for the form dropdown; the daily token-refresh cron rotates every account row.
 
 ### Auto-post scheduler (dashboard/server.ts)
 `scheduled_for` is a `TIMESTAMPTZ` (migration-v5) holding each item's exact post date+time, interpreted in the server's local timezone. A per-minute poll (`startScheduler`) posts any item whose `scheduled_for <= now()` and status is `queued`/`scripted`/`rendered` — there is no global post time, and `rendered` items post without re-rendering. A startup catch-up runs the same check once on boot so a post missed while the process was down still goes out. `SCHEDULE_ENABLED=false` (or the dashboard toggle) pauses it. Date↔ISO conversion lives in `public/schedule-time.js`, shared by the dashboard UI (served at `/static/schedule-time.js`) and `node:test`.

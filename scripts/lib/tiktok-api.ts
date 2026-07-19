@@ -134,7 +134,9 @@ export class TikTokClient {
   private cachedToken: string | null = null;
   private tokenExpiresAt: number = 0;
 
-  constructor(private supabase: SupabaseClient) {}
+  // `account` selects the tiktok_tokens row: 'default' = @huybuilds, other ids
+  // are client accounts authorized via: npm run tiktok:setup -- --account <name>
+  constructor(private supabase: SupabaseClient, private account: string = 'default') {}
 
   /**
    * Get a valid access token. Checks Supabase first, auto-refreshes if
@@ -151,7 +153,7 @@ export class TikTokClient {
     const { data, error } = await this.supabase
       .from('tiktok_tokens')
       .select('access_token, refresh_token, expires_at')
-      .eq('id', 'default')
+      .eq('id', this.account)
       .single();
 
     if (error) {
@@ -189,7 +191,9 @@ export class TikTokClient {
       }
     }
 
-    const envToken = process.env.TIKTOK_ACCESS_TOKEN;
+    // Env fallback is the default account's token — never use it for a client
+    // account, or a missing client token would silently post to the wrong account.
+    const envToken = this.account === 'default' ? process.env.TIKTOK_ACCESS_TOKEN : undefined;
     if (envToken) {
       console.log('  Using static TIKTOK_ACCESS_TOKEN from env (no auto-refresh)');
       return envToken;
@@ -233,7 +237,7 @@ export class TikTokClient {
     const expiresAt = new Date(Date.now() + result.expires_in * 1000);
 
     await this.supabase.from('tiktok_tokens').upsert({
-      id: 'default',
+      id: this.account,
       access_token: result.access_token,
       refresh_token: result.refresh_token,
       expires_at: expiresAt.toISOString(),
@@ -298,7 +302,7 @@ export class TikTokClient {
       const { data } = await this.supabase
         .from('tiktok_tokens')
         .select('refresh_token, scope')
-        .eq('id', 'default')
+        .eq('id', this.account)
         .single();
 
       if (data?.scope) {
@@ -544,7 +548,7 @@ export class TikTokClient {
     const { data } = await this.supabase
       .from('tiktok_tokens')
       .select('access_token, refresh_token, expires_at')
-      .eq('id', 'default')
+      .eq('id', this.account)
       .single();
 
     if (!data) return;

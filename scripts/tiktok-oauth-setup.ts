@@ -5,6 +5,9 @@
 // Usage:
 //   npm run tiktok:setup                  # full OAuth flow (manual code paste)
 //   npm run tiktok:setup -- --refresh-only # refresh existing token
+//   npm run tiktok:setup -- --account nk-nails # authorize a client account
+//     (log into the client's TikTok in the browser first; the account must be
+//      a target user of the developer app if it is unaudited)
 // ============================================================
 
 import { createClient } from '@supabase/supabase-js';
@@ -45,6 +48,14 @@ if (!CLIENT_KEY || !CLIENT_SECRET) {
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
+// Which tiktok_tokens row to write: 'default' = @huybuilds, else a client account.
+const accountFlagIdx = process.argv.indexOf('--account');
+const ACCOUNT = accountFlagIdx !== -1 ? process.argv[accountFlagIdx + 1] : 'default';
+if (!ACCOUNT || ACCOUNT.startsWith('--')) {
+  console.error('--account requires a name, e.g. --account nk-nails');
+  process.exit(1);
+}
+
 // --- Readline Helper ---
 
 function askQuestion(prompt: string): Promise<string> {
@@ -61,7 +72,7 @@ function askQuestion(prompt: string): Promise<string> {
 
 async function persistTokens(tokens: TikTokTokenResponse): Promise<void> {
   const { error } = await supabase.from('tiktok_tokens').upsert({
-    id: 'default',
+    id: ACCOUNT,
     access_token: tokens.accessToken,
     refresh_token: tokens.refreshToken,
     expires_at: tokens.expiresAt.toISOString(),
@@ -110,7 +121,7 @@ async function refreshOnly(): Promise<void> {
   const { data } = await supabase
     .from('tiktok_tokens')
     .select('refresh_token')
-    .eq('id', 'default')
+    .eq('id', ACCOUNT)
     .single();
 
   if (!data?.refresh_token) {
@@ -141,7 +152,7 @@ async function refreshOnly(): Promise<void> {
   const expiresAt = new Date(Date.now() + result.expires_in * 1000);
 
   await supabase.from('tiktok_tokens').upsert({
-    id: 'default',
+    id: ACCOUNT,
     access_token: result.access_token,
     refresh_token: result.refresh_token,
     expires_at: expiresAt.toISOString(),
@@ -168,7 +179,10 @@ async function fullOAuthFlow(): Promise<void> {
     codeChallenge,
   });
 
-  console.log('\n=== TikTok OAuth Setup ===\n');
+  console.log(`\n=== TikTok OAuth Setup (account: ${ACCOUNT}) ===\n`);
+  if (ACCOUNT !== 'default') {
+    console.log(`NOTE: Log into the CLIENT's TikTok account in the browser before authorizing.\n`);
+  }
   console.log('Step 1: Open this URL in your browser:\n');
   console.log(authUrl);
   console.log('\nStep 2: Authorize the app on TikTok.');

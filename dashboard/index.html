@@ -331,6 +331,7 @@
 
     .type-reveal { background: rgba(232, 90, 113, 0.15); color: var(--coral); border: 1px solid rgba(232, 90, 113, 0.25); }
     .type-tip { background: rgba(61, 156, 168, 0.15); color: var(--teal); border: 1px solid rgba(61, 156, 168, 0.25); }
+    .type-external { background: rgba(255, 183, 77, 0.15); color: var(--amber); border: 1px solid rgba(255, 183, 77, 0.25); }
 
     /* ===== BUTTONS ===== */
     .btn {
@@ -673,6 +674,7 @@
     .schedule-card:active { cursor: grabbing; transform: scale(0.97); }
     .schedule-card.type-reveal { border-left-color: var(--coral); }
     .schedule-card.type-tip { border-left-color: var(--teal); }
+    .schedule-card.type-external { border-left-color: var(--amber); }
 
     .schedule-card-title {
       font-size: 0.75rem;
@@ -864,6 +866,12 @@
       background: rgba(61, 156, 168, 0.12);
       border-color: var(--teal);
       color: var(--teal);
+    }
+
+    .sub-tab.active-video {
+      background: rgba(255, 183, 77, 0.12);
+      border-color: var(--amber);
+      color: var(--amber);
     }
 
     /* ===== TOGGLE SWITCH ===== */
@@ -1668,6 +1676,10 @@
 
       .schedule-mobile-card.type-tip {
         border-left-color: var(--teal);
+      }
+
+      .schedule-mobile-card.type-external {
+        border-left-color: var(--amber);
       }
 
       .schedule-mobile-card-title {
@@ -2947,6 +2959,129 @@
     }
 
     // ============================================================
+    // External Video Form (pre-rendered MP4s, e.g. studio-ops output)
+    // ============================================================
+    // Creates a content item that is born rendered — the scheduler posts the
+    // uploaded MP4 at its time to the chosen TikTok account.
+    function ExternalVideoForm({ onToast, onSwitch }) {
+      const [file, setFile] = useState(null);
+      const [caption, setCaption] = useState('');
+      const [hashtags, setHashtags] = useState('');
+      const [account, setAccount] = useState('default');
+      const [accounts, setAccounts] = useState(['default']);
+      const [scheduledFor, setScheduledFor] = useState(() => {
+        const d = new Date();
+        d.setDate(d.getDate() + 1);
+        d.setHours(6, 0, 0, 0);
+        return toLocalInput(d.toISOString());
+      });
+      const [submitting, setSubmitting] = useState(false);
+      const [progress, setProgress] = useState(0);
+      const inputRef = useRef(null);
+
+      useEffect(() => {
+        api('/api/tiktok/accounts')
+          .then(ids => { if (ids.length) setAccounts(ids.includes('default') ? ids : ['default', ...ids]); })
+          .catch(() => {});
+      }, []);
+
+      function handleFileChange(e) {
+        const f = e.target.files[0];
+        if (f && !f.type.startsWith('video/') && !/\.mp4$/i.test(f.name || '')) {
+          onToast('Please select a video file (MP4)', 'error');
+          return;
+        }
+        setFile(f || null);
+      }
+
+      async function handleSubmit(e) {
+        e.preventDefault();
+        if (!file) { onToast('Select a video file first', 'error'); return; }
+        const iso = fromLocalInput(scheduledFor);
+        if (!iso) { onToast('Pick a scheduled date & time', 'error'); return; }
+
+        setSubmitting(true);
+        setProgress(0);
+        try {
+          await new Promise((resolve, reject) => {
+            const xhr = new XMLHttpRequest();
+            const fd = new FormData();
+            fd.append('video', file);
+            fd.append('caption', caption);
+            fd.append('hashtags', hashtags);
+            fd.append('account', account);
+            fd.append('scheduledFor', iso);
+            xhr.open('POST', '/api/external-video');
+            xhr.timeout = 10 * 60 * 1000; // big files on slow uplinks
+            xhr.upload.onprogress = ev => {
+              if (ev.lengthComputable) setProgress(Math.round((ev.loaded / ev.total) * 100));
+            };
+            xhr.onload = () => {
+              let body; try { body = JSON.parse(xhr.responseText); } catch { body = null; }
+              if (xhr.status >= 200 && xhr.status < 300) resolve(body);
+              else reject(new Error(body?.error || `Upload failed (HTTP ${xhr.status})`));
+            };
+            xhr.onerror = () => reject(new Error('Network error during upload'));
+            xhr.ontimeout = () => reject(new Error('Upload timed out'));
+            xhr.send(fd);
+          });
+          onToast('Video scheduled!', 'success');
+          onSwitch('schedule');
+        } catch (err) {
+          onToast('Scheduling failed: ' + err.message, 'error');
+        } finally {
+          setSubmitting(false);
+          setProgress(0);
+        }
+      }
+
+      return html`<div className="panel" style=${{padding: '1.5rem'}}>
+        <div style=${{fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1.25rem'}}>
+          Schedule an already-rendered MP4 (e.g. a studio-ops client video from <code>output/</code>).
+          It posts to the selected TikTok account at the scheduled time — the caption below arrives
+          via the usual Telegram ping for the inbox draft.
+        </div>
+        <form onSubmit=${handleSubmit}>
+          <div className="form-grid">
+            <div className="form-group full-width">
+              <label className="form-label">Video File (MP4)</label>
+              <input ref=${inputRef} className="form-input" type="file" accept="video/mp4,video/*" onChange=${handleFileChange} />
+              ${file ? html`<div style=${{fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.35rem'}}>
+                ${file.name} • ${(file.size / 1024 / 1024).toFixed(1)} MB
+              </div>` : null}
+            </div>
+            <div className="form-group full-width">
+              <label className="form-label">Caption</label>
+              <textarea className="form-textarea" rows="3" placeholder="The TikTok caption for this post..." value=${caption} onInput=${e => setCaption(e.target.value)} required />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Hashtags</label>
+              <input className="form-input" placeholder="e.g. nails seattle freshset" value=${hashtags} onInput=${e => setHashtags(e.target.value)} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">TikTok Account</label>
+              <select className="form-select" value=${account} onChange=${e => setAccount(e.target.value)}>
+                ${accounts.map(id => html`<option key=${id} value=${id}>${id === 'default' ? 'default (@huybuilds)' : id}</option>`)}
+              </select>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Scheduled For</label>
+              <input className="form-input" type="datetime-local" value=${scheduledFor} onInput=${e => setScheduledFor(e.target.value)} required />
+            </div>
+          </div>
+          <div style=${{marginTop: '1.5rem', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', alignItems: 'center'}}>
+            ${submitting ? html`<span style=${{fontSize: '0.75rem', color: 'var(--text-muted)'}}>
+              ${progress >= 100 ? 'Storing…' : `Uploading ${progress}%`}
+            </span>` : null}
+            <button className="btn btn-primary" type="submit" disabled=${submitting}>
+              ${submitting ? 'Scheduling...' : '🎬 Schedule Video'}
+            </button>
+          </div>
+        </form>
+      </div>`;
+    }
+
+    // ============================================================
     // AddContent Tab (multi-pair support)
     // ============================================================
     function AddContent({ onToast, onSwitch, seed, onSeedConsumed }) {
@@ -3147,8 +3282,10 @@
         <div className="sub-tabs">
           <button className=${"sub-tab" + (subTab === 'reveal' ? " active-reveal" : "")} onClick=${() => setSubTab('reveal')}>\u2728 Reveal</button>
           <button className=${"sub-tab" + (subTab === 'tip' ? " active-tip" : "")} onClick=${() => setSubTab('tip')}>\ud83d\udca1 Tip</button>
+          <button className=${"sub-tab" + (subTab === 'video' ? " active-video" : "")} onClick=${() => setSubTab('video')}>\ud83c\udfac Video</button>
         </div>
 
+        ${subTab === 'video' ? html`<${ExternalVideoForm} onToast=${onToast} onSwitch=${onSwitch} />` : html`
         <div className="panel" style=${{padding: '1.5rem'}}>
           <form onSubmit=${handleSubmit}>
             ${subTab === 'reveal' ? html`
@@ -3293,7 +3430,7 @@
               </button>
             </div>
           </form>
-        </div>
+        </div>`}
       </div>`;
     }
 

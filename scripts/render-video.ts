@@ -34,7 +34,7 @@ import {
   RateLimitError,
   VideoProcessingError,
 } from './lib/tiktok-api';
-import * as tus from 'tus-js-client';
+import { uploadVideoTus } from './lib/video-upload';
 import path from 'path';
 import fs from 'fs';
 
@@ -61,8 +61,10 @@ interface ImagePairRow {
 
 interface ContentRow {
   id: string;
-  content_type: 'reveal' | 'tip';
+  content_type: 'reveal' | 'tip' | 'external';
   status: string;
+  // Which tiktok_tokens row posts this item (null = 'default' / @huybuilds).
+  tiktok_account?: string | null;
   // Legacy single-pair fields
   before_image_url?: string;
   after_image_url?: string;
@@ -143,11 +145,16 @@ async function ensureScript(item: ContentRow): Promise<ContentRow> {
     return item;
   }
 
+  // Externals arrive with their caption already written — nothing to script.
+  // (Unreachable in practice: main() short-circuits externals before step 2.)
+  const contentType = item.content_type;
+  if (contentType === 'external') return item;
+
   console.log('  Generating AI script...');
   const pairCount = item.image_pairs?.length || 1;
   const script = await generateScript({
     id: item.id,
-    content_type: item.content_type,
+    content_type: contentType,
     photo_era: item.photo_era,
     photo_story: item.photo_story,
     preset_used: item.preset_used,
@@ -631,10 +638,6 @@ async function uploadVideo(
 
   console.log(`  Uploading to Supabase Storage: ${storagePath} (${fileSizeMb} MB)`);
 
-  // Use the TUS resumable protocol. Supabase explicitly recommends it for
-  // anything >6MB, and it sidesteps the "fetch failed" failure mode of a
-  // single buffered upload via supabase-js storage on Node 20 — chunks are
-  // sent independently and retried per-chunk with exponential backoff.
   await uploadVideoTus(localPath, storagePath, fileSize);
 
   const {
@@ -656,46 +659,6 @@ async function uploadVideo(
   return videoUrl;
 }
 
-function uploadVideoTus(localPath: string, storagePath: string, fileSize: number): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const fileStream = fs.createReadStream(localPath);
-    let lastLoggedPct = -10;
-
-    const upload = new tus.Upload(fileStream, {
-      endpoint: `${SUPABASE_URL}/storage/v1/upload/resumable`,
-      retryDelays: [0, 3000, 5000, 10000, 20000, 30000],
-      headers: {
-        authorization: `Bearer ${SUPABASE_KEY}`,
-        'x-upsert': 'true',
-      },
-      uploadDataDuringCreation: true,
-      removeFingerprintOnSuccess: true,
-      metadata: {
-        bucketName: 'videos',
-        objectName: storagePath,
-        contentType: 'video/mp4',
-        cacheControl: '3600',
-      },
-      chunkSize: 6 * 1024 * 1024,
-      uploadSize: fileSize,
-      onError: (err) => reject(new Error(`TUS upload failed: ${err.message}`)),
-      onProgress: (bytesUploaded, bytesTotal) => {
-        const pct = Math.floor((bytesUploaded / bytesTotal) * 100);
-        if (pct >= lastLoggedPct + 10) {
-          lastLoggedPct = pct;
-          console.log(`  Upload progress: ${pct}% (${(bytesUploaded / 1024 / 1024).toFixed(1)}/${(bytesTotal / 1024 / 1024).toFixed(1)} MB)`);
-        }
-      },
-      onSuccess: () => {
-        console.log('  Upload complete');
-        resolve();
-      },
-    });
-
-    upload.start();
-  });
-}
-
 // --- Step 6: Post to TikTok ---
 async function postToTikTok(item: ContentRow, videoUrl: string, videoPath?: string): Promise<void> {
   if (DRY_RUN) {
@@ -705,13 +668,17 @@ async function postToTikTok(item: ContentRow, videoUrl: string, videoPath?: stri
     return;
   }
 
-  const client = new TikTokClient(supabase);
+  const account = item.tiktok_account || 'default';
+  if (account !== 'default') console.log(`  Posting as TikTok account: ${account}`);
+  const client = new TikTokClient(supabase, account);
   const token = await client.getAccessToken();
 
   if (!token) {
     console.log(`  Caption (for manual upload): ${item.caption}`);
     console.log(`  Hashtags (for manual upload): ${item.hashtags?.join(' ')}`);
-    throw new TokenExpiredError('No TikTok token available. Run: npm run tiktok:setup');
+    throw new TokenExpiredError(
+      `No TikTok token for account '${account}'. Run: npm run tiktok:setup${account !== 'default' ? ` -- --account ${account}` : ''}`
+    );
   }
 
   // Proactively refresh token if it expires within 30 min (large uploads take time)
@@ -886,6 +853,22 @@ async function main() {
 
   if (POST_ONLY && !item.video_url) {
     console.log('\n  --post-only used but no video_url found. Running full pipeline.');
+  }
+
+  // External items carry a pre-rendered video and can't be scripted/rendered
+  // here. Post whenever the video exists (covers retrying a 'failed' item by
+  // id, which the alreadyRendered check above misses); otherwise fail clearly.
+  if (item.content_type === 'external') {
+    if (item.video_url) {
+      console.log('\n  External item: skipping steps 2-5');
+      console.log('\nStep 6: Posting to TikTok...');
+      await postToTikTok(item, item.video_url);
+      console.log('\n✅ Pipeline complete!');
+      return;
+    }
+    throw new Error(
+      `External item ${item.id.slice(0, 8)} has no video_url — re-upload it from the dashboard's External Video form.`
+    );
   }
 
   // Step 2: Script

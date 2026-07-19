@@ -24,7 +24,9 @@ import { generateMusicTrack as generateLyriaTrack, trimAudioFile } from '../src/
 import { generateMusicTrack as generateSunoTrack, downloadAndTrim } from '../src/utils/suno';
 import { createRevealTiming, createTipsTiming, VIDEO } from '../src/config';
 import { withRetry } from '../scripts/lib/retry';
+import { uploadVideoTus } from '../scripts/lib/video-upload';
 import { TikTokClient } from '../scripts/lib/tiktok-api';
+import os from 'os';
 import {
   generateCodeVerifier,
   generateCodeChallenge,
@@ -379,6 +381,85 @@ app.post('/api/upload-photo', uploadHandler, async (req, res) => {
 
   const { data: { publicUrl } } = supabase.storage.from('photos').getPublicUrl(storagePath);
   res.json({ url: publicUrl });
+});
+
+// ============================================================
+// External videos (pre-rendered MP4s, e.g. studio-ops output)
+// ============================================================
+// An external item is born rendered: status='rendered' + video_url +
+// scheduled_for. The existing per-minute scheduler posts it at its time via
+// the pipeline's post-only short-circuit — no new posting machinery.
+
+// Disk storage: videos are up to ~50MB (300MB cap for headroom); streaming to a
+// temp file avoids buffering them in memory and TUS needs a file path anyway.
+const VIDEO_MAX_BYTES = 300 * 1024 * 1024;
+const videoUpload = multer({
+  storage: multer.diskStorage({ destination: os.tmpdir() }),
+  limits: { fileSize: VIDEO_MAX_BYTES },
+});
+
+// Token-row ids for the account dropdown ('default' = @huybuilds).
+app.get('/api/tiktok/accounts', async (_req, res) => {
+  const { data, error } = await supabase.from('tiktok_tokens').select('id').order('id');
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data.map((r) => r.id));
+});
+
+app.post('/api/external-video', (req, res) => {
+  videoUpload.single('video')(req, res, async (err: unknown) => {
+    const file = req.file;
+    const cleanup = () => { if (file) fs.unlink(file.path, () => {}); };
+    try {
+      if (err) {
+        const code = err && typeof err === 'object' && 'code' in err ? (err as { code?: string }).code : null;
+        if (code === 'LIMIT_FILE_SIZE') {
+          return res.status(413).json({ error: `File too large (max ${Math.round(VIDEO_MAX_BYTES / 1024 / 1024)}MB)` });
+        }
+        return res.status(400).json({ error: err instanceof Error ? err.message : 'Upload failed' });
+      }
+      if (!file) return res.status(400).json({ error: 'No video file provided' });
+
+      const { caption = '', hashtags = '', account = 'default', scheduledFor } = req.body;
+      if (!scheduledFor || Number.isNaN(new Date(scheduledFor).getTime())) {
+        return res.status(400).json({ error: 'scheduledFor (ISO datetime) is required' });
+      }
+
+      // "#nails, fresh set" -> ['nails', 'fresh', 'set'] (post caption re-adds the #)
+      const tags = String(hashtags)
+        .split(/[\s,]+/)
+        .map((t: string) => t.replace(/^#/, '').trim())
+        .filter(Boolean);
+
+      const safeName = path.basename(file.originalname).replace(/[^\w.-]/g, '_');
+      const storagePath = `tiktok-videos/external-${Date.now()}-${safeName}`;
+      await uploadVideoTus(file.path, storagePath, file.size);
+      const { data: { publicUrl } } = supabase.storage.from('videos').getPublicUrl(storagePath);
+
+      const { data, error } = await supabase
+        .from('tiktok_content_pool')
+        .insert({
+          content_type: 'external',
+          status: 'rendered',
+          video_url: `${publicUrl}?v=${Date.now()}`,
+          caption: String(caption),
+          hashtags: tags,
+          tiktok_account: account === 'default' ? null : String(account),
+          scheduled_for: new Date(scheduledFor).toISOString(),
+          // First caption line (or filename) so pool/schedule lists have a label
+          hook_text: String(caption).split('\n')[0].slice(0, 120) || safeName,
+        })
+        .select()
+        .single();
+      if (error) return res.status(500).json({ error: error.message });
+
+      res.status(201).json(data);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      res.status(502).json({ error: `Video upload failed: ${msg}` });
+    } finally {
+      cleanup();
+    }
+  });
 });
 
 const anthropic = new Anthropic();
@@ -1091,15 +1172,20 @@ function startTokenRefreshCron() {
 
   tokenRefreshTask = cron.schedule(tokenRefreshCron, async () => {
     console.log(`[token-refresh] Cron fired at ${new Date().toLocaleString()}`);
-    try {
-      const client = new TikTokClient(supabase);
-      // Threshold > 24h so each daily tick refreshes; this rotates the
-      // refresh token regularly and prevents staleness from disuse.
-      await client.ensureFreshToken(25 * 60 * 60 * 1000);
-      console.log('[token-refresh] OK');
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.error(`[token-refresh] FAILED: ${msg}`);
+    // Refresh every account row (default + client accounts) independently so
+    // one failed account doesn't stop the others from rotating.
+    const { data: accounts } = await supabase.from('tiktok_tokens').select('id');
+    for (const { id } of accounts ?? []) {
+      try {
+        const client = new TikTokClient(supabase, id);
+        // Threshold > 24h so each daily tick refreshes; this rotates the
+        // refresh token regularly and prevents staleness from disuse.
+        await client.ensureFreshToken(25 * 60 * 60 * 1000);
+        console.log(`[token-refresh] OK (${id})`);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error(`[token-refresh] FAILED (${id}): ${msg}`);
+      }
     }
   });
 

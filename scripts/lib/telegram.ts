@@ -57,7 +57,7 @@ export function buildInboxMessage(p: InboxMessagePayload): { text: string; photo
 /** Minimal structural view of a content item — the fields the notifier reads. */
 export interface NotifiableItem {
   id: string;
-  content_type: 'reveal' | 'tip';
+  content_type: 'reveal' | 'tip' | 'external';
   scheduled_for?: string | null;
   image_pairs?: Array<{ after_url?: string }>;
   after_image_url?: string;
