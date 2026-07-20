@@ -1,5 +1,5 @@
 import React from 'react';
-import { AbsoluteFill, useCurrentFrame, Img } from 'remotion';
+import { AbsoluteFill, useCurrentFrame, Img, staticFile } from 'remotion';
 import { SAFE_ZONE, interpolate, type TipTiming } from '../config';
 import { useBrand } from '../brand';
 import { TipVisual, type TipVisualSpec } from './TipVisual';
@@ -50,7 +50,8 @@ export const TipCard: React.FC<TipCardProps> = ({
   const titleOpacity = interpolate(frame, [T.tipStart + 4, T.tipStart + 20], [0, 1]);
 
   // Background imagery (primary + b-roll), with Ken Burns + cross-fade
-  const images = [tipImageSrc, ...(tipImages || [])].filter(Boolean) as string[];
+  const images = ([tipImageSrc, ...(tipImages || [])].filter(Boolean) as string[])
+    .map((src) => (src.startsWith('http') ? src : staticFile(src))); // same resolve rule as ShowcaseGallery
   const hasBg = images.length > 0;
 
   const kbScale = interpolate(frame, [T.tipStart, T.tipEnd], [1.06, 1.18]);
