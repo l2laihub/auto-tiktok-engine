@@ -47,6 +47,7 @@ Run migrations in order in the Supabase SQL editor:
 | 2 | `supabase/migration_002_dashboard.sql` | `pipeline_run_log` table for dashboard history |
 | 3 | `supabase/migration_003_tiktok_tokens.sql` | `tiktok_tokens` table, `publish_status` column |
 | 4 | `supabase/migration-v2.sql` | Multi-pair support (`image_pairs` JSONB, 1–6 pair constraint), Suno audio fields, backfill for legacy single-pair rows |
+| 8 | `supabase/migration-v7-claim.sql` | `claimed_at` column + reworked pickup index, for cross-process scheduler claims |
 
 Migration 4 must run after 1–3. The backfill in `migration-v2.sql` normalizes existing single-pair rows into the `image_pairs` JSONB format so the rendering code only needs to handle one path.
 
