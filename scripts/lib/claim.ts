@@ -45,8 +45,24 @@ export async function selectNextCandidate(
 
 /**
  * Take ownership of one row and return it. This is a single UPDATE, so
- * Postgres row-locks it and exactly one caller can win; the loser gets null
- * because the WHERE no longer matches.
+ * Postgres row-locks it and exactly one caller's WHERE still matches; the
+ * loser's WHERE matches zero rows. Atomicity comes from that WHERE clause,
+ * not from anything we do here — but the winner has to be identified by the
+ * updated row *count*, not by asking PostgREST to hand back the row.
+ *
+ * Why: our filter is `.or(claimableFilter(cutoff))`, which references
+ * claimed_at — the very column this UPDATE sets. PostgREST re-applies that
+ * filter against each row's *new* values when building the response
+ * representation, so a row we just claimed no longer matches "claimable"
+ * and the representation comes back empty even though the UPDATE
+ * committed. `.select().single()` doesn't just misreport that — expecting
+ * exactly one row back and getting zero makes it error out and roll back
+ * the write entirely, so claiming would never succeed at all, winner or
+ * not. Do not go back to `.select()`/`.single()` here.
+ *
+ * So: update with `count: 'exact'` and no `.select()`, use `count === 1`
+ * to know we won, then re-fetch the row separately — safe now, since we
+ * own it.
  *
  * Never released: 'posted' and 'failed' both fall outside the pickup filter,
  * so a stale claim on a finished row is invisible.
@@ -56,15 +72,24 @@ export async function claimItem<T>(
   id: string,
   cutoff: string,
 ): Promise<T | null> {
-  const { data, error } = await supabase
+  const { count, error } = await supabase
     .from('tiktok_content_pool')
-    .update({ claimed_at: new Date().toISOString() })
+    .update({ claimed_at: new Date().toISOString() }, { count: 'exact' })
     .eq('id', id)
-    .or(claimableFilter(cutoff))
-    .select()
+    .or(claimableFilter(cutoff));
+
+  if (error) throw new Error(`Failed to claim item: ${error.message}`);
+  if (count === null) {
+    throw new Error('Failed to claim item: no row count returned (Prefer: count=exact not applied?)');
+  }
+  if (count === 0) return null; // another instance won
+
+  const { data, error: fetchError } = await supabase
+    .from('tiktok_content_pool')
+    .select('*')
+    .eq('id', id)
     .single();
 
-  if (error?.code === 'PGRST116') return null; // another instance won
-  if (error) throw new Error(`Failed to claim item: ${error.message}`);
+  if (fetchError) throw new Error(`Failed to fetch claimed item: ${fetchError.message}`);
   return data as T;
 }
