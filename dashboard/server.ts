@@ -25,6 +25,7 @@ import { generateMusicTrack as generateSunoTrack, downloadAndTrim } from '../src
 import { createRevealTiming, createTipsTiming, VIDEO } from '../src/config';
 import { withRetry } from '../scripts/lib/retry';
 import { uploadVideoTus } from '../scripts/lib/video-upload';
+import { claimableFilter, staleCutoff } from '../scripts/lib/claim';
 import { TikTokClient } from '../scripts/lib/tiktok-api';
 import os from 'os';
 import {
@@ -1123,12 +1124,19 @@ let schedulerTask: ReturnType<typeof cron.schedule> | null = null;
 
 // True if any item is due to post now (scheduled_for at or before this instant).
 // 'rendered' is included so a pre-rendered item that is now due still counts.
+//
+// Claimed rows are excluded, matching what fetchNextItem can actually pick up.
+// Without this the gate and the picker disagree: every tick would spawn a
+// pipeline that finds nothing and exits 0, filling the run history with green
+// "success" rows that did no work — which is exactly how an expired TikTok
+// token stayed invisible for six days.
 async function hasScheduledItems(): Promise<boolean> {
   const { count } = await supabase
     .from('tiktok_content_pool')
     .select('id', { count: 'exact', head: true })
     .in('status', ['queued', 'scripted', 'rendered'])
-    .lte('scheduled_for', new Date().toISOString());
+    .lte('scheduled_for', new Date().toISOString())
+    .or(claimableFilter(staleCutoff()));
 
   return (count ?? 0) > 0;
 }

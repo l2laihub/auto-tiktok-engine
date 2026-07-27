@@ -585,7 +585,13 @@
       line-height: 1.7;
       color: var(--green);
       padding: 1rem;
-      max-height: 350px;
+      /* Pipeline logs run to hundreds of lines and the failure is always at the
+         tail — 350px meant reading a stack trace through a letterbox. The cap is
+         deliberately generous so the drag handle has room to be useful; a short
+         log still only takes the height it needs. */
+      max-height: 80vh;
+      min-height: 180px;
+      resize: vertical;
       overflow-y: auto;
       white-space: pre-wrap;
       word-break: break-all;
@@ -1040,7 +1046,12 @@
       border-radius: 6px;
       padding: 0.75rem;
       color: var(--text-muted);
-      max-height: 200px;
+      /* Opens scrolled to the bottom (see scrollToEnd in the Pipeline tab): a
+         failed run's cause is the last thing printed, under a wall of render
+         progress and font warnings. Cap is generous so the drag handle helps. */
+      max-height: 70vh;
+      min-height: 160px;
+      resize: vertical;
       overflow-y: auto;
       white-space: pre-wrap;
       margin-top: 0.5rem;
@@ -3667,6 +3678,13 @@
         return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
       }
 
+      // Open an expanded run log at its end. Why a run failed is the last thing
+      // printed, buried under render progress and font warnings \u2014 scrolled to
+      // the top, the reason is invisible without a long drag.
+      function scrollToEnd(el) {
+        if (el) el.scrollTop = el.scrollHeight;
+      }
+
       return html`<div>
         <div className="stats-grid">
           ${['queued', 'scripted', 'rendering', 'rendered', 'posted', 'failed'].map(status => html`
@@ -3748,7 +3766,7 @@
                   </tr>
                   ${expandedRun === run.id ? html`
                     <tr><td colSpan="6" style=${{padding: '0 1rem 1rem'}}>
-                      <div className="history-output">${run.output}</div>
+                      <div className="history-output" ref=${scrollToEnd}>${run.output}</div>
                     </td></tr>
                   ` : null}
                 </${React.Fragment}>
@@ -3777,7 +3795,7 @@
                   <button className="expand-btn" style=${{marginTop: '0.5rem'}} onClick=${() => setExpandedRun(expandedRun === run.id ? null : run.id)}>
                     ${expandedRun === run.id ? 'hide log' : 'show log'}
                   </button>
-                  ${expandedRun === run.id ? html`<div className="history-output">${run.output}</div>` : null}
+                  ${expandedRun === run.id ? html`<div className="history-output" ref=${scrollToEnd}>${run.output}</div>` : null}
                 ` : null}
                 <div style=${{marginTop: '0.5rem', display: 'flex', justifyContent: 'flex-end'}}>
                   <button className="btn btn-ghost btn-sm btn-danger" onClick=${() => handleDeleteRun(run.id)} title="Delete run">✕</button>
