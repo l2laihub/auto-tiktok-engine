@@ -120,14 +120,17 @@ async function fetchNextItem(specificId?: string): Promise<ContentRow | null> {
     // the cron picking up the same item.
     const claimed = await claimItem<ContentRow>(supabase, specificId, cutoff);
     if (!claimed) {
-      console.log('  Item is claimed by another run — skipping.');
+      console.log(`  Item ${specificId.slice(0, 8)} is claimed by another run — skipping.`);
       return null;
     }
     return claimed;
   }
 
   const candidate = await selectNextCandidate(supabase, cutoff);
-  if (!candidate) return null;
+  if (!candidate) {
+    console.log('  No content items in queue. Add items to tiktok_content_pool.');
+    return null;
+  }
 
   const claimed = await claimItem<ContentRow>(supabase, candidate.id, cutoff);
   if (!claimed) {
@@ -827,10 +830,7 @@ async function main() {
   console.log('Step 1: Fetching content...');
   const item = await fetchNextItem(specificId);
 
-  if (!item) {
-    console.log('  No content items in queue. Add items to tiktok_content_pool.');
-    return;
-  }
+  if (!item) return;
 
   console.log(
     `  Found: ${item.content_type} (${item.id.slice(0, 8)}...) — status: ${item.status}`
