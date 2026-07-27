@@ -35,7 +35,7 @@ import {
   VideoProcessingError,
 } from './lib/tiktok-api';
 import { uploadVideoTus } from './lib/video-upload';
-import { staleCutoff, selectNextCandidate, claimItem, releaseClaim } from './lib/claim';
+import { staleCutoff, selectNextCandidate, claimItem } from './lib/claim';
 import path from 'path';
 import fs from 'fs';
 
@@ -848,11 +848,6 @@ async function main() {
     console.log(`  Video URL: ${item.video_url}`);
     console.log('\nStep 6: Posting to TikTok...');
     await postToTikTok(item, item.video_url); // videoPath resolved inside from OUTPUT_DIR or downloaded
-    // A dry run never posts, so it must not keep holding the claim — release
-    // it now that the run's work is done, not right after claiming, so the
-    // row isn't picked up mid-run. Non-dry-run posts leave the claim in
-    // place: 'posted'/'failed' are outside the pickup filter (see claim.ts).
-    if (DRY_RUN) await releaseClaim(supabase, item.id);
     console.log('\n✅ Pipeline complete!');
     return;
   }
@@ -869,8 +864,6 @@ async function main() {
       console.log('\n  External item: skipping steps 2-5');
       console.log('\nStep 6: Posting to TikTok...');
       await postToTikTok(item, item.video_url);
-      // See the identical dry-run release above — same reasoning.
-      if (DRY_RUN) await releaseClaim(supabase, item.id);
       console.log('\n✅ Pipeline complete!');
       return;
     }
@@ -904,8 +897,6 @@ async function main() {
   // Step 6: Post
   console.log('\nStep 6: Posting to TikTok...');
   await postToTikTok(withMusic, videoUrl, videoPath);
-  // See the identical dry-run release above — same reasoning.
-  if (DRY_RUN) await releaseClaim(supabase, item.id);
 
   console.log('\n✅ Pipeline complete!');
 }

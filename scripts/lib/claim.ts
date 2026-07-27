@@ -66,6 +66,17 @@ export async function selectNextCandidate(
  *
  * Never released: 'posted' and 'failed' both fall outside the pickup filter,
  * so a stale claim on a finished row is invisible.
+ *
+ * Dry runs hold their claim until CLAIM_TTL_MS too — previewing a due item
+ * (e.g. the dashboard's re-render button) can delay its real post by up to
+ * 30 minutes. This is accepted, not overlooked: an earlier version released
+ * the claim by id right after a dry run finished, but releasing by id alone
+ * can't prove the claim being cleared is still the one this run took — by
+ * the time a long-running dry run exits, the live scheduler may have since
+ * claimed the same row for a real post, and an unconditional release would
+ * null that out and re-open it to a second claim. Do not re-add a release
+ * call without an ownership check (e.g. compare-and-clear on the exact
+ * claimed_at timestamp this run set).
  */
 export async function claimItem<T>(
   supabase: SupabaseClient,
@@ -103,26 +114,4 @@ export async function claimItem<T>(
 
   if (fetchError) throw new Error(`Failed to fetch claimed item: ${fetchError.message}`);
   return data as T;
-}
-
-/**
- * Give back a claim taken by a run that will not post — a dry run, in
- * practice. Without this, previewing a due item (e.g. the dashboard's
- * re-render button) claims it and then never touches `claimed_at` again,
- * since `postToTikTok` early-returns for dry runs before reaching the code
- * that would otherwise leave the claim in place on purpose. The row then sits
- * claimed for up to CLAIM_TTL_MS, delaying the real post.
- *
- * Real runs must NOT call this: 'posted' and 'failed' both fall outside the
- * pickup filter, so leaving `claimed_at` set on a finished row is correct and
- * intentional (see claimItem's docstring) — releasing it here would just
- * re-open a already-handled row to a second claim.
- */
-export async function releaseClaim(supabase: SupabaseClient, id: string): Promise<void> {
-  const { error } = await supabase
-    .from('tiktok_content_pool')
-    .update({ claimed_at: null })
-    .eq('id', id);
-
-  if (error) throw new Error(`Failed to release claim: ${error.message}`);
 }

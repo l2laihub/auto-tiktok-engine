@@ -49,13 +49,16 @@ test('two concurrent claims produce exactly one winner', { skip: !LIVE }, async 
   // permanently every 30 minutes forever (render-video.ts throws on an
   // external row with no video_url); a row due in a year just sits inert.
   // Do NOT "simplify" this back to a near-term date — the row is backdated
-  // further down, only after it's claimed.
+  // further down, only after it's claimed, and restored to far-future again
+  // immediately after the one assertion that needs it due, so the row is
+  // only genuinely due for the span of that single query.
+  const farFuture = new Date(Date.now() + 365 * 24 * 60 * 60_000).toISOString();
   const { data: row, error: insertError } = await supabase
     .from('tiktok_content_pool')
     .insert({
       content_type: 'external',
       status: 'rendered',
-      scheduled_for: new Date(Date.now() + 365 * 24 * 60 * 60_000).toISOString(),
+      scheduled_for: farFuture,
       hook_text: 'CLAIM TEST — safe to delete',
     })
     .select()
@@ -95,6 +98,16 @@ test('two concurrent claims produce exactly one winner', { skip: !LIVE }, async 
 
     const next = await selectNextCandidate(supabase, cutoff);
     assert.notEqual(next?.id, row.id, 'a claimed row must not be re-selected');
+
+    // That was the only assertion that needed the row genuinely due.
+    // Restore the far-future date right away so a kill between here and the
+    // finally block's delete leaves an inert orphan, not a due row with no
+    // video_url that the live scheduler would retry and fail on forever.
+    const { error: restoreError } = await supabase
+      .from('tiktok_content_pool')
+      .update({ scheduled_for: farFuture })
+      .eq('id', row.id);
+    assert.equal(restoreError, null);
   } finally {
     const { error: deleteError } = await supabase.from('tiktok_content_pool').delete().eq('id', row.id);
     assert.equal(deleteError, null, 'cleanup delete failed — a dummy row may be stranded in production');
