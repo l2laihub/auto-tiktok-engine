@@ -35,6 +35,7 @@ import {
   VideoProcessingError,
 } from './lib/tiktok-api';
 import { uploadVideoTus } from './lib/video-upload';
+import { staleCutoff, selectNextCandidate, claimItem } from './lib/claim';
 import path from 'path';
 import fs from 'fs';
 
@@ -107,35 +108,38 @@ interface ContentRow {
   scheduled_for?: string | null;
 }
 
-// --- Step 1: Fetch next content item ---
+// --- Step 1: Fetch and claim the next content item ---
+// Claiming is what stops two running instances (the deployment and a local
+// dashboard) from both picking up the same due row and posting it twice —
+// pipelineRunning only guards one process against itself.
 async function fetchNextItem(specificId?: string): Promise<ContentRow | null> {
-  if (specificId) {
-    const { data, error } = await supabase
-      .from('tiktok_content_pool')
-      .select('*')
-      .eq('id', specificId)
-      .single();
+  const cutoff = staleCutoff();
 
-    if (error) throw new Error(`Failed to fetch item: ${error.message}`);
-    return data;
+  if (specificId) {
+    // A by-id run claims too: a manual "post this now" must not collide with
+    // the cron picking up the same item.
+    const claimed = await claimItem<ContentRow>(supabase, specificId, cutoff);
+    if (!claimed) {
+      console.log(`  Item ${specificId.slice(0, 8)} is claimed by another run — skipping.`);
+      return null;
+    }
+    return claimed;
   }
 
-  // Get the next due item. 'rendered' is included so items that were already
-  // rendered (video built + uploaded, awaiting post) still get picked up and
-  // posted — otherwise a pre-rendered scheduled item would never auto-post.
-  const { data, error } = await supabase
-    .from('tiktok_content_pool')
-    .select('*')
-    .in('status', ['queued', 'scripted', 'rendered'])
-    .or('scheduled_for.is.null,scheduled_for.lte.now()')
-    .order('scheduled_for', { ascending: true, nullsFirst: false })
-    .order('created_at', { ascending: true })
-    .limit(1)
-    .single();
+  const candidate = await selectNextCandidate(supabase, cutoff);
+  if (!candidate) {
+    console.log('  No content items in queue. Add items to tiktok_content_pool.');
+    return null;
+  }
 
-  if (error?.code === 'PGRST116') return null; // no rows
-  if (error) throw new Error(`Failed to fetch next item: ${error.message}`);
-  return data;
+  const claimed = await claimItem<ContentRow>(supabase, candidate.id, cutoff);
+  if (!claimed) {
+    // Another instance got there first. The poller runs every minute, so the
+    // next tick picks up whatever is next — no retry loop needed here.
+    console.log('  Item was claimed by another run — skipping this tick.');
+    return null;
+  }
+  return claimed;
 }
 
 // --- Step 2: Generate script if needed ---
@@ -826,10 +830,7 @@ async function main() {
   console.log('Step 1: Fetching content...');
   const item = await fetchNextItem(specificId);
 
-  if (!item) {
-    console.log('  No content items in queue. Add items to tiktok_content_pool.');
-    return;
-  }
+  if (!item) return;
 
   console.log(
     `  Found: ${item.content_type} (${item.id.slice(0, 8)}...) — status: ${item.status}`

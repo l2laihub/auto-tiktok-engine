@@ -13,6 +13,7 @@
     "generate:tip-content": "node --env-file=.env --import tsx scripts/generate-tip-content.ts",
     "verify:image-gen": "node --env-file=.env --import tsx scripts/verify-image-gen.ts",
     "test": "node --import tsx --test scripts/lib/__tests__/*.test.ts",
+    "test:live": "node --env-file=.env --import tsx --test scripts/lib/__tests__/claim.test.ts",
     "pipeline": "node --env-file=.env --import tsx scripts/render-video.ts",
     "pipeline:dry": "node --env-file=.env --import tsx scripts/render-video.ts --dry-run",
     "pipeline:post": "node --env-file=.env --import tsx scripts/render-video.ts --post-only",

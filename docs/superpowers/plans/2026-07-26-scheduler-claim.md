@@ -214,9 +214,16 @@ export async function selectNextCandidate(
 }
 
 /**
- * Take ownership of one row and return it. This is a single UPDATE, so
- * Postgres row-locks it and exactly one caller can win; the loser gets null
- * because the WHERE no longer matches.
+ * Take ownership of one row and return it. Atomicity comes from the UPDATE's
+ * WHERE clause — Postgres row-locks the row, so exactly one caller's filter
+ * matches and the loser updates nothing.
+ *
+ * The winner is identified by the affected-row COUNT, never by the returned
+ * representation. PostgREST re-applies the `or=` filter when building the
+ * representation, and a just-claimed row no longer matches its own claim
+ * predicate — so asking for the row back yields [] (or a 406 rollback with
+ * .single()) even when the claim succeeded. Do not "simplify" this into a
+ * .select().single().
  *
  * Never released: 'posted' and 'failed' both fall outside the pickup filter,
  * so a stale claim on a finished row is invisible.
@@ -226,19 +233,35 @@ export async function claimItem<T>(
   id: string,
   cutoff: string,
 ): Promise<T | null> {
-  const { data, error } = await supabase
+  const { count, error } = await supabase
     .from('tiktok_content_pool')
-    .update({ claimed_at: new Date().toISOString() })
+    .update({ claimed_at: new Date().toISOString() }, { count: 'exact' })
     .eq('id', id)
-    .or(claimableFilter(cutoff))
-    .select()
+    .or(claimableFilter(cutoff));
+
+  if (error) throw new Error(`Failed to claim item: ${error.message}`);
+  if (count !== 1) return null; // another instance won
+
+  // We own the row now, so reading it back is safe.
+  const { data, error: readError } = await supabase
+    .from('tiktok_content_pool')
+    .select('*')
+    .eq('id', id)
     .single();
 
-  if (error?.code === 'PGRST116') return null; // another instance won
-  if (error) throw new Error(`Failed to claim item: ${error.message}`);
+  if (readError) throw new Error(`Failed to read claimed item: ${readError.message}`);
   return data as T;
 }
 ```
+
+> **Amended 2026-07-26, mid-execution.** This function originally used
+> `.select().single()` on the claiming UPDATE. Task 3's live test proved that
+> never succeeds — not even uncontested — for the reason in the docstring
+> above. Had it shipped, every due item would have been claimed and then
+> skipped by both instances, so nothing would post until the 30-minute TTL
+> expired. The count-based shape was verified against the live database
+> (`content-range: 0-0/1` for the winner, `*/0` for the loser) before this
+> amendment was written.
 
 - [ ] **Step 4: Run the tests to verify they pass**
 

@@ -22,6 +22,29 @@ npx supabase db query --linked "SELECT tablename FROM pg_tables WHERE schemaname
 
 ---
 
+## Live Claim Test
+
+`npm test` only exercises pure functions (`CLAIM_TTL_MS`, `staleCutoff`,
+`claimableFilter`) — it cannot prove the scheduler claim itself is atomic,
+because that's a database property (a conditional `UPDATE` racing itself),
+not something a unit test can fake. **A regression in `claimItem` — e.g.
+reverting it to `.select().single()`, the exact bug this claim mechanism was
+built to avoid — will leave `npm test` green.**
+
+```bash
+npm run test:live
+```
+
+Runs `scripts/lib/__tests__/claim.test.ts` with `.env` loaded, including the
+concurrency test that fires two `claimItem` calls at the same row and asserts
+exactly one wins. It needs `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` in
+`.env` — it touches the **live** database, inserting a dummy row (scheduled
+about a year out, `hook_text: 'CLAIM TEST — safe to delete'`) that a
+`try/finally` deletes at the end of the test. Run this after any change to
+`scripts/lib/claim.ts` — `npm test` alone will not catch a regression there.
+
+---
+
 ## Stage 1: Remotion Studio Preview
 
 Verify both video templates render correctly in the browser.
