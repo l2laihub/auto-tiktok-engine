@@ -79,11 +79,22 @@ export async function claimItem<T>(
     .or(claimableFilter(cutoff));
 
   if (error) throw new Error(`Failed to claim item: ${error.message}`);
-  if (count === null) {
-    throw new Error('Failed to claim item: no row count returned (Prefer: count=exact not applied?)');
+  // Fail closed: only a literal 1 means we won. Anything else — 0, null, or
+  // (if postgrest-js ever parses a malformed Content-Range as NaN) neither —
+  // must NOT fall through to "we won" by default.
+  if (!Number.isInteger(count)) {
+    throw new Error(
+      `Claim returned no usable row count (${count}) — Prefer: count=exact may not have reached PostgREST`,
+    );
   }
-  if (count === 0) return null; // another instance won
+  if (count !== 1) return null; // another instance won (count === 0)
 
+  // A second, non-transactional request — the row could theoretically be
+  // deleted (dashboard) between the UPDATE above and this SELECT, in which
+  // case .single() raises and this throws rather than returning null; or
+  // edited concurrently, in which case the returned object may not be
+  // exactly the version our claim predicate matched. Both windows are
+  // narrow and bounded by CLAIM_TTL_MS, not indefinite.
   const { data, error: fetchError } = await supabase
     .from('tiktok_content_pool')
     .select('*')

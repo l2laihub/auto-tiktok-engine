@@ -43,7 +43,7 @@ test('two concurrent claims produce exactly one winner', { skip: !LIVE }, async 
   // this same database every minute, which could steal the row between our
   // insert and our claims (spurious failure) and would log a post failure
   // against a row with no video_url. Do NOT "simplify" this back to a past
-  // date — see Step 3 below, where we backdate it only after it's claimed.
+  // date — the row is backdated further down, only after it's claimed.
   const { data: row, error: insertError } = await supabase
     .from('tiktok_content_pool')
     .insert({
@@ -77,9 +77,20 @@ test('two concurrent claims produce exactly one winner', { skip: !LIVE }, async 
       .eq('id', row.id);
     assert.equal(updateError, null);
 
+    // selectNextCandidate picking something else isn't proof by itself — on
+    // a queue with an earlier due row it'd pass regardless of the claim. Ask
+    // directly whether the claimed row still matches the claim filter.
+    const { data: stillClaimable } = await supabase
+      .from('tiktok_content_pool')
+      .select('id')
+      .eq('id', row.id)
+      .or(claimableFilter(cutoff));
+    assert.deepEqual(stillClaimable, [], 'a claimed row must no longer match the claim filter');
+
     const next = await selectNextCandidate(supabase, cutoff);
     assert.notEqual(next?.id, row.id, 'a claimed row must not be re-selected');
   } finally {
-    await supabase.from('tiktok_content_pool').delete().eq('id', row.id);
+    const { error: deleteError } = await supabase.from('tiktok_content_pool').delete().eq('id', row.id);
+    assert.equal(deleteError, null, 'cleanup delete failed — a dummy row may be stranded in production');
   }
 });
