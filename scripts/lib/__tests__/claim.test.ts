@@ -36,20 +36,26 @@ test('two concurrent claims produce exactly one winner', { skip: !LIVE }, async 
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
   );
 
-  // scheduled_for starts an hour in the FUTURE, not the past. claimItem only
-  // filters on id and claimed_at (never scheduled_for), so the race below is
-  // unaffected either way — but a due, unclaimed row would be immediately
-  // visible to the real deployed scheduler (dashboard.huybuilds.app) polling
-  // this same database every minute, which could steal the row between our
-  // insert and our claims (spurious failure) and would log a post failure
-  // against a row with no video_url. Do NOT "simplify" this back to a past
-  // date — the row is backdated further down, only after it's claimed.
+  // scheduled_for starts about a YEAR in the FUTURE, not the past (or an
+  // hour out). claimItem only filters on id and claimed_at (never
+  // scheduled_for), so the race below is unaffected either way — but a due,
+  // unclaimed row would be immediately visible to the real deployed
+  // scheduler (dashboard.huybuilds.app) polling this same database every
+  // minute, which could steal the row between our insert and our claims
+  // (spurious failure) and would log a post failure against a row with no
+  // video_url. The far-future date is also what makes an orphan harmless: if
+  // this process is killed before the finally block's delete runs (Ctrl-C,
+  // CI timeout), a row due in an hour becomes due for real and fails
+  // permanently every 30 minutes forever (render-video.ts throws on an
+  // external row with no video_url); a row due in a year just sits inert.
+  // Do NOT "simplify" this back to a near-term date — the row is backdated
+  // further down, only after it's claimed.
   const { data: row, error: insertError } = await supabase
     .from('tiktok_content_pool')
     .insert({
       content_type: 'external',
       status: 'rendered',
-      scheduled_for: new Date(Date.now() + 60 * 60_000).toISOString(),
+      scheduled_for: new Date(Date.now() + 365 * 24 * 60 * 60_000).toISOString(),
       hook_text: 'CLAIM TEST — safe to delete',
     })
     .select()

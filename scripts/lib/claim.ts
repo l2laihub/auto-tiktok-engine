@@ -104,3 +104,25 @@ export async function claimItem<T>(
   if (fetchError) throw new Error(`Failed to fetch claimed item: ${fetchError.message}`);
   return data as T;
 }
+
+/**
+ * Give back a claim taken by a run that will not post — a dry run, in
+ * practice. Without this, previewing a due item (e.g. the dashboard's
+ * re-render button) claims it and then never touches `claimed_at` again,
+ * since `postToTikTok` early-returns for dry runs before reaching the code
+ * that would otherwise leave the claim in place on purpose. The row then sits
+ * claimed for up to CLAIM_TTL_MS, delaying the real post.
+ *
+ * Real runs must NOT call this: 'posted' and 'failed' both fall outside the
+ * pickup filter, so leaving `claimed_at` set on a finished row is correct and
+ * intentional (see claimItem's docstring) — releasing it here would just
+ * re-open a already-handled row to a second claim.
+ */
+export async function releaseClaim(supabase: SupabaseClient, id: string): Promise<void> {
+  const { error } = await supabase
+    .from('tiktok_content_pool')
+    .update({ claimed_at: null })
+    .eq('id', id);
+
+  if (error) throw new Error(`Failed to release claim: ${error.message}`);
+}

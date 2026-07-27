@@ -66,7 +66,9 @@ touched, so no downstream branch moves.
 ### 2. Claim in `fetchNextItem()` (`scripts/render-video.ts`)
 
 The candidate SELECT gains a claim predicate, and the claim itself is a
-conditional UPDATE that returns the row only if it won:
+conditional UPDATE, row-locked by Postgres so exactly one caller's `WHERE`
+still matches. The winner is identified by the affected-row **count**, not by
+asking PostgREST to hand the row back:
 
 ```ts
 const CLAIM_TTL_MS = 30 * 60 * 1000;
@@ -76,15 +78,21 @@ const cutoff = new Date(Date.now() - CLAIM_TTL_MS).toISOString();
   .or(`claimed_at.is.null,claimed_at.lt.${cutoff}`)
 
 // then claim it — one UPDATE, row-locked by Postgres, exactly one winner
+const { count, error } = await supabase
+  .from('tiktok_content_pool')
+  .update({ claimed_at: new Date().toISOString() }, { count: 'exact' })
+  .eq('id', candidate.id)
+  .or(`claimed_at.is.null,claimed_at.lt.${cutoff}`);
+
+if (error) throw new Error(/* ... */);
+if (count !== 1) return null; // lost the race (or a malformed count — fail closed)
+
+// We own the row now, so a second, separate SELECT to read it back is safe.
 const { data: claimed } = await supabase
   .from('tiktok_content_pool')
-  .update({ claimed_at: new Date().toISOString() })
+  .select('*')
   .eq('id', candidate.id)
-  .or(`claimed_at.is.null,claimed_at.lt.${cutoff}`)
-  .select()
   .single();
-
-if (!claimed) return null; // lost the race — the next tick picks something up
 ```
 
 Two `.or()` calls on one query combine as `(scheduled…) AND (claimed…)`, which
@@ -96,6 +104,20 @@ worth a retry loop for a two-instance deployment.
 
 Both entry points claim: the by-id path (`fetchNextItem(specificId)`) claims
 too, so a manual "post this now" cannot collide with the cron.
+
+**Tried first, and rejected: `.update(...).select().single()`.** The obvious
+shape — let PostgREST hand back the updated row, treat a non-null result as
+"I won" — does not work, because PostgREST re-applies the request's `or=`
+filter (`claimed_at.is.null,claimed_at.lt.<cutoff>`) when it builds the
+response *representation*, evaluating it against each row's post-UPDATE
+values. A row this UPDATE just claimed has a fresh `claimed_at`, so it no
+longer matches its own claim predicate: the representation comes back empty
+even though the write committed. Worse, `.single()` expects exactly one row
+and errors on zero, which rolls the UPDATE back entirely — so with this
+shape, claiming can never succeed at all, winner or not. The count-based
+UPDATE above sidesteps the problem by never asking PostgREST to re-match the
+row it just changed; a second, ordinary SELECT (safe now that we own the row)
+fetches the data.
 
 ### 3. Recovery is the TTL, not a release
 
