@@ -79,7 +79,11 @@ export const HookText: React.FC<HookTextProps> = ({
       <div
         style={{
           position: 'relative',
-          background: `${BRAND.dark}D0`,
+          // ponytail: 55% + blur, not 82% flat — the panel sits over the photo's
+          // subject (nails), so it reads as glass instead of a sticker. Text stays
+          // legible on bright backgrounds via the per-word textShadow below.
+          background: `${BRAND.dark}8C`,
+          backdropFilter: 'blur(16px)',
           borderRadius: 32,
           paddingLeft: 56,
           paddingRight: 56,
@@ -194,6 +198,9 @@ export const HookText: React.FC<HookTextProps> = ({
             color: BRAND.textMuted,
             letterSpacing: 4,
             textTransform: 'uppercase',
+            // ponytail: the teaser sits outside the glass panel, straight on the
+            // photo — without this it vanishes over bright backgrounds.
+            textShadow: `0 2px 12px ${BRAND.dark}, 0 0 24px ${BRAND.dark}`,
             display: 'flex',
             alignItems: 'center',
             gap: 10,
