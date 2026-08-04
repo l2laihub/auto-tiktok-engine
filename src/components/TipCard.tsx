@@ -146,12 +146,13 @@ export const TipCard: React.FC<TipCardProps> = ({
         {/* Tip content card */}
         <div
           style={{
-            background: `${BRAND.darkSurface}E6`,
+            // ponytail: 65% + stronger blur — was 90%, which hid the nails behind it.
+            background: `${BRAND.darkSurface}A6`,
             borderRadius: 28,
             padding: 48,
             border: `1px solid ${BRAND.textMuted}22`,
             boxShadow: `0 16px 64px ${BRAND.dark}AA`,
-            backdropFilter: 'blur(10px)',
+            backdropFilter: 'blur(16px)',
           }}
         >
           {/* Header row: icon chip + animated accent bar */}
@@ -194,6 +195,7 @@ export const TipCard: React.FC<TipCardProps> = ({
               lineHeight: 1.3,
               marginBottom: 20,
               letterSpacing: -0.5,
+              textShadow: `0 2px 16px ${BRAND.dark}`,
               opacity: titleOpacity,
               transform: `translateY(${titleRise}px)`,
             }}
@@ -209,6 +211,7 @@ export const TipCard: React.FC<TipCardProps> = ({
               fontWeight: 400,
               color: BRAND.textLight,
               lineHeight: 1.6,
+              textShadow: `0 2px 14px ${BRAND.dark}`,
             }}
           >
             {tipBody}
