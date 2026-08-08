@@ -13,6 +13,7 @@ import { HookText } from '../components/HookText';
 import { EternalFrameCTA } from '../components/EternalFrameCTA';
 import { TipCard } from '../components/TipCard';
 import { PhoneSearchHook, type PhoneSearchProps } from '../components/PhoneSearchHook';
+import { HookBackdrop } from '../components/HookBackdrop';
 
 const { fontFamily: playfair } = loadPlayfair();
 
@@ -167,6 +168,11 @@ export const TipsEducational: React.FC<TipsProps> = ({
         />
       ))}
 
+      {/* === HOOK BACKDROP === Painted before the slogan and hook so both read
+          on top of it. From frame 0 so the thumbnail is a photo, not a bare
+          gradient; hands over to the first TipCard's own imagery at hookEnd. */}
+      <HookBackdrop imageSrc={hookImageSrc} startFrame={0} endFrame={timing.hookEnd} />
+
       {/* === SLOGAN INTRO (visible at frame 0 for thumbnail) === */}
       {frame < sloganIntroDuration && (
         <div
@@ -235,7 +241,6 @@ export const TipsEducational: React.FC<TipsProps> = ({
         fontSize={52}
         position={phoneSearch ? 'top' : 'center'}
         {...(hookTeaser !== undefined ? { teaser: hookTeaser } : {})}
-        {...(hookImageSrc ? { imageSrc: hookImageSrc } : {})}
       />
 
       {/* === PHONE SEARCH SEQUENCE (optional hook visual) === */}
