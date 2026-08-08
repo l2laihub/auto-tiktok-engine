@@ -1,5 +1,5 @@
 import React from 'react';
-import { useCurrentFrame } from 'remotion';
+import { useCurrentFrame, AbsoluteFill, Img, staticFile } from 'remotion';
 import { loadFont as loadPlayfair } from '@remotion/google-fonts/PlayfairDisplay';
 import { loadFont as loadInter } from '@remotion/google-fonts/Inter';
 import { interpolate } from '../config';
@@ -17,6 +17,8 @@ interface HookTextProps {
   position?: 'center' | 'top' | 'bottom';
   /** Uppercase teaser line under the hook card. */
   teaser?: string;
+  /** Full-bleed backdrop behind the hook. Path relative to public/, or an http URL. */
+  imageSrc?: string;
 }
 
 export const HookText: React.FC<HookTextProps> = ({
@@ -26,6 +28,7 @@ export const HookText: React.FC<HookTextProps> = ({
   fontSize = 56,
   position = 'center',
   teaser = 'watch the transformation',
+  imageSrc,
 }) => {
   const frame = useCurrentFrame();
   const { colors: BRAND } = useBrand();
@@ -48,6 +51,32 @@ export const HookText: React.FC<HookTextProps> = ({
     position === 'top' ? '12%' : position === 'bottom' ? '60%' : '32%';
 
   return (
+    <>
+      {imageSrc && (
+        <AbsoluteFill style={{ opacity: fadeOut }}>
+          <Img
+            src={imageSrc.startsWith('http') ? imageSrc : staticFile(imageSrc)}
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              // slow push-in, same language as TipCard's Ken Burns
+              transform: `scale(${interpolate(frame, [startFrame, endFrame], [1.04, 1.12])})`,
+            }}
+          />
+          {/* ponytail: light scrim, not a heavy one. The glass panel already
+              carries its own contrast and the teaser has its own textShadow
+              (see below) — this only takes the top off a bright photo so the
+              two don't have to fight it alone. Darker than this and the photo
+              stops being worth having. */}
+          <AbsoluteFill
+            style={{
+              background:
+                'linear-gradient(to bottom, rgba(10,12,24,0.55) 0%, rgba(10,12,24,0.30) 45%, rgba(10,12,24,0.70) 100%)',
+            }}
+          />
+        </AbsoluteFill>
+      )}
     <div
       style={{
         position: 'absolute',
@@ -212,5 +241,6 @@ export const HookText: React.FC<HookTextProps> = ({
         </div>
       </div>
     </div>
+    </>
   );
 };

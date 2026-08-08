@@ -49,6 +49,8 @@ export interface TipsProps {
   phoneSearch?: PhoneSearchProps;
   /** Teaser line under the hook text (defaults to HookText's own). */
   hookTeaser?: string;
+  /** Full-bleed backdrop behind the hook (path relative to public/). */
+  hookImageSrc?: string;
   // Per-client branding (defaults to EternalFrame)
   brand?: BrandProps;
 }
@@ -72,6 +74,7 @@ export const TipsEducational: React.FC<TipsProps> = ({
   slogan,
   phoneSearch,
   hookTeaser,
+  hookImageSrc,
   brand: brandProp,
 }) => {
   const frame = useCurrentFrame();
@@ -232,6 +235,7 @@ export const TipsEducational: React.FC<TipsProps> = ({
         fontSize={52}
         position={phoneSearch ? 'top' : 'center'}
         {...(hookTeaser !== undefined ? { teaser: hookTeaser } : {})}
+        {...(hookImageSrc ? { imageSrc: hookImageSrc } : {})}
       />
 
       {/* === PHONE SEARCH SEQUENCE (optional hook visual) === */}
