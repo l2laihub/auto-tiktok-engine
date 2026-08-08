@@ -52,6 +52,8 @@ export interface TipsProps {
   hookTeaser?: string;
   /** Override the hook's length in seconds. Omit — it is derived from the text. */
   hookSeconds?: number;
+  /** Override the takeaway's length in seconds. Omit — derived from the text. */
+  takeawaySeconds?: number;
   /** Full-bleed backdrop behind the hook (path relative to public/). */
   hookImageSrc?: string;
   // Per-client branding (defaults to EternalFrame)
@@ -73,6 +75,24 @@ export const hookSecondsFor = (
   return Math.max(4.5, (118 + words * 3) / VIDEO.fps);
 };
 
+/** Takeaway length, derived the same way. Used by Root's calculateMetadata too. */
+export const takeawaySecondsFor = (
+  props: Pick<TipsProps, 'takeaway' | 'takeawaySeconds' | 'tips'>
+) => {
+  if (props.takeawaySeconds) return props.takeawaySeconds;
+  const words = (props.takeaway || '').trim().split(/\s+/).filter(Boolean).length;
+  const tipCount = props.tips?.length || 1;
+  // ponytail: max(), not a sum. The card fades in over 12f and the recap icons
+  // pop at 18f + 8f apart, settling 12f later — but that plays out WHILE the
+  // line is being read, so the budget is whichever finishes last. Summing them
+  // would pad every video by a second for no reason.
+  // 9f/word ~= 3.3 words/sec, the comfortable subtitle rate. A flat 3s left an
+  // 11-word takeaway fully composed for 0.8s.
+  const readDone = 12 + words * 9;
+  const iconsDone = tipCount > 1 ? 18 + (tipCount - 1) * 8 + 12 : 0;
+  return Math.max(3.5, (Math.max(readDone, iconsDone) + 20) / VIDEO.fps);
+};
+
 export const TipsEducational: React.FC<TipsProps> = ({
   hookText,
   takeaway,
@@ -90,6 +110,7 @@ export const TipsEducational: React.FC<TipsProps> = ({
   hookTeaser,
   hookImageSrc,
   hookSeconds,
+  takeawaySeconds,
   brand: brandProp,
 }) => {
   const frame = useCurrentFrame();
@@ -112,7 +133,8 @@ export const TipsEducational: React.FC<TipsProps> = ({
   // and the composition's declared duration disagree.
   const timing = createTipsTiming(
     tips.length,
-    hookSecondsFor({ phoneSearch, hookText, hookSeconds })
+    hookSecondsFor({ phoneSearch, hookText, hookSeconds }),
+    takeawaySecondsFor({ takeaway, takeawaySeconds, tips: tipsProp })
   );
 
   // === Slogan intro: visible at frame 0 for thumbnail ===

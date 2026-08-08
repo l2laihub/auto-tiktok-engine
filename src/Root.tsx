@@ -1,6 +1,6 @@
 import { Composition } from 'remotion';
 import { BeforeAfterReveal, type RevealProps } from './compositions/BeforeAfterReveal';
-import { TipsEducational, hookSecondsFor, type TipsProps } from './compositions/TipsEducational';
+import { TipsEducational, hookSecondsFor, takeawaySecondsFor, type TipsProps } from './compositions/TipsEducational';
 import { ShowcaseGallery, type ShowcaseProps } from './compositions/ShowcaseGallery';
 import { VIDEO, createRevealTiming, createTipsTiming, createShowcaseTiming } from './config';
 
@@ -58,7 +58,11 @@ export const RemotionRoot: React.FC = () => {
         calculateMetadata={({ props }) => {
           const typedProps = props as unknown as TipsProps;
           const tipCount = typedProps.tips?.length || 1;
-          const timing = createTipsTiming(tipCount, hookSecondsFor(typedProps));
+          const timing = createTipsTiming(
+            tipCount,
+            hookSecondsFor(typedProps),
+            takeawaySecondsFor(typedProps)
+          );
           return {
             durationInFrames: timing.totalDuration,
             fps: VIDEO.fps,

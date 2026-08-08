@@ -115,11 +115,18 @@ export interface DynamicTipsTiming {
   ctaEnd: number;
 }
 
-export function createTipsTiming(tipCount: number, hookSeconds = 3): DynamicTipsTiming {
+export function createTipsTiming(
+  tipCount: number,
+  hookSeconds = 3,
+  takeawaySeconds = 3
+): DynamicTipsTiming {
   const fps = VIDEO.fps;
   const hookDuration = Math.floor(hookSeconds * fps); // 3s default; longer for hooks with a visual sequence
   const tipDuration = 8 * fps;           // 8s per tip
-  const takeawayDuration = 3 * fps;      // 3s
+  // Both defaults are bare floors for callers that pass nothing.
+  // TipsEducational derives the real values from the text — see
+  // hookSecondsFor / takeawaySecondsFor.
+  const takeawayDuration = Math.floor(takeawaySeconds * fps);
   const ctaDuration = 3.5 * fps;         // 3.5s
 
   const tips: TipTiming[] = [];
