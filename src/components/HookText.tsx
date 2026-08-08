@@ -38,6 +38,10 @@ export const HookText: React.FC<HookTextProps> = ({
   const wordDelay = 3; // frames between each word appearing
   let wordIndex = 0;
 
+  // ponytail: the panel needs a fade-IN too. Without one the glass card
+  // snapped to full opacity on its first frame, which is what made it land on
+  // top of whatever was still fading out above it.
+  const fadeIn = interpolate(frame, [startFrame, startFrame + 10], [0, 1]);
   // Overall fade out near the end
   const fadeOut = interpolate(frame, [endFrame - 15, endFrame], [1, 0]);
 
@@ -57,7 +61,7 @@ export const HookText: React.FC<HookTextProps> = ({
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        opacity: fadeOut,
+        opacity: fadeIn * fadeOut,
       }}
     >
       {/* Ambient glow behind text */}

@@ -60,6 +60,16 @@ export interface TipsProps {
   brand?: BrandProps;
 }
 
+/**
+ * The slogan intro owns frames 0..SLOGAN_INTRO_FRAMES; the hook starts as it
+ * clears. ponytail: one constant, used by both the component and the duration
+ * budget below. These were two separate hardcoded numbers (45 here, 35 baked
+ * into hookSecondsFor) that only happened to agree — until they didn't, and
+ * the hook's glass panel painted over the slogan mid-fade.
+ */
+export const SLOGAN_INTRO_FRAMES = Math.floor(1.5 * VIDEO.fps);
+export const HOOK_START_FRAME = SLOGAN_INTRO_FRAMES;
+
 /** Hook length depends on whether a phone-search sequence plays. Used by Root's calculateMetadata too. */
 export const hookSecondsFor = (
   props: Pick<TipsProps, 'phoneSearch' | 'hookText' | 'hookSeconds'>
@@ -72,7 +82,9 @@ export const hookSecondsFor = (
   // and the teaser at full opacity for TWO frames. Budget: hand-off + reveal +
   // teaser fade-in + a 45f hold to actually read it + the fade tail.
   const words = (props.hookText || '').trim().split(/\s+/).filter(Boolean).length;
-  return Math.max(4.5, (118 + words * 3) / VIDEO.fps);
+  // hand-off + word-by-word reveal (3f each) + teaser fade-in (18f) + a 45f
+  // hold to read it + the 20f fade tail.
+  return Math.max(4.5, (HOOK_START_FRAME + 18 + 45 + 20 + words * 3) / VIDEO.fps);
 };
 
 /** Takeaway length, derived the same way. Used by Root's calculateMetadata too. */
@@ -138,7 +150,7 @@ export const TipsEducational: React.FC<TipsProps> = ({
   );
 
   // === Slogan intro: visible at frame 0 for thumbnail ===
-  const sloganIntroDuration = Math.floor(1.5 * VIDEO.fps); // 1.5s
+  const sloganIntroDuration = SLOGAN_INTRO_FRAMES;
   const sloganOpacity = interpolate(
     frame,
     [0, 8, sloganIntroDuration - 12, sloganIntroDuration],
@@ -277,7 +289,7 @@ export const TipsEducational: React.FC<TipsProps> = ({
       {/* === HOOK TEXT (delayed to start after slogan; moves to top when the phone plays below) === */}
       <HookText
         text={hookText}
-        startFrame={sloganIntroDuration - 10}
+        startFrame={HOOK_START_FRAME}
         endFrame={timing.hookEnd}
         fontSize={52}
         position={phoneSearch ? 'top' : 'center'}
