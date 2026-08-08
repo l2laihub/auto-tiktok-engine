@@ -50,6 +50,8 @@ export interface TipsProps {
   phoneSearch?: PhoneSearchProps;
   /** Teaser line under the hook text (defaults to HookText's own). */
   hookTeaser?: string;
+  /** Override the hook's length in seconds. Omit — it is derived from the text. */
+  hookSeconds?: number;
   /** Full-bleed backdrop behind the hook (path relative to public/). */
   hookImageSrc?: string;
   // Per-client branding (defaults to EternalFrame)
@@ -57,8 +59,19 @@ export interface TipsProps {
 }
 
 /** Hook length depends on whether a phone-search sequence plays. Used by Root's calculateMetadata too. */
-export const hookSecondsFor = (props: Pick<TipsProps, 'phoneSearch'>) =>
-  props.phoneSearch ? 6.5 : 3;
+export const hookSecondsFor = (
+  props: Pick<TipsProps, 'phoneSearch' | 'hookText' | 'hookSeconds'>
+) => {
+  if (props.hookSeconds) return props.hookSeconds;
+  if (props.phoneSearch) return 6.5;
+  // ponytail: derived, not a constant. HookText reveals word-by-word (3f each)
+  // starting 35f in, the teaser then fades in over 18f, and the card fades out
+  // 15f before the end. A flat 3s left a 5-word hook fully readable for 0.63s
+  // and the teaser at full opacity for TWO frames. Budget: hand-off + reveal +
+  // teaser fade-in + a 45f hold to actually read it + the fade tail.
+  const words = (props.hookText || '').trim().split(/\s+/).filter(Boolean).length;
+  return Math.max(4.5, (118 + words * 3) / VIDEO.fps);
+};
 
 export const TipsEducational: React.FC<TipsProps> = ({
   hookText,
@@ -76,6 +89,7 @@ export const TipsEducational: React.FC<TipsProps> = ({
   phoneSearch,
   hookTeaser,
   hookImageSrc,
+  hookSeconds,
   brand: brandProp,
 }) => {
   const frame = useCurrentFrame();
@@ -94,7 +108,12 @@ export const TipsEducational: React.FC<TipsProps> = ({
         tipSource,
       }];
 
-  const timing = createTipsTiming(tips.length, hookSecondsFor({ phoneSearch }));
+  // Must pass the same fields Root's calculateMetadata does, or the component
+  // and the composition's declared duration disagree.
+  const timing = createTipsTiming(
+    tips.length,
+    hookSecondsFor({ phoneSearch, hookText, hookSeconds })
+  );
 
   // === Slogan intro: visible at frame 0 for thumbnail ===
   const sloganIntroDuration = Math.floor(1.5 * VIDEO.fps); // 1.5s
