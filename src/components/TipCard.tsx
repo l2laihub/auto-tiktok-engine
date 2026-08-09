@@ -118,7 +118,21 @@ export const TipCard: React.FC<TipCardProps> = ({
           position: 'absolute',
           left: SAFE_ZONE.side,
           right: SAFE_ZONE.rail,
-          ...(hasBg ? { bottom: SAFE_ZONE.bottom } : { top: '18%' }),
+          // ponytail: span the usable band and centre in it, rather than
+          // hugging the bottom safe zone. On TikTok that bottom 500px is
+          // filled by the app's caption and action rail — but on Facebook,
+          // where this client actually posts, nothing overlays it, so the card
+          // sat against a dead quarter-frame. Centring keeps clear of both
+          // zones and needs no height maths, so it holds for any text length.
+          ...(hasBg
+            ? {
+                top: SAFE_ZONE.top,
+                bottom: SAFE_ZONE.bottom,
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+              }
+            : { top: '18%' }),
           opacity: visible,
           transform: `translateY(${cardSlide}px)`,
         }}
@@ -148,7 +162,9 @@ export const TipCard: React.FC<TipCardProps> = ({
                   letterSpacing: 1,
                 }}
               >
-                Tip {tipIndex + 1} of {totalTips}
+                {/* ponytail: digits, not "Tip N of M" — the card's language is
+                    the client's, and this chip was always English. */}
+                {tipIndex + 1} / {totalTips}
               </span>
             </div>
           </div>

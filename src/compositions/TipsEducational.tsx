@@ -344,14 +344,18 @@ export const TipsEducational: React.FC<TipsProps> = ({
             maxWidth: 900,
           }}
         >
-          <div
-            style={{
-              fontSize: 48,
-              textAlign: 'center',
-              marginBottom: 16,
-            }}
-          >
-            ⚡
+          {/* ponytail: the brand rule the tip cards use, where the ⚡ was — so
+              the takeaway closes the same set rather than introducing a new
+              idiom on the last card. Drop this block entirely for plain text. */}
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 28 }}>
+            <div
+              style={{
+                width: 112,
+                height: 4,
+                borderRadius: 2,
+                background: `linear-gradient(to right, ${BRAND.coral}, ${BRAND.teal})`,
+              }}
+            />
           </div>
           <div
             style={{
