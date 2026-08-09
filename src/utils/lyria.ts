@@ -4,7 +4,7 @@
 // ============================================================
 
 import { GoogleGenAI } from '@google/genai';
-import { execSync } from 'child_process';
+import { execFileSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -102,17 +102,21 @@ export function trimAudioFile(opts: {
     fs.mkdirSync(outputDir, { recursive: true });
   }
 
-  const ffmpegCmd = [
-    'ffmpeg', '-y',
+  // execFileSync, not execSync: no shell, so a path with a space in it works.
+  execFileSync('ffmpeg', [
+    '-y',
+    // ponytail: -stream_loop is what guarantees the length. Neither Lyria nor
+    // Suno honours the requested duration exactly, and a track one second short
+    // of the video ends in dead air. -t still bounds the output, so looping is
+    // a no-op whenever the input is already long enough (the usual case).
+    '-stream_loop', '-1',
     '-i', inputPath,
     '-t', targetSeconds.toFixed(1),
     '-af', `afade=t=out:st=${fadeStart.toFixed(1)}:d=3`,
     '-codec:a', 'libmp3lame',
     '-b:a', '192k',
     outputPath,
-  ].join(' ');
-
-  execSync(ffmpegCmd, { stdio: 'pipe' });
+  ], { stdio: 'pipe', timeout: 120_000 });
   console.log(`  Lyria 3: trimmed to ${targetSeconds.toFixed(1)}s with fade-out -> ${outputPath}`);
 
   return outputPath;
