@@ -391,7 +391,10 @@ export const TipsEducational: React.FC<TipsProps> = ({
                       transform: `scale(${pop})`,
                     }}
                   >
-                    {tip.tipIcon || '💡'}
+                    {/* ponytail: the tip's number, not a fallback bulb. Without
+                        icons every recap chip was an identical 💡 — and a digit
+                        is language-neutral, which an emoji only pretends to be. */}
+                    {tip.tipIcon || i + 1}
                     <span style={{ position: 'absolute', bottom: -12, right: -12, fontSize: 34 }}>✅</span>
                   </div>
                 );

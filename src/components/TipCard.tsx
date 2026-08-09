@@ -43,7 +43,14 @@ export const TipCard: React.FC<TipCardProps> = ({
   const tipFadeOut = interpolate(frame, [T.tipEnd - 15, T.tipEnd], [1, 0]);
   const visible = tipOpacity * tipFadeOut;
   const cardSlide = interpolate(frame, [T.tipStart, T.tipStart + 20], [80, 0]);
-  const accentWidth = interpolate(frame, [T.tipStart + 6, T.tipStart + 26], [0, 64]);
+  // ponytail: wider when it stands alone. Beside an icon chip a 64px rule is a
+  // companion mark; without one it carries the header row by itself, and at
+  // 64px it reads as a leftover dash rather than a deliberate rule.
+  const accentWidth = interpolate(
+    frame,
+    [T.tipStart + 6, T.tipStart + 26],
+    [0, tipIcon ? 64 : 112]
+  );
 
   // Kinetic title: slight extra rise + settle, layered on the card slide
   const titleRise = interpolate(frame, [T.tipStart + 4, T.tipStart + 24], [24, 0]);
@@ -94,8 +101,9 @@ export const TipCard: React.FC<TipCardProps> = ({
           {/* Legibility scrim — darker toward the bottom where the card sits */}
           <AbsoluteFill
             style={{
+              // ponytail: bottom stops lightened — the glass card carries its own contrast now.
               background:
-                'linear-gradient(to bottom, rgba(10,12,24,0.55) 0%, rgba(10,12,24,0.12) 28%, rgba(10,12,24,0.55) 60%, rgba(10,12,24,0.93) 100%)',
+                'linear-gradient(to bottom, rgba(10,12,24,0.55) 0%, rgba(10,12,24,0.12) 28%, rgba(10,12,24,0.34) 60%, rgba(10,12,24,0.72) 100%)',
             }}
           />
         </AbsoluteFill>
@@ -120,7 +128,10 @@ export const TipCard: React.FC<TipCardProps> = ({
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
             <div
               style={{
-                background: `${BRAND.coral}33`,
+                // ponytail: chips carry their own dark backing — they sit on bare photo now.
+                background: `${BRAND.dark}B3`,
+                border: `1px solid ${BRAND.coral}59`,
+                backdropFilter: 'blur(10px)',
                 borderRadius: 20,
                 paddingLeft: 16,
                 paddingRight: 16,
@@ -146,13 +157,14 @@ export const TipCard: React.FC<TipCardProps> = ({
         {/* Tip content card */}
         <div
           style={{
-            // ponytail: 65% + stronger blur — was 90%, which hid the nails behind it.
-            background: `${BRAND.darkSurface}A6`,
+            // ponytail: real glass — 44%→63% tint gradient over a blur, not a flat slab.
+            // Text legibility comes from the blur + per-line textShadow below, not opacity.
+            background: `linear-gradient(to bottom, ${BRAND.darkSurface}70, ${BRAND.darkSurface}A0)`,
             borderRadius: 28,
             padding: 48,
-            border: `1px solid ${BRAND.textMuted}22`,
-            boxShadow: `0 16px 64px ${BRAND.dark}AA`,
-            backdropFilter: 'blur(16px)',
+            border: `1px solid ${BRAND.white}26`,
+            boxShadow: `0 16px 64px ${BRAND.dark}99, inset 0 1px 0 ${BRAND.white}1F`,
+            backdropFilter: 'blur(24px) saturate(1.25)',
           }}
         >
           {/* Header row: icon chip + animated accent bar */}
@@ -222,7 +234,9 @@ export const TipCard: React.FC<TipCardProps> = ({
         <div style={{ display: 'flex', justifyContent: 'center', marginTop: 20 }}>
           <div
             style={{
-              background: `${BRAND.teal}33`,
+              background: `${BRAND.dark}B3`,
+              border: `1px solid ${BRAND.teal}59`,
+              backdropFilter: 'blur(10px)',
               borderRadius: 20,
               paddingLeft: 20,
               paddingRight: 20,
@@ -234,7 +248,7 @@ export const TipCard: React.FC<TipCardProps> = ({
               style={{
                 fontFamily: 'Inter, system-ui, sans-serif',
                 fontSize: 18,
-                color: BRAND.teal,
+                color: BRAND.amber, // teal on a dark chip was ~2.8:1
                 fontWeight: 500,
               }}
             >
