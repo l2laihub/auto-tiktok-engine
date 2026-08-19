@@ -78,6 +78,9 @@
     /* ===== LAYOUT ===== */
     .app-shell {
       display: grid;
+      /* minmax(0, ...): a grid item's auto minimum is min-content, so a single
+         long word/title would otherwise push the whole shell wider than the phone. */
+      grid-template-columns: minmax(0, 1fr);
       grid-template-rows: auto 1fr;
       min-height: 100vh;
     }
@@ -617,6 +620,9 @@
     /* ===== SCHEDULE ===== */
     .schedule-grid {
       display: grid;
+      /* minmax(0, ...) not 1fr: 1fr floors at min-content, and a nowrap card
+         title would then force the 7 columns wider than the viewport. */
+      grid-template-columns: repeat(7, minmax(0, 1fr));
       gap: 0.5rem;
     }
 
@@ -643,7 +649,8 @@
     }
 
     .schedule-slot {
-      min-height: 80px;
+      min-height: 92px;
+      min-width: 0;
       background: var(--glass);
       border: 1px dashed var(--dark-border);
       border-radius: 8px;
@@ -669,6 +676,7 @@
     }
 
     .schedule-card {
+      min-width: 0;
       background: var(--dark-elevated);
       border-radius: 6px;
       padding: 0.5rem 0.65rem;
@@ -685,10 +693,13 @@
     .schedule-card-title {
       font-size: 0.75rem;
       font-weight: 600;
+      line-height: 1.35;
       color: var(--text-light);
-      white-space: nowrap;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
       overflow: hidden;
-      text-overflow: ellipsis;
+      overflow-wrap: anywhere;
     }
 
     .schedule-card-meta {
@@ -701,11 +712,265 @@
     }
 
     .schedule-empty {
+      margin: auto 0;
       font-size: 0.7rem;
       color: var(--dark-border);
       text-align: center;
       padding: 1rem 0;
       font-style: italic;
+    }
+
+    .date-chip-strip {
+      display: flex;
+      gap: 0.5rem;
+      overflow-x: auto;
+      padding: 0.5rem 0 1rem;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+
+    .date-chip-strip::-webkit-scrollbar {
+      display: none;
+    }
+
+    .date-chip {
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.15rem;
+      padding: 0.5rem 0.75rem;
+      border-radius: 10px;
+      border: 1px solid var(--dark-border);
+      background: var(--glass);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      min-width: 56px;
+    }
+
+    .date-chip.active {
+      background: rgba(255, 183, 77, 0.15);
+      border-color: var(--amber);
+    }
+
+    .date-chip.today {
+      border-color: var(--amber);
+    }
+
+    .date-chip-day {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.65rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    .date-chip.active .date-chip-day {
+      color: var(--amber);
+    }
+
+    .date-chip-num {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 1.1rem;
+      color: var(--text-light);
+    }
+
+    .date-chip.active .date-chip-num {
+      color: var(--amber);
+    }
+
+    .schedule-day-cards {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .schedule-day-card {
+      background: var(--glass);
+      border: 1px solid var(--glass-border);
+      border-radius: 10px;
+      padding: 0.85rem 1rem;
+      border-left: 3px solid;
+    }
+
+    .schedule-day-card.type-reveal {
+      border-left-color: var(--coral);
+    }
+
+    .schedule-day-card.type-tip {
+      border-left-color: var(--teal);
+    }
+
+    .schedule-day-card.type-external {
+      border-left-color: var(--amber);
+    }
+
+    .schedule-day-card-title {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-light);
+      margin-bottom: 0.4rem;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      word-break: break-word;
+    }
+
+    .schedule-day-card-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .schedule-day-card-reschedule {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.7rem;
+      color: var(--amber);
+      background: none;
+      border: 1px solid rgba(255, 183, 77, 0.3);
+      border-radius: 6px;
+      padding: 0.25rem 0.5rem;
+      cursor: pointer;
+    }
+
+    .schedule-day-card-reschedule:hover {
+      background: rgba(255, 183, 77, 0.1);
+    }
+
+    /* ===== SCHEDULE TOOLBAR (day / week / month) ===== */
+    .schedule-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+    }
+
+    .view-switch {
+      display: flex;
+      gap: 0.2rem;
+      padding: 0.2rem;
+      background: var(--glass);
+      border: 1px solid var(--glass-border);
+      border-radius: 10px;
+    }
+
+    .view-switch button {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 0.45rem 0.9rem;
+      border: none;
+      border-radius: 8px;
+      background: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .view-switch button:hover { color: var(--text-light); }
+
+    .view-switch button.active {
+      background: rgba(255, 183, 77, 0.15);
+      color: var(--amber);
+    }
+
+    .schedule-nav {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .schedule-nav-btn {
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      border: 1px solid var(--dark-border);
+      background: var(--dark);
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .schedule-nav-btn:hover { border-color: var(--amber); color: var(--amber); }
+
+    .schedule-nav-btn.wide {
+      width: auto;
+      padding: 0 0.75rem;
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .schedule-period {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 1rem;
+      color: var(--text-light);
+      min-width: 9ch;
+    }
+
+    .schedule-slot.other-month { opacity: 0.45; }
+
+    /* A week shows few days, so give each one room; a month shows ~35 and the
+       repeated "empty slot" label is just noise. */
+    .schedule-grid.view-week .schedule-slot { min-height: 160px; }
+    .schedule-grid.view-month .schedule-empty { display: none; }
+
+    .schedule-dots { display: none; }
+
+    /* ===== SCHEDULE MOBILE GRID (week / month) ===== */
+    @media (max-width: 767px) {
+      .schedule-toolbar { justify-content: center; }
+      .view-switch { flex: 1; }
+      .view-switch button { flex: 1; padding: 0.5rem 0.4rem; }
+      .schedule-period { font-size: 0.85rem; text-align: center; }
+
+      .schedule-grid { gap: 0.25rem; }
+      .schedule-header { font-size: 0.55rem; padding: 0.4rem 0; letter-spacing: 0.02em; }
+
+      /* Cells collapse to a tappable date + one dot per item; tapping opens the day. */
+      .schedule-slot {
+        min-height: 54px;
+        padding: 0.35rem 0.15rem;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 0.3rem;
+        cursor: pointer;
+      }
+
+      .schedule-slot .schedule-card,
+      .schedule-slot .schedule-empty { display: none; }
+
+      .schedule-dots {
+        display: flex;
+        gap: 3px;
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+
+      .schedule-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--text-muted);
+      }
+
+      .schedule-dot.type-reveal { background: var(--coral); }
+      .schedule-dot.type-tip { background: var(--teal); }
+      .schedule-dot.type-external { background: var(--amber); }
     }
 
     /* ===== SCHEDULER SETTINGS ===== */
@@ -819,6 +1084,12 @@
       border-top: 1px solid var(--dark-border);
     }
 
+    .scheduler-settings-body > .scheduler-next:first-child {
+      margin-top: 0;
+      padding-top: 0;
+      border-top: none;
+    }
+
     .scheduler-next-dot {
       width: 6px;
       height: 6px;
@@ -836,6 +1107,17 @@
       padding: 0.8rem 0 0.3rem;
       text-transform: uppercase;
       letter-spacing: 0.08em;
+    }
+
+    @media (min-width: 768px) and (max-width: 1100px) {
+      .schedule-grid { gap: 0.35rem; }
+      .schedule-header { font-size: 0.65rem; padding: 0.5rem 0.25rem; letter-spacing: 0.04em; }
+      .schedule-slot { padding: 0.35rem; min-height: 76px; }
+      .schedule-date { font-size: 0.6rem; }
+      .schedule-card { padding: 0.4rem 0.45rem; }
+      .schedule-card-title { font-size: 0.68rem; -webkit-line-clamp: 4; }
+      .scheduler-settings-header { padding: 0.85rem 1rem; }
+      .scheduler-settings-body { padding: 1rem; }
     }
 
     /* ===== ADD CONTENT ===== */
@@ -1607,127 +1889,6 @@
 
     /* ===== SCHEDULE MOBILE ===== */
     @media (max-width: 767px) {
-      .date-chip-strip {
-        display: flex;
-        gap: 0.5rem;
-        overflow-x: auto;
-        padding: 0.5rem 0 1rem;
-        -webkit-overflow-scrolling: touch;
-        scrollbar-width: none;
-      }
-
-      .date-chip-strip::-webkit-scrollbar {
-        display: none;
-      }
-
-      .date-chip {
-        flex-shrink: 0;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 0.15rem;
-        padding: 0.5rem 0.75rem;
-        border-radius: 10px;
-        border: 1px solid var(--dark-border);
-        background: var(--glass);
-        cursor: pointer;
-        transition: all 0.2s ease;
-        min-width: 56px;
-      }
-
-      .date-chip.active {
-        background: rgba(255, 183, 77, 0.15);
-        border-color: var(--amber);
-      }
-
-      .date-chip.today {
-        border-color: var(--amber);
-      }
-
-      .date-chip-day {
-        font-family: 'DM Sans', sans-serif;
-        font-size: 0.65rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        color: var(--text-muted);
-      }
-
-      .date-chip.active .date-chip-day {
-        color: var(--amber);
-      }
-
-      .date-chip-num {
-        font-family: 'Syne', sans-serif;
-        font-weight: 700;
-        font-size: 1.1rem;
-        color: var(--text-light);
-      }
-
-      .date-chip.active .date-chip-num {
-        color: var(--amber);
-      }
-
-      .schedule-day-cards {
-        display: flex;
-        flex-direction: column;
-        gap: 0.75rem;
-      }
-
-      .schedule-mobile-card {
-        background: var(--glass);
-        border: 1px solid var(--glass-border);
-        border-radius: 10px;
-        padding: 0.85rem 1rem;
-        border-left: 3px solid;
-      }
-
-      .schedule-mobile-card.type-reveal {
-        border-left-color: var(--coral);
-      }
-
-      .schedule-mobile-card.type-tip {
-        border-left-color: var(--teal);
-      }
-
-      .schedule-mobile-card.type-external {
-        border-left-color: var(--amber);
-      }
-
-      .schedule-mobile-card-title {
-        font-size: 0.85rem;
-        font-weight: 600;
-        color: var(--text-light);
-        margin-bottom: 0.4rem;
-        display: -webkit-box;
-        -webkit-line-clamp: 2;
-        -webkit-box-orient: vertical;
-        overflow: hidden;
-        word-break: break-word;
-      }
-
-      .schedule-mobile-card-meta {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 0.5rem;
-        flex-wrap: wrap;
-      }
-
-      .schedule-mobile-card-reschedule {
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 0.7rem;
-        color: var(--amber);
-        background: none;
-        border: 1px solid rgba(255, 183, 77, 0.3);
-        border-radius: 6px;
-        padding: 0.25rem 0.5rem;
-        cursor: pointer;
-      }
-
-      .schedule-mobile-card-reschedule:hover {
-        background: rgba(255, 183, 77, 0.1);
-      }
-
       .scheduler-row {
         flex-direction: column;
         gap: 1rem;
@@ -1875,7 +2036,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script type="module">
     import htm from 'https://unpkg.com/htm@3/dist/htm.module.js?module';
-    import { toLocalInput, fromLocalInput, localDateKey, formatDateTime, dayKeyToISO } from '/static/schedule-time.js';
+    import { toLocalInput, fromLocalInput, localDateKey, formatDateTime, dayKeyToISO, atMidnight, addDays, startOfWeek, periodDays, shiftAnchor } from '/static/schedule-time.js';
     import { suggestRevealInputs, suggestTipInputs } from '/static/ai-suggestions.js';
     const html = htm.bind(React.createElement);
     const { useState, useEffect, useRef, useCallback } = React;
@@ -2605,13 +2766,27 @@
       </div>`;
     }
 
+    // Item matching goes through localDateKey so a TIMESTAMPTZ lands on the day
+    // you see in the UI; the date math lives in /static/schedule-time.js.
+    function periodLabel(view, anchor) {
+      if (view === 'day') return anchor.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+      if (view === 'month') return anchor.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      const s = startOfWeek(anchor);
+      const e = addDays(s, 6);
+      const opts = { month: 'short', day: 'numeric' };
+      return s.toLocaleDateString('en-US', opts) + ' – ' + e.toLocaleDateString('en-US', opts);
+    }
+
     function Schedule({ onToast }) {
       const [items, setItems] = useState([]);
       const [dragItem, setDragItem] = useState(null);
-      const [selectedDate, setSelectedDate] = useState(null);
       const [rescheduleId, setRescheduleId] = useState(null);
       const [rescheduleValue, setRescheduleValue] = useState('');
       const isMobile = useIsMobile();
+      // Phones get the day list by default; a month grid is unreadable at 390px
+      // until you tap into a day.
+      const [view, setView] = useState(() => (isMobile ? 'day' : 'month'));
+      const [anchor, setAnchor] = useState(() => atMidnight(new Date()));
 
       useEffect(() => {
         api('/api/schedule').then(setItems).catch(console.error);
@@ -2630,25 +2805,6 @@
           setItems(updated);
           setRescheduleId(null);
         } catch (err) { onToast(err.message, 'error'); }
-      }
-
-      function getWeeks(activeDays) {
-        const weeks = [];
-        const today = new Date();
-        // Start of week = Sunday
-        const startOfWeek = new Date(today);
-        startOfWeek.setDate(today.getDate() - today.getDay());
-
-        for (let w = 0; w < 3; w++) {
-          const week = [];
-          for (const cronDay of activeDays) {
-            const d = new Date(startOfWeek);
-            d.setDate(startOfWeek.getDate() + w * 7 + cronDay);
-            week.push(d);
-          }
-          weeks.push(week);
-        }
-        return weeks;
       }
 
       function dateStr(d) {
@@ -2682,113 +2838,131 @@
         setDragItem(null);
       }
 
-      // Every day is postable now (timing is per-item), so show the full week.
-      const activeDays = [0, 1, 2, 3, 4, 5, 6];
-      const weeks = getWeeks(activeDays);
+      const days = periodDays(view, anchor);
+      const weekStrip = Array.from({ length: 7 }, (_, i) => addDays(startOfWeek(anchor), i));
+
+      const toolbar = html`<div className="schedule-toolbar">
+        <div className="view-switch">
+          ${['day', 'week', 'month'].map(v => html`
+            <button
+              key=${v}
+              className=${view === v ? 'active' : ''}
+              onClick=${() => setView(v)}
+            >${v}</button>
+          `)}
+        </div>
+        <div className="schedule-nav">
+          <button className="schedule-nav-btn" title="Previous" onClick=${() => setAnchor(a => shiftAnchor(view, a, -1))}>‹</button>
+          <button className="schedule-nav-btn wide" onClick=${() => setAnchor(atMidnight(new Date()))}>Today</button>
+          <button className="schedule-nav-btn" title="Next" onClick=${() => setAnchor(a => shiftAnchor(view, a, 1))}>›</button>
+        </div>
+        <div className="schedule-period">${periodLabel(view, anchor)}</div>
+      </div>`;
+
+      const dayCard = item => html`
+        <div key=${item.id} className=${"schedule-day-card type-" + item.content_type}>
+          <div className="schedule-day-card-title">${item.hook_text || item.content_type}</div>
+          <div className="schedule-day-card-meta">
+            <${StatusBadge} status=${item.status} />
+            ${rescheduleId === item.id ? html`
+              <input
+                type="datetime-local"
+                className="form-input"
+                style=${{padding: '0.2rem 0.4rem', fontSize: '0.75rem', width: '100%', maxWidth: '220px'}}
+                value=${rescheduleValue}
+                onInput=${e => setRescheduleValue(e.target.value)}
+                onKeyDown=${e => {
+                  if (e.key === 'Enter') { e.preventDefault(); commitReschedule(item); }
+                  else if (e.key === 'Escape') { setRescheduleId(null); }
+                }}
+                onBlur=${() => commitReschedule(item)}
+                autoFocus
+              />
+            ` : html`
+              <button className="schedule-day-card-reschedule" onClick=${() => { setRescheduleValue(toLocalInput(item.scheduled_for)); setRescheduleId(item.id); }}>
+                ${formatDateTime(item.scheduled_for)}
+              </button>
+            `}
+          </div>
+        </div>
+      `;
+
+      // Day view: a horizontal strip for the surrounding week, then the full cards.
+      const dayView = html`<div>
+        <div className="date-chip-strip">
+          ${weekStrip.map(d => {
+            const ds = dateStr(d);
+            return html`
+              <button
+                key=${ds}
+                className=${"date-chip" + (ds === dateStr(anchor) ? " active" : "") + (isToday(d) ? " today" : "")}
+                onClick=${() => setAnchor(d)}
+              >
+                <span className="date-chip-day">${DAY_NAMES[d.getDay()]}</span>
+                <span className="date-chip-num">${d.getDate()}</span>
+              </button>
+            `;
+          })}
+        </div>
+        <div className="schedule-day-cards">
+          ${getItemsForDate(anchor).length === 0 ? html`
+            <div className="empty-state" style=${{padding: '2rem'}}>
+              <div className="empty-state-text">No content scheduled</div>
+              <div className="empty-state-hint">Pick another day, or add content from the Add tab</div>
+            </div>
+          ` : null}
+          ${getItemsForDate(anchor).map(dayCard)}
+        </div>
+      </div>`;
+
+      // Week/month view: the same 7-column grid, one row per week.
+      const gridView = html`<div className=${"schedule-grid view-" + view}>
+        ${[0, 1, 2, 3, 4, 5, 6].map(d => html`
+          <div key=${'hdr-' + d} className="schedule-header">${DAY_NAMES[d]}</div>
+        `)}
+        ${days.map(day => {
+          const dayItems = getItemsForDate(day);
+          const otherMonth = view === 'month' && day.getMonth() !== anchor.getMonth();
+          return html`
+            <div
+              key=${dateStr(day)}
+              className=${"schedule-slot" + (dayItems.length ? " has-content" : "") + (otherMonth ? " other-month" : "")}
+              onDragOver=${e => { e.preventDefault(); e.currentTarget.classList.add('drag-over'); }}
+              onDragLeave=${e => e.currentTarget.classList.remove('drag-over')}
+              onDrop=${e => handleDrop(e, day)}
+              onClick=${() => { if (isMobile) { setAnchor(day); setView('day'); } }}
+            >
+              <div className=${"schedule-date" + (isToday(day) ? " today" : "")} style=${isToday(day) ? {color: 'var(--amber)', fontWeight: '600'} : {}}>
+                ${day.toLocaleDateString('en-US', view === 'month' && !isMobile ? { month: 'short', day: 'numeric' } : { day: 'numeric' })}
+                ${isToday(day) ? ' ●' : ''}
+              </div>
+              ${dayItems.length === 0 ? html`<div className="schedule-empty">empty slot</div>` : null}
+              <div className="schedule-dots">
+                ${dayItems.map(item => html`<span key=${item.id} className=${"schedule-dot type-" + item.content_type}></span>`)}
+              </div>
+              ${dayItems.map(item => html`
+                <div
+                  key=${item.id}
+                  className=${"schedule-card type-" + item.content_type}
+                  draggable="true"
+                  onDragStart=${() => setDragItem(item.id)}
+                  onDragEnd=${() => setDragItem(null)}
+                >
+                  <div className="schedule-card-title">${item.hook_text || item.content_type}</div>
+                  <div className="schedule-card-meta">
+                    <${StatusBadge} status=${item.status} />
+                  </div>
+                </div>
+              `)}
+            </div>
+          `;
+        })}
+      </div>`;
 
       return html`<div>
         <${SchedulerSettings} onToast=${onToast} />
-        ${isMobile ? html`<div className="schedule-mobile">
-          ${(() => {
-            const allDates = weeks.flat();
-            const selStr = selectedDate ? dateStr(selectedDate) : dateStr(new Date());
-            const selDay = allDates.find(d => dateStr(d) === selStr) || allDates[0];
-            const dayItems = selDay ? getItemsForDate(selDay) : [];
-
-            return html`<div>
-              <div className="date-chip-strip">
-                ${allDates.map(d => {
-                  const ds = dateStr(d);
-                  const isActive = ds === (selectedDate ? dateStr(selectedDate) : dateStr(new Date()));
-                  const isTodayDate = isToday(d);
-                  return html`
-                    <button
-                      key=${ds}
-                      className=${"date-chip" + (isActive ? " active" : "") + (isTodayDate ? " today" : "")}
-                      onClick=${() => setSelectedDate(d)}
-                    >
-                      <span className="date-chip-day">${DAY_NAMES[d.getDay()]}</span>
-                      <span className="date-chip-num">${d.getDate()}</span>
-                    </button>
-                  `;
-                })}
-              </div>
-
-              <div className="schedule-day-cards">
-                ${dayItems.length === 0 ? html`
-                  <div className="empty-state" style=${{padding: '2rem'}}>
-                    <div className="empty-state-text">No content scheduled</div>
-                    <div className="empty-state-hint">Tap a different day or add content from the Add tab</div>
-                  </div>
-                ` : null}
-                ${dayItems.map(item => html`
-                  <div key=${item.id} className=${"schedule-mobile-card type-" + item.content_type}>
-                    <div className="schedule-mobile-card-title">${item.hook_text || item.content_type}</div>
-                    <div className="schedule-mobile-card-meta">
-                      <${StatusBadge} status=${item.status} />
-                      ${rescheduleId === item.id ? html`
-                        <input
-                          type="datetime-local"
-                          className="form-input"
-                          style=${{padding: '0.2rem 0.4rem', fontSize: '0.75rem', width: '100%', maxWidth: '200px'}}
-                          value=${rescheduleValue}
-                          onInput=${e => setRescheduleValue(e.target.value)}
-                          onKeyDown=${e => {
-                            if (e.key === 'Enter') { e.preventDefault(); commitReschedule(item); }
-                            else if (e.key === 'Escape') { setRescheduleId(null); }
-                          }}
-                          onBlur=${() => commitReschedule(item)}
-                          autoFocus
-                        />
-                      ` : html`
-                        <button className="schedule-mobile-card-reschedule" onClick=${() => { setRescheduleValue(toLocalInput(item.scheduled_for)); setRescheduleId(item.id); }}>
-                          Reschedule
-                        </button>
-                      `}
-                    </div>
-                  </div>
-                `)}
-              </div>
-            </div>`;
-          })()}
-        </div>` : html`<div className="schedule-grid" style=${{ gridTemplateColumns: 'repeat(' + activeDays.length + ', 1fr)' }}>
-          ${activeDays.map(d => html`
-            <div key=${'hdr-' + d} className="schedule-header">${DAY_NAMES[d]}</div>
-          `)}
-          ${weeks.map((week, wi) => html`
-            <${React.Fragment} key=${wi}>
-              ${week.map(day => html`
-                <div
-                  key=${dateStr(day)}
-                  className=${"schedule-slot" + (getItemsForDate(day).length ? " has-content" : "")}
-                  onDragOver=${e => { e.preventDefault(); e.currentTarget.classList.add('drag-over'); }}
-                  onDragLeave=${e => e.currentTarget.classList.remove('drag-over')}
-                  onDrop=${e => handleDrop(e, day)}
-                >
-                  <div className=${"schedule-date" + (isToday(day) ? " today" : "")} style=${isToday(day) ? {color: 'var(--amber)', fontWeight: '600'} : {}}>
-                    ${day.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                    ${isToday(day) ? ' \u25cf' : ''}
-                  </div>
-                  ${getItemsForDate(day).length === 0 ? html`<div className="schedule-empty">empty slot</div>` : null}
-                  ${getItemsForDate(day).map(item => html`
-                    <div
-                      key=${item.id}
-                      className=${"schedule-card type-" + item.content_type}
-                      draggable="true"
-                      onDragStart=${() => setDragItem(item.id)}
-                      onDragEnd=${() => setDragItem(null)}
-                    >
-                      <div className="schedule-card-title">${item.hook_text || item.content_type}</div>
-                      <div className="schedule-card-meta">
-                        <${StatusBadge} status=${item.status} />
-                      </div>
-                    </div>
-                  `)}
-                </div>
-              `)}
-            </${React.Fragment}>
-          `)}
-        </div>`}
+        ${toolbar}
+        ${view === 'day' ? dayView : gridView}
       </div>`;
     }
 

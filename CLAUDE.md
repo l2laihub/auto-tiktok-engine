@@ -87,6 +87,8 @@ The pipeline calls idempotent `ensureRevealPhotos()` / `ensureTipImages()` steps
 ### Dashboard (dashboard/)
 Express server with HTML frontend for content management. Runs on port 3001. Provides CRUD for content pool, pipeline execution, and image upload via multer.
 
+The Schedule tab has **day / week / month** views (`view` + `anchor` state in the `Schedule` component) with ‹ Today › navigation. Week and month share one 7-column grid; day is a card list with a week chip strip. On phones the grid collapses to a tappable date + one dot per item (tapping a cell opens that day), so the same markup serves both. The date math (`periodDays`, `shiftAnchor`, `addDays`, `startOfWeek`) lives in `public/schedule-time.js` alongside the timezone helpers and is unit-tested.
+
 ### External videos (migration-v6)
 Pre-rendered MP4s (e.g. studio-ops `video-post` output in `output/`) are scheduled from the dashboard's Add Content → 🎬 Video sub-tab: `POST /api/external-video` uploads the file to the `videos` bucket (shared TUS helper in `scripts/lib/video-upload.ts`) and inserts a `content_type='external'` item that is *born rendered* (`status='rendered'` + `video_url` + `caption`/`hashtags` + `scheduled_for` + `tiktok_account`). The existing scheduler and the pipeline's post-only short-circuit then post it at its time to the chosen account (`tiktok_account` NULL = default @huybuilds) — externals never go through scripting/music/render. `GET /api/tiktok/accounts` lists token-row ids for the form dropdown; the daily token-refresh cron rotates every account row.
 

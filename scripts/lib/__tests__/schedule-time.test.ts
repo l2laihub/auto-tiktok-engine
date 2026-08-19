@@ -8,6 +8,10 @@ import {
   localDateKey,
   formatDateTime,
   dayKeyToISO,
+  addDays,
+  startOfWeek,
+  periodDays,
+  shiftAnchor,
 } from '../../../public/schedule-time.js';
 
 test('toLocalInput formats an ISO instant into a local datetime-local value', () => {
@@ -60,4 +64,54 @@ test('dayKeyToISO preserves the time-of-day from an existing instant', () => {
 
 test('dayKeyToISO returns null for empty dateKey', () => {
   assert.equal(dayKeyToISO(''), null);
+});
+
+// ===== calendar view helpers =====
+
+const key = (d: Date) => localDateKey(d);
+
+test('periodDays returns exactly one day for the day view', () => {
+  assert.deepEqual(periodDays('day', new Date(2026, 7, 18)).map(key), ['2026-08-18']);
+});
+
+test('periodDays week view spans Sunday through Saturday around the anchor', () => {
+  // Aug 18 2026 is a Tuesday
+  assert.deepEqual(
+    periodDays('week', new Date(2026, 7, 18)).map(key),
+    ['2026-08-16', '2026-08-17', '2026-08-18', '2026-08-19', '2026-08-20', '2026-08-21', '2026-08-22']
+  );
+});
+
+test('periodDays month view pads to whole weeks and covers every day of the month', () => {
+  const days = periodDays('month', new Date(2026, 7, 18)).map(key);
+  assert.equal(days.length % 7, 0, 'grid must stay 7 columns wide');
+  assert.equal(days[0], '2026-07-26', 'starts on the Sunday before Aug 1');
+  assert.equal(days[days.length - 1], '2026-09-05', 'ends on the Saturday after Aug 31');
+  for (let day = 1; day <= 31; day++) {
+    assert.ok(days.includes(`2026-08-${String(day).padStart(2, '0')}`), `missing Aug ${day}`);
+  }
+});
+
+test('shiftAnchor steps by the size of the current view', () => {
+  const anchor = new Date(2026, 7, 18);
+  assert.equal(key(shiftAnchor('day', anchor, 1)), '2026-08-19');
+  assert.equal(key(shiftAnchor('day', anchor, -1)), '2026-08-17');
+  assert.equal(key(shiftAnchor('week', anchor, 1)), '2026-08-25');
+  assert.equal(key(shiftAnchor('month', anchor, 1)), '2026-09-01');
+});
+
+test('shiftAnchor from a 31st does not skip a short month', () => {
+  // naive month arithmetic on Jan 31 lands in March; anchoring to the 1st does not
+  assert.equal(key(shiftAnchor('month', new Date(2026, 0, 31), 1)), '2026-02-01');
+});
+
+test('addDays crosses a DST boundary without drifting off midnight', () => {
+  // US DST ends Nov 1 2026; Oct 31 + 1 day must still be local midnight Nov 1
+  const next = addDays(new Date(2026, 9, 31), 1);
+  assert.equal(key(next), '2026-11-01');
+  assert.equal(next.getHours(), 0);
+});
+
+test('startOfWeek on a Sunday returns that same Sunday', () => {
+  assert.equal(key(startOfWeek(new Date(2026, 7, 16))), '2026-08-16');
 });

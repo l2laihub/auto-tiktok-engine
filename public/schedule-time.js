@@ -54,3 +54,44 @@ export function dayKeyToISO(dateKey, timeFromIso) {
   const d = new Date(`${dateKey}T${pad(hh)}:${pad(mm)}`);
   return valid(d) ? d.toISOString() : null;
 }
+
+// ===== Calendar view helpers (day / week / month) =====
+// All anchors are local midnight so setDate arithmetic survives DST shifts.
+
+export function atMidnight(d) {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  return x;
+}
+
+export function addDays(d, n) {
+  const x = atMidnight(d);
+  x.setDate(x.getDate() + n);
+  return x;
+}
+
+// Weeks start Sunday, matching the column headers.
+export function startOfWeek(d) {
+  return addDays(d, -atMidnight(d).getDay());
+}
+
+// The days a view renders. Month pads out to whole weeks so the grid is always
+// 7 columns wide with no ragged first/last row.
+export function periodDays(view, anchor) {
+  if (view === 'day') return [atMidnight(anchor)];
+  if (view === 'week') return Array.from({ length: 7 }, (_, i) => addDays(startOfWeek(anchor), i));
+  const first = new Date(anchor.getFullYear(), anchor.getMonth(), 1);
+  const last = new Date(anchor.getFullYear(), anchor.getMonth() + 1, 0);
+  const end = addDays(startOfWeek(last), 6);
+  const days = [];
+  for (let d = startOfWeek(first); d <= end; d = addDays(d, 1)) days.push(d);
+  return days;
+}
+
+// Step one period forward (+1) or back (-1). Month steps land on the 1st so a
+// 31st anchor can't skip a short month.
+export function shiftAnchor(view, anchor, dir) {
+  if (view === 'day') return addDays(anchor, dir);
+  if (view === 'week') return addDays(anchor, dir * 7);
+  return new Date(anchor.getFullYear(), anchor.getMonth() + dir, 1);
+}
