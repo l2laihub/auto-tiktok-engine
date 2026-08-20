@@ -143,7 +143,10 @@ export async function downloadAndTrim(opts: {
     'ffmpeg', '-y',
     '-i', tempPath,
     '-t', targetSeconds.toFixed(1),
-    '-af', `afade=t=out:st=${fadeStart.toFixed(1)}:d=3`,
+    // ponytail: loudnorm BEFORE afade — see the same note in lyria.ts. Both
+    // providers return unpredictable levels; normalizing here is what makes
+    // audioVolume in the props a meaningful number instead of a guess.
+    '-af', `loudnorm=I=-14:TP=-1.5:LRA=11,afade=t=out:st=${fadeStart.toFixed(1)}:d=3`,
     '-codec:a', 'libmp3lame',
     '-b:a', '192k',
     outputPath,

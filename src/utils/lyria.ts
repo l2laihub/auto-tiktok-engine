@@ -112,7 +112,11 @@ export function trimAudioFile(opts: {
     '-stream_loop', '-1',
     '-i', inputPath,
     '-t', targetSeconds.toFixed(1),
-    '-af', `afade=t=out:st=${fadeStart.toFixed(1)}:d=3`,
+    // ponytail: loudnorm BEFORE afade, so the fade shape survives normalization.
+    // Without this the output level is whatever the model happened to return —
+    // two tracks from identical settings measured 5.4 dB apart, which made every
+    // video's music a lottery. Single-pass is ±1 dB; two-pass if that ever matters.
+    '-af', `loudnorm=I=-14:TP=-1.5:LRA=11,afade=t=out:st=${fadeStart.toFixed(1)}:d=3`,
     '-codec:a', 'libmp3lame',
     '-b:a', '192k',
     outputPath,

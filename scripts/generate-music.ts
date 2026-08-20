@@ -10,7 +10,7 @@
 // Usage:
 //   npm run generate:music -- <props.video.json> [options]
 //     --prompt "<style>"   music style; persisted to the props as musicPrompt
-//     --volume 0.35        audioVolume written to the props (default 0.35)
+//     --volume 0.8         audioVolume written to the props (default 0.8)
 //     --force              regenerate even if the mp3 already exists
 //     --dry-run            print duration/prompt/output path, call nothing
 //     --self-test          run the duration assertions and exit
@@ -22,7 +22,12 @@ import { generateMusicTrack, trimAudioFile } from '../src/utils/lyria';
 import { VIDEO, createRevealTiming, createTipsTiming, createShowcaseTiming } from '../src/config';
 import { hookSecondsFor, takeawaySecondsFor } from '../src/compositions/TipsEducational';
 
-const DEFAULT_VOLUME = 0.35;
+// ponytail: 0.8, not the old 0.35. That 0.35 was picked against un-normalized
+// tracks, where "too loud" meant one hot track — it cost 9.1 dB and left videos
+// audibly quiet. Now that trimAudioFile normalizes every track to -14 LUFS, this
+// is a real number: 0.8 lands the finished video near -16 LUFS. There is no
+// voiceover to duck under, so the music is the whole soundtrack.
+const DEFAULT_VOLUME = 0.8;
 const DEFAULT_PROMPT =
   'warm upbeat instrumental, light acoustic guitar and soft percussion, ' +
   'friendly local-business mood, no vocals';
