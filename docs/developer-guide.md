@@ -498,8 +498,11 @@ The pipeline run spawns `node --env-file=.env --import tsx scripts/render-video.
 |--------|------|-------------|----------|-------------|
 | POST | `/api/upload-photo` | multipart `file` field | `{url: string}` | Upload to Supabase Storage `photos` bucket (10MB limit) |
 | POST | `/api/analyze-photos` | `{beforeUrl, afterUrl}` | `{photo_era, photo_story, preset_used}` | Claude Vision analysis of before/after pair |
-| GET | `/api/tiktok/token-status` | — | `{hasToken, expiresAt, isExpired, scope, openId}` | TikTok token info |
-| POST | `/api/tiktok/refresh-token` | — | `{ok, expiresAt}` | Trigger token refresh |
+| GET | `/api/tiktok/accounts` | — | `[{id, expiresAt, isExpired, scope, openId, updatedAt, displayName, username}]` | Authorized accounts + token status (backfills the profile for rows saved before migration-v8) |
+| PATCH | `/api/tiktok/accounts/:id` | `{name}` | `{ok, id}` | Rename an account label (not `default`) |
+| POST | `/api/tiktok/refresh-token` | `{account?}` | `{ok, expiresAt}` | Trigger token refresh for one account |
+| POST | `/api/tiktok/auth/start` | `{account?}` | `{authUrl, state, account}` | Begin OAuth for a new/existing account |
+| POST | `/api/tiktok/auth/complete` | `{callbackUrl}` | `{ok, account, expiresAt, scope}` | Store tokens from the pasted redirect URL |
 
 The photo analysis endpoint sends both image URLs to `claude-sonnet-4-20250514` using the Claude Vision API and returns a JSON object with `photo_era`, `photo_story`, and `preset_used`.
 

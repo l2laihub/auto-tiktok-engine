@@ -35,10 +35,12 @@ import {
   buildAuthUrl,
   exchangeCodeForTokens,
   parseCallbackInput,
+  normalizeAccountId,
+  fetchUserInfo,
 } from '../scripts/lib/tiktok-oauth';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const PORT = 3001;
+const PORT = Number(process.env.PORT) || 3001;
 const ROOT = path.resolve(__dirname, '..');
 
 const supabase = createClient(
@@ -399,11 +401,82 @@ const videoUpload = multer({
   limits: { fileSize: VIDEO_MAX_BYTES },
 });
 
-// Token-row ids for the account dropdown ('default' = @huybuilds).
+// Authorized accounts + their token status ('default' = @huybuilds). Feeds
+// both the external-video account dropdown and the TikTok auth panel.
 app.get('/api/tiktok/accounts', async (_req, res) => {
-  const { data, error } = await supabase.from('tiktok_tokens').select('id').order('id');
+  const { data, error } = await supabase
+    .from('tiktok_tokens')
+    .select('id, expires_at, scope, open_id, updated_at, display_name, username')
+    .order('id');
   if (error) return res.status(500).json({ error: error.message });
-  res.json(data.map((r) => r.id));
+
+  // Rows authorized before the profile columns existed have no handle yet;
+  // look it up once and persist, so this self-heals without a backfill script.
+  const rows = await Promise.all(
+    data.map(async (r) => {
+      if (r.username || r.display_name) return r;
+      const token = await new TikTokClient(supabase, r.id).getAccessToken().catch(() => null);
+      if (!token) return r;
+      const info = await fetchUserInfo(token, r.scope);
+      if (!info.username && !info.displayName) return r;
+      await supabase
+        .from('tiktok_tokens')
+        .update({ display_name: info.displayName, username: info.username })
+        .eq('id', r.id);
+      return { ...r, display_name: info.displayName, username: info.username };
+    })
+  );
+
+  res.json(
+    rows.map((r) => ({
+      id: r.id,
+      expiresAt: r.expires_at,
+      isExpired: !r.expires_at || new Date(r.expires_at).getTime() < Date.now(),
+      scope: r.scope,
+      openId: r.open_id,
+      updatedAt: r.updated_at,
+      displayName: r.display_name,
+      username: r.username,
+    }))
+  );
+});
+
+// Rename an account label. Copy -> repoint content -> delete, so a failure
+// part-way leaves the original row intact and still postable rather than
+// orphaning scheduled items on a name that no longer exists.
+app.patch('/api/tiktok/accounts/:id', async (req, res) => {
+  const from = req.params.id;
+  const to = normalizeAccountId(req.body?.name);
+  if (!to) return res.status(400).json({ error: 'Invalid account name (a-z, 0-9, . _ - only)' });
+  if (from === to) return res.json({ ok: true, id: to });
+  // Content rows store NULL for the default account, so renaming it would mean
+  // rewriting that convention across the pool.
+  if (from === 'default' || to === 'default') {
+    return res.status(400).json({ error: 'The default account cannot be renamed' });
+  }
+
+  const { data: row } = await supabase.from('tiktok_tokens').select('*').eq('id', from).single();
+  if (!row) return res.status(404).json({ error: `No account named "${from}"` });
+
+  const { data: clash } = await supabase.from('tiktok_tokens').select('id').eq('id', to).maybeSingle();
+  if (clash) return res.status(409).json({ error: `"${to}" already exists` });
+
+  const { error: insertErr } = await supabase.from('tiktok_tokens').insert({ ...row, id: to });
+  if (insertErr) return res.status(500).json({ error: insertErr.message });
+
+  const { error: repointErr } = await supabase
+    .from('tiktok_content_pool')
+    .update({ tiktok_account: to })
+    .eq('tiktok_account', from);
+  if (repointErr) {
+    await supabase.from('tiktok_tokens').delete().eq('id', to);
+    return res.status(500).json({ error: repointErr.message });
+  }
+
+  const { error: deleteErr } = await supabase.from('tiktok_tokens').delete().eq('id', from);
+  if (deleteErr) return res.status(500).json({ error: deleteErr.message });
+
+  res.json({ ok: true, id: to });
 });
 
 app.post('/api/external-video', (req, res) => {
@@ -925,41 +998,14 @@ async function reconcileOrphanedRuns() {
 // TikTok token management
 // ============================================================
 
-app.get('/api/tiktok/token-status', async (_req, res) => {
-  const { data, error } = await supabase
-    .from('tiktok_tokens')
-    .select('expires_at, scope, open_id, updated_at')
-    .eq('id', 'default')
-    .single();
+app.post('/api/tiktok/refresh-token', async (req, res) => {
+  const account = normalizeAccountId(req.body?.account);
+  if (!account) return res.status(400).json({ error: 'Invalid account name' });
 
-  if (error || !data) {
-    return res.json({
-      hasToken: false,
-      expiresAt: null,
-      isExpired: true,
-      scope: null,
-      updatedAt: null,
-    });
-  }
-
-  const expiresAt = new Date(data.expires_at);
-  const isExpired = expiresAt.getTime() < Date.now();
-
-  res.json({
-    hasToken: true,
-    expiresAt: data.expires_at,
-    isExpired,
-    scope: data.scope,
-    openId: data.open_id,
-    updatedAt: data.updated_at,
-  });
-});
-
-app.post('/api/tiktok/refresh-token', async (_req, res) => {
   const { data } = await supabase
     .from('tiktok_tokens')
     .select('refresh_token')
-    .eq('id', 'default')
+    .eq('id', account)
     .single();
 
   if (!data?.refresh_token) {
@@ -996,7 +1042,7 @@ app.post('/api/tiktok/refresh-token', async (_req, res) => {
     const expiresAt = new Date(Date.now() + result.expires_in * 1000);
 
     await supabase.from('tiktok_tokens').upsert({
-      id: 'default',
+      id: account,
       access_token: result.access_token,
       refresh_token: result.refresh_token,
       expires_at: expiresAt.toISOString(),
@@ -1016,7 +1062,10 @@ app.post('/api/tiktok/refresh-token', async (_req, res) => {
 // dashboard is single-instance, so a process-local Map is sufficient;
 // entries auto-expire after 10 minutes.
 const STATE_TTL_MS = 10 * 60 * 1000;
-const pendingAuthStates = new Map<string, { codeVerifier: string; expiresAt: number }>();
+const pendingAuthStates = new Map<
+  string,
+  { codeVerifier: string; expiresAt: number; account: string }
+>();
 
 setInterval(() => {
   const now = Date.now();
@@ -1025,7 +1074,12 @@ setInterval(() => {
   }
 }, 5 * 60 * 1000).unref();
 
-app.post('/api/tiktok/auth/start', (_req, res) => {
+app.post('/api/tiktok/auth/start', (req, res) => {
+  const account = normalizeAccountId(req.body?.account);
+  if (!account) {
+    return res.status(400).json({ error: 'Invalid account name (a-z, 0-9, . _ - only)' });
+  }
+
   const clientKey = process.env.TIKTOK_CLIENT_KEY;
   const redirectUri = process.env.TIKTOK_REDIRECT_URI || 'https://www.tiktok.com/';
   const scopes = process.env.TIKTOK_SCOPES || 'user.info.basic,video.upload,video.publish';
@@ -1038,10 +1092,10 @@ app.post('/api/tiktok/auth/start', (_req, res) => {
   const codeVerifier = generateCodeVerifier();
   const codeChallenge = generateCodeChallenge(codeVerifier);
 
-  pendingAuthStates.set(state, { codeVerifier, expiresAt: Date.now() + STATE_TTL_MS });
+  pendingAuthStates.set(state, { codeVerifier, expiresAt: Date.now() + STATE_TTL_MS, account });
 
   const authUrl = buildAuthUrl({ clientKey, redirectUri, scopes, state, codeChallenge });
-  res.json({ authUrl, state, redirectUri });
+  res.json({ authUrl, state, redirectUri, account });
 });
 
 app.post('/api/tiktok/auth/complete', async (req, res) => {
@@ -1092,8 +1146,12 @@ app.post('/api/tiktok/auth/complete', async (req, res) => {
       redirectUri,
     });
 
+    const profile = await fetchUserInfo(tokens.accessToken, tokens.scope);
+
     const { error } = await supabase.from('tiktok_tokens').upsert({
-      id: 'default',
+      id: pending.account,
+      display_name: profile.displayName,
+      username: profile.username,
       access_token: tokens.accessToken,
       refresh_token: tokens.refreshToken,
       expires_at: tokens.expiresAt.toISOString(),
@@ -1105,6 +1163,9 @@ app.post('/api/tiktok/auth/complete', async (req, res) => {
 
     res.json({
       ok: true,
+      account: pending.account,
+      username: profile.username,
+      displayName: profile.displayName,
       expiresAt: tokens.expiresAt.toISOString(),
       scope: tokens.scope,
       openId: tokens.openId,

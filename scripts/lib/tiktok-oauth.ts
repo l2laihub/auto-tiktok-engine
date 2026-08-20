@@ -109,3 +109,48 @@ export function parseCallbackInput(
 
   return { code: trimmed, state: null };
 }
+
+// Account ids are the tiktok_tokens primary key and the content pool's
+// tiktok_account value, so keep them to a simple slug. Empty input means the
+// default account (@huybuilds). Returns null when the input is unusable.
+export function normalizeAccountId(input: unknown): string | null {
+  if (input === undefined || input === null || input === '') return 'default';
+  if (typeof input !== 'string') return null;
+  const id = input.trim().toLowerCase();
+  if (!id) return 'default';
+  return /^[a-z0-9][a-z0-9._-]{0,39}$/.test(id) ? id : null;
+}
+
+export interface TikTokUserInfo {
+  openId: string | null;
+  displayName: string | null;
+  username: string | null;
+}
+
+// Which TikTok profile a token actually belongs to. Best-effort: a missing
+// label is never worth failing an authorization over, so errors return nulls.
+// `username` lives behind the user.info.profile scope and asking for it without
+// that scope fails the WHOLE request, so it is only requested when granted.
+export async function fetchUserInfo(
+  accessToken: string,
+  grantedScope?: string | null
+): Promise<TikTokUserInfo> {
+  const fields = ['open_id', 'display_name'];
+  if (grantedScope?.includes('user.info.profile')) fields.push('username');
+
+  try {
+    const response = await fetch(
+      `https://open.tiktokapis.com/v2/user/info/?fields=${fields.join(',')}`,
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    );
+    const result = await response.json();
+    const user = result?.data?.user;
+    return {
+      openId: user?.open_id ?? null,
+      displayName: user?.display_name ?? null,
+      username: user?.username ?? null,
+    };
+  } catch {
+    return { openId: null, displayName: null, username: null };
+  }
+}

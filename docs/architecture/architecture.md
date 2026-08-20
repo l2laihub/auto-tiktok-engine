@@ -339,7 +339,7 @@ Express.js server on port 3001 with 14 API endpoints:
 | Stats | GET `/api/stats`, GET `/api/schedule` |
 | Photos | POST `/api/upload-photo`, POST `/api/analyze-photos` |
 | Pipeline | POST `/api/pipeline/run`, GET `/api/pipeline/status`, GET `/api/pipeline/history` |
-| TikTok | GET `/api/tiktok/token-status`, POST `/api/tiktok/refresh-token` |
+| TikTok | GET `/api/tiktok/accounts`, POST `/api/tiktok/refresh-token`, POST `/api/tiktok/auth/start`, POST `/api/tiktok/auth/complete` |
 
 ### Pipeline Execution Model
 

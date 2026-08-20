@@ -19,6 +19,7 @@ import {
   buildAuthUrl,
   exchangeCodeForTokens as exchangeOAuthCode,
   parseCallbackInput,
+  fetchUserInfo,
   type TikTokTokenResponse,
 } from './lib/tiktok-oauth';
 
@@ -71,8 +72,14 @@ function askQuestion(prompt: string): Promise<string> {
 // --- Token Exchange ---
 
 async function persistTokens(tokens: TikTokTokenResponse): Promise<void> {
+  // Records which TikTok profile actually consented — the account name above
+  // is just a local label.
+  const profile = await fetchUserInfo(tokens.accessToken, tokens.scope);
+
   const { error } = await supabase.from('tiktok_tokens').upsert({
     id: ACCOUNT,
+    display_name: profile.displayName,
+    username: profile.username,
     access_token: tokens.accessToken,
     refresh_token: tokens.refreshToken,
     expires_at: tokens.expiresAt.toISOString(),
@@ -85,6 +92,8 @@ async function persistTokens(tokens: TikTokTokenResponse): Promise<void> {
     console.error('Failed to store tokens in Supabase:', error.message);
     process.exit(1);
   }
+
+  if (profile.username) console.log(`\nAuthorized as @${profile.username}`);
 }
 
 async function exchangeAndPersist(code: string, codeVerifier: string): Promise<void> {
