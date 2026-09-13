@@ -101,9 +101,16 @@ export const TipCard: React.FC<TipCardProps> = ({
           {/* Legibility scrim — darker toward the bottom where the card sits */}
           <AbsoluteFill
             style={{
-              // ponytail: bottom stops lightened — the glass card carries its own contrast now.
+              // ponytail: banded, not blanket. The text sits bare on the photo, so a
+              // scrim is the only thing between white type and a bright ceiling shot —
+              // but darkening the whole frame to get it costs the photo. So: dark only
+              // across 34-58%, where the centred text band actually lands (the content
+              // div spans SAFE_ZONE.top 230 -> bottom 500 of 1920, centred, so its
+              // midpoint is ~43%), and near-clear at 8-24% and 70% so the nails and the
+              // salon read at full brightness. Ramps are 10-12% wide so the transition
+              // doesn't band on a flat wall. Moving the text? Move the plateau with it.
               background:
-                'linear-gradient(to bottom, rgba(10,12,24,0.55) 0%, rgba(10,12,24,0.12) 28%, rgba(10,12,24,0.34) 60%, rgba(10,12,24,0.72) 100%)',
+                'linear-gradient(to bottom, rgba(10,12,24,0.45) 0%, rgba(10,12,24,0.08) 8%, rgba(10,12,24,0.10) 24%, rgba(10,12,24,0.55) 34%, rgba(10,12,24,0.55) 58%, rgba(10,12,24,0.12) 70%, rgba(10,12,24,0.20) 85%, rgba(10,12,24,0.70) 100%)',
             }}
           />
         </AbsoluteFill>
@@ -171,18 +178,7 @@ export const TipCard: React.FC<TipCardProps> = ({
         )}
 
         {/* Tip content card */}
-        <div
-          style={{
-            // ponytail: real glass — 44%→63% tint gradient over a blur, not a flat slab.
-            // Text legibility comes from the blur + per-line textShadow below, not opacity.
-            background: `linear-gradient(to bottom, ${BRAND.darkSurface}70, ${BRAND.darkSurface}A0)`,
-            borderRadius: 28,
-            padding: 48,
-            border: `1px solid ${BRAND.white}26`,
-            boxShadow: `0 16px 64px ${BRAND.dark}99, inset 0 1px 0 ${BRAND.white}1F`,
-            backdropFilter: 'blur(24px) saturate(1.25)',
-          }}
-        >
+        <div>
           {/* Header row: icon chip + animated accent bar */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
             {tipIcon && (
@@ -223,7 +219,7 @@ export const TipCard: React.FC<TipCardProps> = ({
               lineHeight: 1.3,
               marginBottom: 20,
               letterSpacing: -0.5,
-              textShadow: `0 2px 16px ${BRAND.dark}`,
+              textShadow: `0 2px 10px ${BRAND.dark}, 0 6px 34px ${BRAND.dark}E6`,
               opacity: titleOpacity,
               transform: `translateY(${titleRise}px)`,
             }}
@@ -239,7 +235,7 @@ export const TipCard: React.FC<TipCardProps> = ({
               fontWeight: 400,
               color: BRAND.textLight,
               lineHeight: 1.6,
-              textShadow: `0 2px 14px ${BRAND.dark}`,
+              textShadow: `0 2px 10px ${BRAND.dark}, 0 5px 28px ${BRAND.dark}E6`,
             }}
           >
             {tipBody}
