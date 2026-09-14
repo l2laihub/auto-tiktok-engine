@@ -479,6 +479,33 @@ app.patch('/api/tiktok/accounts/:id', async (req, res) => {
   res.json({ ok: true, id: to });
 });
 
+// Remove an authorized account (deletes its stored token). Refused while items
+// are still queued to it, because the scheduler would then pick them up and
+// post with a token row that no longer exists — reassign those items to another
+// account in the Content Pool editor first. Posted items keep the dead label as
+// history; the column is plain text with no FK.
+app.delete('/api/tiktok/accounts/:id', async (req, res) => {
+  const id = req.params.id;
+  const pending = supabase
+    .from('tiktok_content_pool')
+    .select('id', { count: 'exact', head: true })
+    .in('status', ['queued', 'scripted', 'rendered']);
+  // Content rows store NULL for the default account, not the literal 'default'.
+  const { count, error: countErr } = await (id === 'default'
+    ? pending.is('tiktok_account', null)
+    : pending.eq('tiktok_account', id));
+  if (countErr) return res.status(500).json({ error: countErr.message });
+  if (count) {
+    return res.status(409).json({
+      error: `${count} unposted item${count === 1 ? ' is' : 's are'} still scheduled to "${id}" — reassign or delete ${count === 1 ? 'it' : 'them'} first`,
+    });
+  }
+
+  const { error } = await supabase.from('tiktok_tokens').delete().eq('id', id);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ ok: true });
+});
+
 app.post('/api/external-video', (req, res) => {
   videoUpload.single('video')(req, res, async (err: unknown) => {
     const file = req.file;

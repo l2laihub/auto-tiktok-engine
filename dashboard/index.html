@@ -2144,6 +2144,11 @@
       const [regenMusic, setRegenMusic] = useState(false);
       const [reRendering, setReRendering] = useState(false);
 
+      // Which TikTok account this item posts to. NULL in the DB = 'default'.
+      const [account, setAccount] = useState(item.tiktok_account || 'default');
+      const [accounts, setAccounts] = useState([]);
+      useEffect(() => { api('/api/tiktok/accounts').then(setAccounts).catch(() => {}); }, []);
+
       // Image pairs state (reveal only)
       const initPairs = () => {
         if (item.content_type !== 'reveal') return [];
@@ -2246,7 +2251,10 @@
       async function handleSave() {
         setSaving(true);
         try {
-          const fields = { hook_text: hookText, caption, hashtags, music_style: musicStyle, photo_story: photoStory };
+          const fields = {
+            hook_text: hookText, caption, hashtags, music_style: musicStyle, photo_story: photoStory,
+            tiktok_account: account === 'default' ? null : account,
+          };
           if (item.content_type === 'reveal') {
             const validPairs = pairs.filter(p => p.before_url && p.after_url);
             fields.image_pairs = validPairs;
@@ -2437,6 +2445,17 @@
             <textarea className="form-textarea" rows="2" placeholder="Context about the photos for AI script generation..." value=${photoStory} onInput=${e => setPhotoStory(e.target.value)} />
           </div>
         ` : null}
+        <div className="form-group" style=${{marginTop: '1rem'}}>
+          <label className="form-label">Post To Account</label>
+          <select className="form-select" value=${account} onChange=${e => setAccount(e.target.value)}>
+            <option value="default">default (@huybuilds)</option>
+            ${accounts.filter(a => a.id !== 'default').map(a => html`
+              <option key=${a.id} value=${a.id}>${a.id}${a.username ? ' (@' + a.username + ')' : ''}</option>
+            `)}
+            ${account !== 'default' && !accounts.some(a => a.id === account)
+              ? html`<option value=${account}>${account} (not authorized)</option>` : null}
+          </select>
+        </div>
         <div className="form-group" style=${{marginTop: '1rem'}}>
           <label className="form-label">Music Style Prompt</label>
           <div style=${{display: 'flex', gap: '0.5rem', alignItems: 'flex-start'}}>
@@ -3756,6 +3775,7 @@
     function TikTokAuthPanel({ onToast }) {
       const [accounts, setAccounts] = useState(null);
       const [refreshing, setRefreshing] = useState('');
+      const [deleting, setDeleting] = useState('');
       const [renaming, setRenaming] = useState(null); // { id, name }
       const [reauth, setReauth] = useState(undefined); // undefined = closed, null = add, string = re-auth
 
@@ -3772,6 +3792,17 @@
           loadAccounts();
         } catch (e) { onToast(e.message, 'error'); }
         finally { setRefreshing(''); }
+      }
+
+      async function handleDelete(id) {
+        if (!confirm(`Remove account "${id}"? Its stored token is deleted — already-posted items keep the label.`)) return;
+        setDeleting(id);
+        try {
+          await api(`/api/tiktok/accounts/${encodeURIComponent(id)}`, { method: 'DELETE' });
+          onToast(`Removed ${id}`, 'success');
+          loadAccounts();
+        } catch (e) { onToast(e.message, 'error'); }
+        finally { setDeleting(''); }
       }
 
       async function saveRename() {
@@ -3839,6 +3870,9 @@
                 ${refreshing === acc.id ? 'Refreshing...' : 'Refresh Token'}
               </button>
               <button className="btn btn-primary btn-sm" onClick=${() => setReauth(acc.id)}>Re-authorize</button>
+              <button className="btn btn-ghost btn-sm btn-danger" title="Remove account" onClick=${() => handleDelete(acc.id)} disabled=${deleting === acc.id}>
+                ${deleting === acc.id ? 'Removing...' : '\u2715 Remove'}
+              </button>
             </div>
           </div>
         `)}
