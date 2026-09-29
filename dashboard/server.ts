@@ -250,10 +250,6 @@ app.post('/api/content/:id/regenerate-music', async (req, res) => {
 
 // Re-render video for an item (resets to scripted, triggers pipeline)
 app.post('/api/content/:id/re-render', async (req, res) => {
-  if (pipelineRunning) {
-    return res.status(409).json({ error: 'Pipeline is already running' });
-  }
-
   const { data: item, error: fetchErr } = await supabase
     .from('tiktok_content_pool')
     .select('id, status')
@@ -283,7 +279,12 @@ app.post('/api/content/:id/re-render', async (req, res) => {
       .eq('id', req.params.id);
   }
 
-  // Kick off the pipeline for this specific item (dry run — no TikTok posting)
+  // Kick off the pipeline for this specific item (dry run — no TikTok posting).
+  // Busy → queue it; the current run's close handler starts it next.
+  if (pipelineRunning) {
+    if (!renderQueue.includes(req.params.id)) renderQueue.push(req.params.id);
+    return res.json({ ok: true, queued: true, position: renderQueue.indexOf(req.params.id) + 1 });
+  }
   const runId = await runPipeline({ dryRun: true, contentId: req.params.id });
   res.json({ ok: true, runId });
 });
@@ -905,6 +906,8 @@ let pipelineProcess: ChildProcess | null = null;
 let pipelineOutput = '';
 let pipelineRunning = false;
 let currentRunId: string | null = null;
+// ponytail: in-memory, lost on restart (item just stays 'scripted'; click Render again).
+const renderQueue: string[] = [];
 
 async function runPipeline(opts: { dryRun?: boolean; postOnly?: boolean; contentId?: string } = {}): Promise<string | null> {
   if (pipelineRunning) return null;
@@ -957,6 +960,14 @@ async function runPipeline(opts: { dryRun?: boolean; postOnly?: boolean; content
 
     pipelineProcess = null;
     currentRunId = null;
+
+    // Drain queued re-renders. If the scheduler grabbed the slot first,
+    // put the id back — the next run's close handler retries it.
+    const next = renderQueue.shift();
+    if (next) {
+      if (pipelineRunning) renderQueue.unshift(next);
+      else await runPipeline({ dryRun: true, contentId: next });
+    }
   });
 
   return currentRunId;
