@@ -2553,8 +2553,8 @@
       async function handleReRender(id) {
         try {
           onToast('Re-rendering video...', 'success');
-          await api('/api/content/' + id + '/re-render', { method: 'POST' });
-          onToast('Re-render started — check Pipeline tab', 'success');
+          const r = await api('/api/content/' + id + '/re-render', { method: 'POST' });
+          onToast(r.queued ? `Queued (#${r.position}) — renders after the current run` : 'Re-render started — check Pipeline tab', 'success');
           fetchItems();
         } catch (e) { onToast(e.message, 'error'); }
       }
