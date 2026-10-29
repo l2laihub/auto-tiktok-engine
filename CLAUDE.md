@@ -111,6 +111,6 @@ Both compositions accept an optional `brand` input prop (`BrandProps`) to render
 ## Environment Variables
 
 Required: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `ANTHROPIC_API_KEY`
-Optional: `TIKTOK_CLIENT_KEY`, `TIKTOK_CLIENT_SECRET`, `TIKTOK_REDIRECT_URI`, `TIKTOK_ACCESS_TOKEN`, `GOOGLE_API_KEY`, `IMAGE_MODEL`, `SUNO_API_URL`, `SUNO_COOKIE`, `OUTPUT_DIR`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `DASHBOARD_BASE_URL`
+Optional: `TIKTOK_CLIENT_KEY`, `TIKTOK_CLIENT_SECRET`, `TIKTOK_REDIRECT_URI`, `TIKTOK_ACCESS_TOKEN`, `GOOGLE_API_KEY`, `IMAGE_MODEL`, `SUNO_API_URL`, `SUNO_COOKIE`, `OUTPUT_DIR`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `DASHBOARD_BASE_URL`, `STORAGE_MAX_BYTES` (Supabase upload cap, default 50MB — larger videos are re-encoded to fit)
 
 See `.env.example` for details. Without TikTok tokens, pipeline saves videos for manual upload. Without `GOOGLE_API_KEY` or `SUNO_API_URL`, music generation is skipped. Without `GOOGLE_API_KEY`, AI image generation (reveal photos + tip imagery) is also skipped. Lyria 3 is preferred over Suno when both are configured.
