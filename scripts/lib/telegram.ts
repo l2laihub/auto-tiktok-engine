@@ -59,6 +59,7 @@ export interface NotifiableItem {
   id: string;
   content_type: 'reveal' | 'tip' | 'external';
   scheduled_for?: string | null;
+  cover_image_url?: string | null;
   image_pairs?: Array<{ after_url?: string }>;
   after_image_url?: string;
   tip_image_url?: string;
@@ -72,6 +73,8 @@ export interface NotifiableItem {
  * when nothing usable exists (caller then sends a text-only message).
  */
 export function resolveThumbnail(item: NotifiableItem): string | undefined {
+  // An uploaded cover wins: it's the image to set as the TikTok cover in-app.
+  if (item.cover_image_url) return item.cover_image_url;
   if (item.content_type === 'reveal') {
     return item.image_pairs?.[0]?.after_url || item.after_image_url || undefined;
   }

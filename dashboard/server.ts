@@ -508,9 +508,11 @@ app.delete('/api/tiktok/accounts/:id', async (req, res) => {
 });
 
 app.post('/api/external-video', (req, res) => {
-  videoUpload.single('video')(req, res, async (err: unknown) => {
-    const file = req.file;
-    const cleanup = () => { if (file) fs.unlink(file.path, () => {}); };
+  videoUpload.fields([{ name: 'video', maxCount: 1 }, { name: 'cover', maxCount: 1 }])(req, res, async (err: unknown) => {
+    const files = req.files as Record<string, Express.Multer.File[]> | undefined;
+    const file = files?.video?.[0];
+    const cover = files?.cover?.[0];
+    const cleanup = () => { for (const f of [file, cover]) if (f) fs.unlink(f.path, () => {}); };
     try {
       if (err) {
         const code = err && typeof err === 'object' && 'code' in err ? (err as { code?: string }).code : null;
@@ -520,6 +522,9 @@ app.post('/api/external-video', (req, res) => {
         return res.status(400).json({ error: err instanceof Error ? err.message : 'Upload failed' });
       }
       if (!file) return res.status(400).json({ error: 'No video file provided' });
+      if (cover && (!/^image\/(jpeg|png|webp)$/.test(cover.mimetype) || cover.size > 10 * 1024 * 1024)) {
+        return res.status(400).json({ error: 'Cover must be a JPEG, PNG or WebP image under 10MB' });
+      }
 
       const { caption = '', hashtags = '', account = 'default', scheduledFor } = req.body;
       if (!scheduledFor || Number.isNaN(new Date(scheduledFor).getTime())) {
@@ -536,6 +541,9 @@ app.post('/api/external-video', (req, res) => {
       const storagePath = `tiktok-videos/external-${Date.now()}-${safeName}`;
       await uploadVideoTus(file.path, storagePath, file.size);
       const { data: { publicUrl } } = supabase.storage.from('videos').getPublicUrl(storagePath);
+      const coverUrl = cover
+        ? await uploadImageBuffer({ buffer: await fs.promises.readFile(cover.path), contentType: cover.mimetype, pathPrefix: 'covers' })
+        : null;
 
       const { data, error } = await supabase
         .from('tiktok_content_pool')
@@ -543,6 +551,7 @@ app.post('/api/external-video', (req, res) => {
           content_type: 'external',
           status: 'rendered',
           video_url: `${publicUrl}?v=${Date.now()}`,
+          ...(coverUrl ? { cover_image_url: coverUrl } : {}), // ponytail: omitted when absent so uploads work before migration-v9
           caption: String(caption),
           hashtags: tags,
           tiktok_account: account === 'default' ? null : String(account),
