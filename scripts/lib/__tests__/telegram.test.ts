@@ -48,6 +48,12 @@ test('buildInboxMessage returns undefined photoUrl when no thumbnail', () => {
   assert.equal(photoUrl, undefined);
 });
 
+test('resolveThumbnail prefers an uploaded cover_image_url over generated imagery', () => {
+  const item = { id: 'x', content_type: 'reveal' as const, cover_image_url: 'https://x.test/cover.jpg', image_pairs: [{ after_url: 'https://x.test/a.png' }] };
+  assert.equal(resolveThumbnail(item), 'https://x.test/cover.jpg');
+  assert.equal(resolveThumbnail({ id: 'x', content_type: 'external' as const, cover_image_url: 'https://x.test/c.png' }), 'https://x.test/c.png');
+});
+
 test('resolveThumbnail picks the first reveal pair after_url', () => {
   const item = { id: 'x', content_type: 'reveal' as const, image_pairs: [{ after_url: 'https://x.test/a.png' }] };
   assert.equal(resolveThumbnail(item), 'https://x.test/a.png');

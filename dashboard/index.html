@@ -2049,7 +2049,7 @@
     import { toLocalInput, fromLocalInput, localDateKey, formatDateTime, dayKeyToISO, atMidnight, addDays, startOfWeek, periodDays, shiftAnchor } from '/static/schedule-time.js';
     import { suggestRevealInputs, suggestTipInputs } from '/static/ai-suggestions.js';
     const html = htm.bind(React.createElement);
-    const { useState, useEffect, useRef, useCallback } = React;
+    const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
     // Modals render into <body>: a .panel ancestor has backdrop-filter, which
     // makes it the containing block for position:fixed and traps the overlay
@@ -3184,6 +3184,9 @@
     // uploaded MP4 at its time to the chosen TikTok account.
     function ExternalVideoForm({ onToast, onSwitch }) {
       const [file, setFile] = useState(null);
+      const [cover, setCover] = useState(null);
+      const coverPreview = useMemo(() => cover ? URL.createObjectURL(cover) : null, [cover]);
+      useEffect(() => () => { if (coverPreview) URL.revokeObjectURL(coverPreview); }, [coverPreview]);
       const [caption, setCaption] = useState('');
       const [hashtags, setHashtags] = useState('');
       const [account, setAccount] = useState('default');
@@ -3231,6 +3234,7 @@
             const xhr = new XMLHttpRequest();
             const fd = new FormData();
             fd.append('video', file);
+            if (cover) fd.append('cover', cover);
             fd.append('caption', caption);
             fd.append('hashtags', hashtags);
             fd.append('account', account);
@@ -3273,6 +3277,14 @@
               ${file ? html`<div style=${{fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.35rem'}}>
                 ${file.name} • ${(file.size / 1024 / 1024).toFixed(1)} MB
               </div>` : null}
+            </div>
+            <div className="form-group full-width">
+              <label className="form-label">Cover Image (optional)</label>
+              <input className="form-input" type="file" accept="image/jpeg,image/png,image/webp" onChange=${e => setCover(e.target.files[0] || null)} />
+              <div style=${{fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.35rem'}}>
+                TikTok's API can't set a custom cover, so it's sent with the Telegram inbox ping — save it and pick it under "Edit cover" when you post the draft.
+              </div>
+              ${coverPreview ? html`<img src=${coverPreview} alt="Cover preview" style=${{marginTop: '0.5rem', width: '90px', aspectRatio: '9 / 16', objectFit: 'cover', borderRadius: '6px'}} />` : null}
             </div>
             <div className="form-group full-width">
               <label className="form-label">Caption</label>
